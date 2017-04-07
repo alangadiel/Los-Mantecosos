@@ -15,8 +15,27 @@ int PUERTO;
 char* PUNTO_MONTAJE;
 
 void obtenerValoresArchivoConfiguracion() {
-	//HACER
-	//Se lee el archivo de configuracion y se llenan las variables globales
+	int contadorDeVariables = 0;
+	int c;
+	FILE *file;
+	file = fopen("ArchivoConfiguracion.txt", "r");
+	if (file) {
+		while ((c = getc(file)) != EOF)
+			if (c == '=')
+			{
+				if (contadorDeVariables == 1)
+				{
+					char buffer[10000];
+					PUNTO_MONTAJE = fgets(buffer, sizeof buffer, file);
+					strtok(PUNTO_MONTAJE, "\n");
+				}
+				if (contadorDeVariables == 0) {
+					fscanf(file, "%i", &PUERTO);
+					contadorDeVariables++;
+				}
+			}
+		fclose(file);
+	}
 }
 
 void imprimirArchivoConfiguracion() {

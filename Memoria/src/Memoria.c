@@ -20,9 +20,47 @@ char* REEMPLAZO_CACHE;
 int RETARDO_MEMORIA;
 
 void obtenerValoresArchivoConfiguracion() {
-	//HACER
-	//Se lee el archivo de configuracion y se llenan las variables globales
-
+	int contadorDeVariables = 0;
+	int c;
+	FILE *file;
+	file = fopen("ArchivoConfiguracion.txt", "r");
+	if (file) {
+		while ((c = getc(file)) != EOF)
+			if (c == '=')
+			{
+				if (contadorDeVariables == 6) {
+					fscanf(file, "%i", &RETARDO_MEMORIA);
+				}
+				if (contadorDeVariables == 5)
+				{
+					char buffer[10000];
+					REEMPLAZO_CACHE = fgets(buffer, sizeof buffer, file);
+					strtok(REEMPLAZO_CACHE, "\n");
+					contadorDeVariables++;
+				}
+				if (contadorDeVariables == 4) {
+					fscanf(file, "%i", &CACHE_X_PROC);
+					contadorDeVariables++;
+				}
+				if (contadorDeVariables == 3) {
+					fscanf(file, "%i", &ENTRADAS_CACHE);
+					contadorDeVariables++;
+				}
+				if (contadorDeVariables == 2) {
+					fscanf(file, "%i", &MARCO_SIZE);
+					contadorDeVariables++;
+				}
+				if (contadorDeVariables == 1) {
+					fscanf(file, "%i", &MARCOS);
+					contadorDeVariables++;
+				}
+				if (contadorDeVariables == 0) {
+					fscanf(file, "%i", &PUERTO);
+					contadorDeVariables++;
+				}
+			}
+		fclose(file);
+	}
 }
 
 void imprimirArchivoConfiguracion() {

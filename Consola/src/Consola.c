@@ -18,10 +18,6 @@
 char* IP_KERNEL;
 int PUERTO_KERNEL;
 
-void *guardarRestoDeLaLinea(FILE *file) {
-
-}
-
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
 	int c;
