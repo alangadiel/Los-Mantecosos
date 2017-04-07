@@ -22,6 +22,7 @@ int RETARDO_MEMORIA;
 void obtenerValoresArchivoConfiguracion() {
 	//HACER
 	//Se lee el archivo de configuracion y se llenan las variables globales
+
 }
 
 void imprimirArchivoConfiguracion() {

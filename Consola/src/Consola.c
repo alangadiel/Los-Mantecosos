@@ -18,9 +18,32 @@
 char* IP_KERNEL;
 int PUERTO_KERNEL;
 
+void *guardarRestoDeLaLinea(FILE *file) {
+
+}
+
 void obtenerValoresArchivoConfiguracion() {
-	//HACER
-	//Se lee el archivo de configuracion y se llenan las variables globales
+	int contadorDeVariables = 0;
+	int c;
+	FILE *file;
+	file = fopen("ArchivoConfiguracion.txt", "r");
+	if (file) {
+		while ((c = getc(file)) != EOF)
+			if (c == '=')
+			{
+				if (contadorDeVariables == 1) {
+					fscanf(file, "%i", &PUERTO_KERNEL);
+				}
+				if (contadorDeVariables == 0)
+				{
+					char buffer[10000];
+					IP_KERNEL = fgets(buffer, sizeof buffer, file);
+					strtok(IP_KERNEL, "\n");
+					contadorDeVariables++;
+				}
+			}
+		fclose(file);
+	}
 }
 
 void imprimirArchivoConfiguracion() {
