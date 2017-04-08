@@ -146,6 +146,6 @@ void imprimirArchivoConfiguracion() {
 
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
-	//imprimirArchivoConfiguracion();
+	imprimirArchivoConfiguracion();
 	return 0;
 }

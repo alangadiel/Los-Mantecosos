@@ -57,6 +57,5 @@ void imprimirArchivoConfiguracion() {
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	printf("%s",IP_KERNEL);
 	return 0;
 }
