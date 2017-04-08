@@ -35,6 +35,7 @@ void obtenerValoresArchivoConfiguracion() {
 					char buffer[10000];
 					IP_KERNEL = fgets(buffer, sizeof buffer, file);
 					strtok(IP_KERNEL, "\n");
+
 					contadorDeVariables++;
 				}
 			}
@@ -56,5 +57,6 @@ void imprimirArchivoConfiguracion() {
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+	printf("%s",IP_KERNEL);
 	return 0;
 }

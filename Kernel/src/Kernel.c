@@ -21,10 +21,18 @@ int QUANTUM;
 int QUANTUM_SLEEP;
 char* ALGORITMO;
 int GRADO_MULTIPROG;
-char* SEM_IDS[100];
+char* SEM_IDS[4];
 int SEM_INIT[100];
 char* SHARED_VARS[100];
 int STACK_SIZE;
+char* 	ObtenerTextoSinCorchetes(FILE* f){
+	char buffer[10000];
+	char *line = fgets(buffer,sizeof buffer,f);
+	int length = string_length(line)-3;
+	char *texto = string_substring(line,1,length);
+	texto  = strtok(texto,",");
+	return texto;
+}
 
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
@@ -38,54 +46,40 @@ void obtenerValoresArchivoConfiguracion() {
 				if (contadorDeVariables == 13) {
 					fscanf(file, "%i", &STACK_SIZE);
 				}
-				/*if (contadorDeVariables == 12) {
-					char buffer[10000];
-					char* aux = fgets(buffer, sizeof buffer, file);
-					strtok(aux, "\n");
-					strtok(aux, "[");
-					strtok(aux, "]");
-					int i = 0;
-					char *p = strtok (aux, ",");
 
-					while (p != NULL)
-					{
-						SHARED_VARS[i++] = p;
-						p = strtok (NULL, ",");
-					}
+				if (contadorDeVariables==12){
+					char * texto = ObtenerTextoSinCorchetes(file);
+					int i=0;
+					while (texto != NULL)
+						{
+						 SHARED_VARS[i++] = texto;
+						  texto = strtok (NULL, ",");
+						}
+
+					 contadorDeVariables++;
+				}
+				if (contadorDeVariables==11){
+					char * texto = ObtenerTextoSinCorchetes(file);
+					int i=0;
+					 while (texto != NULL)
+						{
+							SEM_INIT[i++] = atoi(texto);
+							texto = strtok (NULL, ",");
+						}
+
 					contadorDeVariables++;
 				}
-				if (contadorDeVariables == 11) {
-					char buffer[10000];
-					char* aux = fgets(buffer, sizeof buffer, file);
-					strtok(aux, "\n");
-					strtok(aux, "[");
-					strtok(aux, "]");
-					int i = 0;
-					char *p = strtok (aux, ",");
+				if (contadorDeVariables==10){
+					char * texto = ObtenerTextoSinCorchetes(file);
+					int i=0;
+					 while (texto != NULL)
+					    {
+					        SEM_IDS[i++] = texto;
+					        texto = strtok (NULL, ",");
+					    }
 
-					while (p != NULL)
-					{
-						SEM_INIT[i++] = atoi(p);
-						p = strtok (NULL, ",");
-					}
 					contadorDeVariables++;
 				}
-				if (contadorDeVariables == 10) {
-					char buffer[10000];
-					char* aux = fgets(buffer, sizeof buffer, file);
-					strtok(aux, "\n");
-					strtok(aux, "[");
-					strtok(aux, "]");
-					int i = 0;
-					char *p = strtok (aux, ",");
-
-					while (p != NULL)
-					{
-						SEM_IDS[i++] = p;
-						p = strtok (NULL, ",");
-					}
-					contadorDeVariables++;
-				}*/
 				if (contadorDeVariables == 9) {
 					fscanf(file, "%i", &GRADO_MULTIPROG);
 					contadorDeVariables++;
@@ -152,6 +146,6 @@ void imprimirArchivoConfiguracion() {
 
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
-	imprimirArchivoConfiguracion();
+	//imprimirArchivoConfiguracion();
 	return 0;
 }
