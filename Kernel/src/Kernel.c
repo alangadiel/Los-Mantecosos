@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "Sockets.c"
 
 int PUERTO_PROG;
 int PUERTO_CPU;
@@ -25,7 +26,10 @@ char* SEM_IDS[4];
 int SEM_INIT[100];
 char* SHARED_VARS[100];
 int STACK_SIZE;
-char* 	ObtenerTextoSinCorchetes(FILE* f){
+
+
+
+char* ObtenerTextoSinCorchetes(FILE* f){
 	char buffer[10000];
 	char *line = fgets(buffer,sizeof buffer,f);
 	int length = string_length(line)-3;
@@ -145,6 +149,8 @@ void imprimirArchivoConfiguracion() {
 }
 
 int main(void) {
+	socket_t socket = iniciarServidor(PUERTO_PROG);
+	socket_t socketEscucha = realizarConexion(3500);
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	return 0;

@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <Sockets.c>
 
 int PUERTO;
 char* PUNTO_MONTAJE;
@@ -50,6 +51,8 @@ void imprimirArchivoConfiguracion() {
 }
 
 int main(void) {
+	conectarAlServidor("127.0.0.1", 5000);
+
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	return 0;
