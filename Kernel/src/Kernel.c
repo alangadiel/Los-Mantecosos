@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "Sockets.c"
+#define BACKLOG 6
 
 int PUERTO_PROG;
 int PUERTO_CPU;
@@ -26,10 +27,10 @@ char* SEM_IDS[4];
 int SEM_INIT[100];
 char* SHARED_VARS[100];
 int STACK_SIZE;
+char* IP_PROG;
 
 
-
-char* ObtenerTextoSinCorchetes(FILE* f){
+char* ObtenerTextoSinCorchetes(FILE* f){     //Para obtener los valores de los arrays del archivo de configuracion
 	char buffer[10000];
 	char *line = fgets(buffer,sizeof buffer,f);
 	int length = string_length(line)-3;
@@ -47,8 +48,15 @@ void obtenerValoresArchivoConfiguracion() {
 		while ((c = getc(file)) != EOF)
 			if (c == '=')
 			{
+				if (contadorDeVariables == 14) {
+					char buffer[10000];
+					IP_PROG = fgets(buffer, sizeof buffer, file);
+					strtok(IP_PROG, "\n");
+				}
 				if (contadorDeVariables == 13) {
 					fscanf(file, "%i", &STACK_SIZE);
+					contadorDeVariables++;
+
 				}
 
 				if (contadorDeVariables==12){
@@ -148,10 +156,30 @@ void imprimirArchivoConfiguracion() {
 	}
 }
 
+int iniciarServidor(){
+	int socketFD = socket(AF_INET,SOCK_STREAM,0);
+	struct sockaddr_in estructuraDireccion;
+	estructuraDireccion.sin_family = AF_INET;
+	estructuraDireccion.sin_port = htons(PUERTO_PROG);
+	estructuraDireccion.sin_addr.s_addr = htonl(IP_PROG);
+	//Backlog es el maximo de peticiones pendientes
+	bind(socketFD,(struct sockaddr *) &estructuraDireccion,sizeof(struct sockaddr));
+	listen(socketFD,BACKLOG);
+	return socketFD;
+}
+int aceptarConexion(int socketEscucha){
+	struct sockaddr_in their_addr;
+	int sin_size = sizeof(struct sockaddr_in);
+	return accept(socketEscucha, (struct sockaddr *)&their_addr, &sin_size);
+
+}
+
 int main(void) {
-	socket_t socket = iniciarServidor(PUERTO_PROG);
-	socket_t socketEscucha = realizarConexion(3500);
+	//socket_t socket = iniciarServidor(PUERTO_PROG);
+	//socket_t socketEscucha = realizarConexion(3500);
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+	int SocketEscucha = iniciarServidor();
+	int nuevoSocket=aceptarConexion(SocketEscucha);
 	return 0;
 }

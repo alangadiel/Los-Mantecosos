@@ -14,7 +14,9 @@
 #include <commons/collections/list.h>
 #include <commons/string.h>
 #include <commons/txt.h>
-
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 char* IP_KERNEL;
 int PUERTO_KERNEL;
 
@@ -54,8 +56,20 @@ void imprimirArchivoConfiguracion() {
 	}
 }
 
+void ConectarAlServidor(){
+	int socketFD = socket(AF_INET,SOCK_STREAM,0);
+	struct sockaddr_in direccionKernel;
+	direccionKernel.sin_family = AF_INET;
+	direccionKernel.sin_port = htons(PUERTO_KERNEL);
+	direccionKernel.sin_addr.s_addr = htonl(IP_KERNEL);
+	connect(socketFD,(struct sockaddr *)&direccionKernel, sizeof(struct sockaddr));
+
+}
+
+
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+	ConectarAlServidor();
 	return 0;
 }
