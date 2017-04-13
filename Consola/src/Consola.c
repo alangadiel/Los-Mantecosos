@@ -58,18 +58,19 @@ void imprimirArchivoConfiguracion() {
 
 void ConectarServidor(){
 	int socketFD = socket(AF_INET,SOCK_STREAM,0);
+	printf("%i\n", socketFD);
 	struct sockaddr_in direccionKernel;
 	direccionKernel.sin_family = AF_INET;
-	direccionKernel.sin_port = htons(PUERTO_KERNEL);
-	direccionKernel.sin_addr.s_addr = htonl(IP_KERNEL);
+	direccionKernel.sin_port = htons(5000/*PUERTO_KERNEL*/);
+	direccionKernel.sin_addr.s_addr = (int) htonl("10.0.2.15"/*IP_KERNEL*/);
 	connect(socketFD,(struct sockaddr *)&direccionKernel, sizeof(struct sockaddr));
-
+	printf("%s", "se conecto! anda a kernel y apreta\n");
 }
 
 
 int main(void) {
-	obtenerValoresArchivoConfiguracion();
-	imprimirArchivoConfiguracion();
+	//obtenerValoresArchivoConfiguracion();
+	//imprimirArchivoConfiguracion();
 	ConectarServidor();
 	return 0;
 }

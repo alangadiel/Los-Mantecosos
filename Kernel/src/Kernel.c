@@ -36,10 +36,10 @@ char* IP_PROG;
 char* ObtenerTextoSinCorchetes(FILE* f){     //Para obtener los valores de los arrays del archivo de configuracion
 	char buffer[10000];
 	char *line = fgets(buffer,sizeof buffer,f);
-	int length = string_length(line)-3;
-	char *texto = string_substring(line,1,length);
-	texto  = strtok(texto,",");
-	return texto;
+	//int length = string_length(line)-3;
+	//char *texto = string_substring(line,1,length);
+	//texto  = strtok(texto,",");
+	//return texto;
 }
 
 void obtenerValoresArchivoConfiguracion() {
@@ -161,10 +161,11 @@ void imprimirArchivoConfiguracion() {
 
 int startServidor(){
 	int socketFD = socket(AF_INET,SOCK_STREAM,0);
+	printf("%i\n", socketFD);
 	struct sockaddr_in estructuraDireccion;
 	estructuraDireccion.sin_family = AF_INET;
-	estructuraDireccion.sin_port = htons(PUERTO_PROG);
-	estructuraDireccion.sin_addr.s_addr = htonl(IP_PROG);
+	estructuraDireccion.sin_port = htons(5000/*PUERTO_PROG*/);
+	estructuraDireccion.sin_addr.s_addr = htonl("10.0.2.15" /*IP_PROG*/);
 	//Backlog es el maximo de peticiones pendientes
 	bind(socketFD,(struct sockaddr *) &estructuraDireccion,sizeof(struct sockaddr));
 	listen(socketFD,BACKLOG);
@@ -172,7 +173,7 @@ int startServidor(){
 }
 int aceptarConexion(int socketEscucha){
 	struct sockaddr_in their_addr;
-	int sin_size = sizeof(struct sockaddr_in);
+	socklen_t sin_size = sizeof(struct sockaddr_in);
 	int nuevoFD = accept(socketEscucha, (struct sockaddr *)&their_addr, &sin_size);
 	return nuevoFD;
 
@@ -181,11 +182,15 @@ int aceptarConexion(int socketEscucha){
 int main(void) {
 	//socket_t socket = iniciarServidor(PUERTO_PROG);
 	//socket_t socketEscucha = realizarConexion(3500);
-	obtenerValoresArchivoConfiguracion();
-	imprimirArchivoConfiguracion();
+	//obtenerValoresArchivoConfiguracion();
+	//imprimirArchivoConfiguracion();
 	int SocketEscucha = startServidor();
+	char str[100];
+	printf( "Enter a value :");
+	scanf("%s", str);
+	printf( "\nYou entered: %s \n", str);
 	int nuevoSocket=aceptarConexion(SocketEscucha);
-	printf("%d",nuevoSocket);
+	printf("%d\n",nuevoSocket);
 	close(SocketEscucha);
 	close(nuevoSocket);
 	return 0;
