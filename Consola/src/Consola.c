@@ -56,7 +56,7 @@ void imprimirArchivoConfiguracion() {
 	}
 }
 
-void ConectarAlServidor(){
+void ConectarServidor(){
 	int socketFD = socket(AF_INET,SOCK_STREAM,0);
 	struct sockaddr_in direccionKernel;
 	direccionKernel.sin_family = AF_INET;
@@ -70,6 +70,6 @@ void ConectarAlServidor(){
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	ConectarAlServidor();
+	ConectarServidor();
 	return 0;
 }

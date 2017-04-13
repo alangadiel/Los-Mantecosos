@@ -10,7 +10,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "Sockets.c"
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #define BACKLOG 6
 
 int PUERTO_PROG;
@@ -156,7 +159,7 @@ void imprimirArchivoConfiguracion() {
 	}
 }
 
-int iniciarServidor(){
+int startServidor(){
 	int socketFD = socket(AF_INET,SOCK_STREAM,0);
 	struct sockaddr_in estructuraDireccion;
 	estructuraDireccion.sin_family = AF_INET;
@@ -170,7 +173,8 @@ int iniciarServidor(){
 int aceptarConexion(int socketEscucha){
 	struct sockaddr_in their_addr;
 	int sin_size = sizeof(struct sockaddr_in);
-	return accept(socketEscucha, (struct sockaddr *)&their_addr, &sin_size);
+	int nuevoFD = accept(socketEscucha, (struct sockaddr *)&their_addr, &sin_size);
+	return nuevoFD;
 
 }
 
@@ -179,7 +183,10 @@ int main(void) {
 	//socket_t socketEscucha = realizarConexion(3500);
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	int SocketEscucha = iniciarServidor();
+	int SocketEscucha = startServidor();
 	int nuevoSocket=aceptarConexion(SocketEscucha);
+	printf("%d",nuevoSocket);
+	close(SocketEscucha);
+	close(nuevoSocket);
 	return 0;
 }
