@@ -69,8 +69,8 @@ void ConectarServidor(){
 
 
 int main(void) {
-	//obtenerValoresArchivoConfiguracion();
-	//imprimirArchivoConfiguracion();
+	obtenerValoresArchivoConfiguracion();
+	imprimirArchivoConfiguracion();
 	ConectarServidor();
 	return 0;
 }

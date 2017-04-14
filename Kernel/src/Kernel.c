@@ -15,6 +15,13 @@
 #include <sys/socket.h>
 
 #define BACKLOG 6
+typedef struct {
+	int Header;
+	char* Payload;
+	int PayloadLength;
+} Paquete;
+Paquete msg;
+
 
 int PUERTO_PROG;
 int PUERTO_CPU;
@@ -178,7 +185,15 @@ int aceptarConexion(int socketEscucha){
 	return nuevoFD;
 
 }
-
+void EnviarPaquete(int socketCliente,char* msg){
+	Paquete package;
+	int largo = sizeof (package.PayloadLength+package.Payload);
+	send(socketCliente,msg,largo,0);
+}
+void Handshake(int socketFD){
+	char* mensaje = "1Hola,gracias por conectarte. Podes enviarme mensajes";
+	EnviarPaquete(socketFD,mensaje);
+}
 int main(void) {
 	//socket_t socket = iniciarServidor(PUERTO_PROG);
 	//socket_t socketEscucha = realizarConexion(3500);
@@ -190,6 +205,7 @@ int main(void) {
 	scanf("%s", str);
 	printf( "\nYou entered: %s \n", str);
 	int nuevoSocket=aceptarConexion(SocketEscucha);
+	Handshake(nuevoSocket);
 	printf("%d\n",nuevoSocket);
 	close(SocketEscucha);
 	close(nuevoSocket);
