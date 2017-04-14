@@ -23,4 +23,21 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>src/Kernel.c</name>
+			<type>1</type>
+			<location>/home/utnso/workspace/tp-2017-1c-Los-Mantecosos/Kernel/src/Kernel.c</location>
+		</link>
+		<link>
+			<name>src/SocketsL.c</name>
+			<type>1</type>
+			<location>/home/utnso/workspace/tp-2017-1c-Los-Mantecosos/Bibliotecas/SocketsL.c</location>
+		</link>
+		<link>
+			<name>src/SocketsL.h</name>
+			<type>1</type>
+			<location>/home/utnso/workspace/tp-2017-1c-Los-Mantecosos/Bibliotecas/SocketsL.h</location>
+		</link>
+	</linkedResources>
 </projectDescription>

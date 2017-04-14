@@ -4,7 +4,9 @@
  *  Created on: 14/4/2017
  *      Author: utnso
  */
-#include "SocketsL.c"
+
+
+#include "SocketsL.h"
 
 void EnviarPaquete(int socketCliente,Paquete msg){
 	char* punteroMsg = &msg;

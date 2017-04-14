@@ -14,7 +14,6 @@
 #include <commons/string.h>
 #include <commons/txt.h>
 #include "SocketsL.h"
-#include <arpa/inet.h>
 
 
 char* IP_KERNEL;
@@ -66,7 +65,7 @@ void ConectarServidor(){
 	connect(socketFD,(struct sockaddr *)&direccionKernel, sizeof(struct sockaddr));
 	printf("%s", "Se conecto! anda a kernel y apreta\n");
 	EnviarHandshake(socketFD,"Consola");
-	char* result = RecibirHandshake();
+	char* result = RecibirHandshake(socketFD);
 	printf("%s\n",result);
 
 }
