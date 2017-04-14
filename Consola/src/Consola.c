@@ -8,15 +8,15 @@
  ============================================================================
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+
 #include <commons/log.h>
 #include <commons/collections/list.h>
 #include <commons/string.h>
 #include <commons/txt.h>
+#include "SocketsL.h"
 #include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+
+
 char* IP_KERNEL;
 int PUERTO_KERNEL;
 
@@ -61,10 +61,14 @@ void ConectarServidor(){
 	printf("%i\n", socketFD);
 	struct sockaddr_in direccionKernel;
 	direccionKernel.sin_family = AF_INET;
-	direccionKernel.sin_port = htons(5000/*PUERTO_KERNEL*/);
-	direccionKernel.sin_addr.s_addr = (int) htonl("10.0.2.15"/*IP_KERNEL*/);
+	direccionKernel.sin_port = htons(PUERTO_KERNEL);
+	direccionKernel.sin_addr.s_addr = (int) htonl(IP_KERNEL);
 	connect(socketFD,(struct sockaddr *)&direccionKernel, sizeof(struct sockaddr));
-	printf("%s", "se conecto! anda a kernel y apreta\n");
+	printf("%s", "Se conecto! anda a kernel y apreta\n");
+	EnviarHandshake(socketFD,"Consola");
+	char* result = RecibirHandshake();
+	printf("%s\n",result);
+
 }
 
 

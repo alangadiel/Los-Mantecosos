@@ -17,25 +17,33 @@ void EnviarPaquete(int socketCliente,Paquete msg){
 	} while (largo!=0);
 }
 
-void EnviarMensaje(int socketFD, char* msg){
+void EnviarMensaje(int socketFD, char* msg,char* emisor){
 	Paquete paquete;
 	Header header;
 	header.esHandShake='0';
 	header.tamPayload= sizeof(msg);
-	header.emisor= "Kernel";
+	header.emisor= emisor;
 	paquete.header=header;
 	paquete.Payload=msg;
 	EnviarPaquete(socketFD,paquete);
 }
 
-void Handshake(int socketFD){
+void EnviarHandshake(int socketFD,char * emisor){
 	Paquete paquete;
 	Header header;
 	header.esHandShake='1';
 	header.tamPayload= 0;
-	header.emisor= "Kernel";
+	header.emisor= emisor;
 	paquete.header=header;
-	paquete.Payload=NULL;
+	paquete.Payload=(void*)0; //Seria lo mismo que NULL
 	EnviarPaquete(socketFD,paquete);
 }
+char* RecibirHandshake(int socketFD){
+	Paquete paquete;
+	int var = recv(socketFD,&paquete,sizeof(paquete),0);
+	if (var!=-1)
+		return "Se recibió el mensaje";
+	else
+		return "Hubo un error al intentar recibir";
 
+}

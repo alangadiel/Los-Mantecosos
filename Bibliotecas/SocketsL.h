@@ -28,7 +28,7 @@ typedef struct {
 
 
 void EnviarPaquete(int socketCliente,Paquete msg);
-void EnviarMensaje(int socketFD, char* msg);
-void Handshake(int socketFD);
-
+void EnviarMensaje(int socketFD, char* msg,char* emisor);
+void EnviarHandshake(int socketFD,char* emisor);
+void RecibirHandshake(int socketFD);
 #endif //SOCKETS_H_

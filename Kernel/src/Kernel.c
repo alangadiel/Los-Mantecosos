@@ -1,14 +1,3 @@
-/*
- ============================================================================
- Name        : Kernel.c
- Author      : 
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
-
-
 #include "SocketsL.h"
 
 #define BACKLOG 6
@@ -162,8 +151,8 @@ int startServidor(){
 	printf("%i\n", socketFD);
 	struct sockaddr_in estructuraDireccion;
 	estructuraDireccion.sin_family = AF_INET;
-	estructuraDireccion.sin_port = htons(5000/*PUERTO_PROG*/);
-	estructuraDireccion.sin_addr.s_addr = htonl("10.0.2.15" /*IP_PROG*/);
+	estructuraDireccion.sin_port = htons(PUERTO_PROG);
+	estructuraDireccion.sin_addr.s_addr = htonl(*IP_PROG);
 	//Backlog es el maximo de peticiones pendientes
 	bind(socketFD,(struct sockaddr *) &estructuraDireccion,sizeof(struct sockaddr));
 	listen(socketFD,BACKLOG);
@@ -183,12 +172,17 @@ int main(void) {
 	//obtenerValoresArchivoConfiguracion();
 	//imprimirArchivoConfiguracion();
 	int SocketEscucha = startServidor();
-	char str[100];
-	printf( "Enter a value :");
+	char* str, palabra;
+	printf("Ingrese una palabra para continuar: \n");
 	scanf("%s", str);
-	printf( "\nYou entered: %s \n", str);
+	printf( "\nIngresaste:  %s \n", str);
 	int nuevoSocket=aceptarConexion(SocketEscucha);
-	Handshake(nuevoSocket);
+	printf("Ingrese una palabra para continuar: \n");
+	scanf("%s", palabra);
+	printf( "\nIngresaste:  %s \n", palabra);
+	char* result = RecibirHandshake(nuevoSocket);
+	printf("%s\n",result);
+	EnviarHandshake(nuevoSocket,"Kernel");
 	printf("%d\n",nuevoSocket);
 	close(SocketEscucha);
 	close(nuevoSocket);
