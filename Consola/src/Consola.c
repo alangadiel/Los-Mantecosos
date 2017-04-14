@@ -15,7 +15,7 @@
 #include <commons/txt.h>
 #include "SocketsL.h"
 
-
+#define TAMANIOMAXIMOFIJO 20
 char* IP_KERNEL;
 int PUERTO_KERNEL;
 
@@ -55,7 +55,7 @@ void imprimirArchivoConfiguracion() {
 	}
 }
 
-void ConectarServidor(){
+int ConectarServidor(){
 	int socketFD = socket(AF_INET,SOCK_STREAM,0);
 	printf("%i\n", socketFD);
 	struct sockaddr_in direccionKernel;
@@ -64,16 +64,21 @@ void ConectarServidor(){
 	direccionKernel.sin_addr.s_addr = (int) htonl(IP_KERNEL);
 	connect(socketFD,(struct sockaddr *)&direccionKernel, sizeof(struct sockaddr));
 	printf("%s", "Se conecto! anda a kernel y apreta\n");
-	EnviarHandshake(socketFD,"Consola");
-	char* result = RecibirHandshake(socketFD);
-	printf("%s\n",result);
-
+	return socketFD;
 }
 
 
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	ConectarServidor();
+	int socketFD= ConectarServidor();
+	EnviarHandshake(socketFD,"Consola");
+	char* result = RecibirHandshake(socketFD);
+	printf("%s\n",result);
+	char* mensajeAEnviar;
+	printf("%s\n","Ingrese un texto de hasta %d caracteres",TAMANIOMAXIMOFIJO);
+	scanf("%s",mensajeAEnviar);
+	mensajeAEnviar = string_substring_until(mensajeAEnviar,20);
+	EnviarMensaje(socketFD,mensajeAEnviar,"Consola");
 	return 0;
 }

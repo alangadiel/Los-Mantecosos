@@ -152,7 +152,7 @@ int startServidor(){
 	struct sockaddr_in estructuraDireccion;
 	estructuraDireccion.sin_family = AF_INET;
 	estructuraDireccion.sin_port = htons(PUERTO_PROG);
-	estructuraDireccion.sin_addr.s_addr = htonl(*IP_PROG);
+	estructuraDireccion.sin_addr.s_addr = htonl(IP_PROG);
 	//Backlog es el maximo de peticiones pendientes
 	bind(socketFD,(struct sockaddr *) &estructuraDireccion,sizeof(struct sockaddr));
 	listen(socketFD,BACKLOG);
@@ -169,21 +169,32 @@ int aceptarConexion(int socketEscucha){
 int main(void) {
 	//socket_t socket = iniciarServidor(PUERTO_PROG);
 	//socket_t socketEscucha = realizarConexion(3500);
-	//obtenerValoresArchivoConfiguracion();
-	//imprimirArchivoConfiguracion();
+	obtenerValoresArchivoConfiguracion();
+	imprimirArchivoConfiguracion();
 	int SocketEscucha = startServidor();
-	char* str, palabra;
+	char* str;
+
 	printf("Ingrese una palabra para continuar: \n");
 	scanf("%s", str);
 	printf( "\nIngresaste:  %s \n", str);
+
 	int nuevoSocket=aceptarConexion(SocketEscucha);
+	printf("%d\n",nuevoSocket);
+
 	printf("Ingrese una palabra para continuar: \n");
-	scanf("%s", palabra);
-	printf( "\nIngresaste:  %s \n", palabra);
+	scanf("%s", str);
+	printf( "\nIngresaste:  %s \n", str);
+
 	char* result = RecibirHandshake(nuevoSocket);
 	printf("%s\n",result);
+
 	EnviarHandshake(nuevoSocket,"Kernel");
-	printf("%d\n",nuevoSocket);
+
+	printf("Ingrese una palabra para continuar: \n");
+	scanf("%s", str);
+	printf( "\nIngresaste:  %s \n", str);
+	RecibirMensaje(nuevoSocket);
+
 	close(SocketEscucha);
 	close(nuevoSocket);
 	return 0;

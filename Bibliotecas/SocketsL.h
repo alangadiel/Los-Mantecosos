@@ -31,4 +31,5 @@ void EnviarPaquete(int socketCliente,Paquete msg);
 void EnviarMensaje(int socketFD, char* msg,char* emisor);
 void EnviarHandshake(int socketFD,char* emisor);
 char* RecibirHandshake(int socketFD);
+char* RecibirMensaje(int socketFD);
 #endif //SOCKETS_H_

@@ -18,8 +18,7 @@ void EnviarPaquete(int socketCliente,Paquete msg){
 		punteroMsg += enviado; //avanza la cant de bytes que ya mando
 	} while (largo!=0);
 }
-
-void EnviarMensaje(int socketFD, char* msg,char* emisor){
+ void EnviarMensaje(int socketFD, char* msg,char* emisor){
 	Paquete paquete;
 	Header header;
 	header.esHandShake='0';
@@ -47,5 +46,13 @@ char* RecibirHandshake(int socketFD){
 		return "Se recibió el mensaje";
 	else
 		return "Hubo un error al intentar recibir";
+}
 
+char* RecibirMensaje(int socketFD){
+	Paquete paquete;
+	int var = recv(socketFD,&paquete,sizeof(paquete),0);
+	if (var!=-1)
+		return "Se recibió el mensaje";
+	else
+		return "Hubo un error al intentar recibir";
 }
