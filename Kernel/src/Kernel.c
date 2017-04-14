@@ -8,19 +8,10 @@
  ============================================================================
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+
+#include "SocketsL.h"
 
 #define BACKLOG 6
-typedef struct {
-	int Header;
-	char* Payload;
-	int PayloadLength;
-} Paquete;
-Paquete msg;
 
 
 int PUERTO_PROG;
@@ -185,15 +176,7 @@ int aceptarConexion(int socketEscucha){
 	return nuevoFD;
 
 }
-void EnviarPaquete(int socketCliente,char* msg){
-	Paquete package;
-	int largo = sizeof (package.PayloadLength+package.Payload);
-	send(socketCliente,msg,largo,0);
-}
-void Handshake(int socketFD){
-	char* mensaje = "1Hola,gracias por conectarte. Podes enviarme mensajes";
-	EnviarPaquete(socketFD,mensaje);
-}
+
 int main(void) {
 	//socket_t socket = iniciarServidor(PUERTO_PROG);
 	//socket_t socketEscucha = realizarConexion(3500);
