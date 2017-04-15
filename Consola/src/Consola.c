@@ -64,7 +64,7 @@ int ConectarServidor(){
 	direccionKernel.sin_addr.s_addr = inet_addr(IP_KERNEL);
 	memset(&(direccionKernel.sin_zero), '\0', 8);
 	connect(socketFD,(struct sockaddr *)&direccionKernel, sizeof(struct sockaddr));
-	printf("%s", "Se conecto! anda a kernel y apreta\n");
+	//printf("%s", "Se conecto! anda a kernel y apreta\n");
 	return socketFD;
 }
 
@@ -72,23 +72,28 @@ int ConectarServidor(){
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+	//Iniciamos el cliente y lo conectamos con el servidor Kernel
 	int socketFD= ConectarServidor();
 	char* str;
-	printf("%s\n","Ingrese un texto de hasta %d caracteres",TAMANIOMAXIMOFIJO);
+
+	printf("%s\n","1 -Conectando con el servidor, acepte la conexion y luego ingrese un texto de hasta %d caracteres para enviar el Handshake-",TAMANIOMAXIMOFIJO);
 	scanf("%s",str);
 
+	//Intercambiamos Handshakes
 	EnviarHandshake(socketFD,"Consola");
-	printf("%s\n","Ingrese un texto de hasta %d caracteres",TAMANIOMAXIMOFIJO);
+	printf("%s\n","2 -Handshake enviado, Ahora recibalo en el servidor, luego ingrese un texto de hasta %d caracteres-",TAMANIOMAXIMOFIJO);
 	scanf("%s",str);
 
 	char* result = RecibirHandshake(socketFD);
 	printf("%s\n",result);
 
 	char* mensajeAEnviar;
-	printf("%s\n","Ingrese un texto de hasta %d caracteres",TAMANIOMAXIMOFIJO);
+	printf("%s\n","3 -Ingrese el mensaje a enviar, un texto de hasta %d caracteres-",TAMANIOMAXIMOFIJO);
+	//fgets(mensajeAEnviar, 100, stdin);
 	scanf("%s",mensajeAEnviar);
-
+	//Enviamos el mensaje
 	mensajeAEnviar = string_substring_until(mensajeAEnviar,20);
 	EnviarMensaje(socketFD,mensajeAEnviar,"Consola");
+	printf("%s\n", "4. Mensaje enviado");
 	return 0;
 }

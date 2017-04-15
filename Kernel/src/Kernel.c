@@ -170,32 +170,33 @@ int aceptarConexion(int socketEscucha){
 int main(void) {
 	//socket_t socket = iniciarServidor(PUERTO_PROG);
 	//socket_t socketEscucha = realizarConexion(3500);
+
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+	//Iniciamos el servidor, creando el socket, asignandole un puerto y poniendolo a escuchar.
 	int SocketEscucha = startServidor();
 	char* str;
-
-	printf("Ingrese una palabra para continuar: \n");
+	printf("1 -El servidor Kernel inicio correctamente. \nAhora puede indicarle al cliente que se conecte. \nUna vez hecho esto ingrese una palabra para aceptar la conexion y continuar:- \n");
 	scanf("%s", str);
-	printf( "\nIngresaste:  %s \n", str);
-
+	//Aceptamos la conexion del cliente
 	int nuevoSocket=aceptarConexion(SocketEscucha);
 	printf("%d\n",nuevoSocket);
 
-	printf("Ingrese una palabra para continuar: \n");
+	printf("2 -Conexion con cliente en proceso. \n Ahora indiquele al cliente que envie un Handshake, luego ingrese una palabra para continuar:- \n");
 	scanf("%s", str);
-	printf( "\nIngresaste:  %s \n", str);
-
+	//Intercambiamos Handshakes
 	char* result = RecibirHandshake(nuevoSocket);
 	printf("%s\n",result);
 
 	EnviarHandshake(nuevoSocket,"Kernel");
 
-	printf("Ingrese una palabra para continuar: \n");
+	printf("3 -Conexion con cliente establecida! \n Ahora puede enviar un mensaje desde el cliente, luego ingrese una palabra para continuar:- \n");
 	scanf("%s", str);
-	printf( "\nIngresaste:  %s \n", str);
-	RecibirMensaje(nuevoSocket);
+	//Recibimos el mensaje y lo mostramos
+	str=RecibirMensaje(nuevoSocket);
+	printf("%s\n", str);
 
+	//Cerramos el programa
 	close(SocketEscucha);
 	close(nuevoSocket);
 	return 0;

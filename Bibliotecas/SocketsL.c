@@ -9,11 +9,11 @@
 #include "SocketsL.h"
 
 void EnviarPaquete(int socketCliente,Paquete msg){
-	char* punteroMsg = &msg;
+	Paquete* punteroMsg = &msg;
 	int largo = sizeof(msg);
 	int enviado; //bytes enviados
 	do {
-		enviado = send(socketCliente,punteroMsg,largo,0);
+		enviado = send(socketCliente,&msg,largo,0);
 		largo -= enviado;
 		punteroMsg += enviado; //avanza la cant de bytes que ya mando
 	} while (largo!=0);
@@ -43,7 +43,7 @@ char* RecibirHandshake(int socketFD){
 	Paquete paquete;
 	int var = recv(socketFD,&paquete,sizeof(paquete),0);
 	if (var!=-1)
-		return "Se recibió el mensaje";
+		return "Se recibió el Handshake";
 	else
 		return "Hubo un error al intentar recibir";
 }
@@ -51,8 +51,13 @@ char* RecibirHandshake(int socketFD){
 char* RecibirMensaje(int socketFD){
 	Paquete paquete;
 	int var = recv(socketFD,&paquete,sizeof(paquete),0);
-	if (var!=-1)
-		return "Se recibió el mensaje";
-	else
+
+	if (var!=-1){
+		char* str="Se recibió el mensaje: ";
+		string_append(&str, paquete.Payload);
+		return str;
+	}
+	else{
 		return "Hubo un error al intentar recibir";
+	}
 }
