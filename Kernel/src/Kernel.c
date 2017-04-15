@@ -152,7 +152,8 @@ int startServidor(){
 	struct sockaddr_in estructuraDireccion;
 	estructuraDireccion.sin_family = AF_INET;
 	estructuraDireccion.sin_port = htons(PUERTO_PROG);
-	estructuraDireccion.sin_addr.s_addr = htonl((int)IP_PROG);
+	estructuraDireccion.sin_addr.s_addr = inet_addr(IP_PROG);
+	memset(&(estructuraDireccion.sin_zero), '\0', 8);
 	//Backlog es el maximo de peticiones pendientes
 	bind(socketFD,(struct sockaddr *) &estructuraDireccion,sizeof(struct sockaddr));
 	listen(socketFD,BACKLOG);

@@ -61,7 +61,8 @@ int ConectarServidor(){
 	struct sockaddr_in direccionKernel;
 	direccionKernel.sin_family = AF_INET;
 	direccionKernel.sin_port = htons(PUERTO_KERNEL);
-	direccionKernel.sin_addr.s_addr = (int) htonl(IP_KERNEL);
+	direccionKernel.sin_addr.s_addr = inet_addr(IP_KERNEL);
+	memset(&(direccionKernel.sin_zero), '\0', 8);
 	connect(socketFD,(struct sockaddr *)&direccionKernel, sizeof(struct sockaddr));
 	printf("%s", "Se conecto! anda a kernel y apreta\n");
 	return socketFD;
@@ -72,12 +73,21 @@ int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	int socketFD= ConectarServidor();
+	char* str;
+	printf("%s\n","Ingrese un texto de hasta %d caracteres",TAMANIOMAXIMOFIJO);
+	scanf("%s",str);
+
 	EnviarHandshake(socketFD,"Consola");
+	printf("%s\n","Ingrese un texto de hasta %d caracteres",TAMANIOMAXIMOFIJO);
+	scanf("%s",str);
+
 	char* result = RecibirHandshake(socketFD);
 	printf("%s\n",result);
+
 	char* mensajeAEnviar;
 	printf("%s\n","Ingrese un texto de hasta %d caracteres",TAMANIOMAXIMOFIJO);
 	scanf("%s",mensajeAEnviar);
+
 	mensajeAEnviar = string_substring_until(mensajeAEnviar,20);
 	EnviarMensaje(socketFD,mensajeAEnviar,"Consola");
 	return 0;
