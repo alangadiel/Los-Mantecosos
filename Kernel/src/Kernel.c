@@ -23,10 +23,10 @@ char* IP_PROG;
 char* ObtenerTextoSinCorchetes(FILE* f){     //Para obtener los valores de los arrays del archivo de configuracion
 	char buffer[10000];
 	char *line = fgets(buffer,sizeof buffer,f);
-	//int length = string_length(line)-3;
-	//char *texto = string_substring(line,1,length);
-	//texto  = strtok(texto,",");
-	//return texto;
+	int length = string_length(line)-3;
+	char *texto = string_substring(line,1,length);
+	texto  = strtok(texto,",");
+	return texto;
 }
 
 void obtenerValoresArchivoConfiguracion() {
@@ -152,7 +152,7 @@ int startServidor(){
 	struct sockaddr_in estructuraDireccion;
 	estructuraDireccion.sin_family = AF_INET;
 	estructuraDireccion.sin_port = htons(PUERTO_PROG);
-	estructuraDireccion.sin_addr.s_addr = htonl(IP_PROG);
+	estructuraDireccion.sin_addr.s_addr = htonl((int)IP_PROG);
 	//Backlog es el maximo de peticiones pendientes
 	bind(socketFD,(struct sockaddr *) &estructuraDireccion,sizeof(struct sockaddr));
 	listen(socketFD,BACKLOG);
