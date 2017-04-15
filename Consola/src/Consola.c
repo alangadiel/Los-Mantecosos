@@ -95,5 +95,7 @@ int main(void) {
 	mensajeAEnviar = string_substring_until(mensajeAEnviar,20);
 	EnviarMensaje(socketFD,mensajeAEnviar,"Consola");
 	printf("%s\n", "4. Mensaje enviado");
+
+	scanf("%s", mensajeAEnviar);
 	return 0;
 }

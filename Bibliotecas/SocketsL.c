@@ -11,12 +11,14 @@
 void EnviarPaquete(int socketCliente,Paquete msg){
 	Paquete* punteroMsg = &msg;
 	int largo = sizeof(msg);
-	int enviado; //bytes enviados
+	int enviado = 0; //bytes enviados
+	int totalEnviado = 0;
 	do {
-		enviado = send(socketCliente,&msg,largo,0);
-		largo -= enviado;
-		punteroMsg += enviado; //avanza la cant de bytes que ya mando
-	} while (largo!=0);
+		enviado = send(socketCliente,punteroMsg+totalEnviado,largo,0);
+		largo -= totalEnviado;
+		totalEnviado += enviado;
+		//punteroMsg += enviado; //avanza la cant de bytes que ya mando
+	} while (totalEnviado!=enviado);
 }
  void EnviarMensaje(int socketFD, char* msg,char* emisor){
 	Paquete paquete;
@@ -29,12 +31,12 @@ void EnviarPaquete(int socketCliente,Paquete msg){
 	EnviarPaquete(socketFD,paquete);
 }
 
-void EnviarHandshake(int socketFD,char * emisor){
+void EnviarHandshake(int socketFD,char* emisor){
 	Paquete paquete;
 	Header header;
 	header.esHandShake='1';
 	header.tamPayload= 0;
-	header.emisor= emisor;
+	header.emisor = emisor;
 	paquete.header=header;
 	paquete.Payload=(void*)0; //Seria lo mismo que NULL
 	EnviarPaquete(socketFD,paquete);
@@ -53,9 +55,8 @@ char* RecibirMensaje(int socketFD){
 	int var = recv(socketFD,&paquete,sizeof(paquete),0);
 
 	if (var!=-1){
-		char* str="Se recibió el mensaje: ";
-		string_append(&str, paquete.Payload);
-		return str;
+		printf("El mensaje es: \n");
+		return paquete.Payload;
 	}
 	else{
 		return "Hubo un error al intentar recibir";
