@@ -15,21 +15,36 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#define TAMANIOHEADER 2
+#define STRHANDSHAKE "10"
 
-typedef struct {
+
+typedef struct
+{
 	char esHandShake;
 	unsigned short tamPayload;
-	char* emisor;
+	//char emisor[11];
 } Header;
-typedef struct {
+
+
+typedef struct
+{
 	Header header;
 	char* Payload;
 } Paquete;
 
 
-void EnviarPaquete(int socketCliente,Paquete msg);
-void EnviarMensaje(int socketFD, char* msg,char* emisor);
-void EnviarHandshake(int socketFD,char* emisor);
+int StartServidor(char* MyIP,int MyPort);
+int ConectarServidor(int PUERTO_KERNEL,char* IP_KERNEL);
+void EnviarPaquete(int socketCliente, Paquete* msg,int cantAEnviar);
+void EnviarMensaje(int socketFD, char* msg);
+void EnviarHandshake(int socketFD);
 char* RecibirHandshake(int socketFD);
 char* RecibirMensaje(int socketFD);
+void EnviarHandshakeString(int socketFD);
+void EnviarMensajeString(int socketFD,char* str);
+void RecibirMensajeString(int socketFD);
+int RecibirPaquete(void* paquete,int socketFD,unsigned short cantARecibir);
+
+
 #endif //SOCKETS_H_
