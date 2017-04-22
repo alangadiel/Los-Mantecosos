@@ -1,0 +1,24 @@
+/*char* str;
+
+	printf("1 -El servidor Kernel inicio correctamente. \nAhora puede indicarle al cliente que se conecte. \nUna vez hecho esto ingrese una palabra para aceptar la conexion y continuar:- \n");
+	scanf("%s", str);
+
+	int nuevoSocket=aceptarConexion(SocketEscucha);
+	printf("%d\n",nuevoSocket);
+
+	printf("2 -Conexion con cliente en proceso. \n Ahora indiquele al cliente que envie un Handshake, luego ingrese una palabra para continuar:- \n");
+	scanf("%s", str);
+
+	char* result = RecibirHandshake(nuevoSocket);
+	printf("%s\n",result);
+
+	EnviarHandshake(nuevoSocket);
+
+	printf("3 -Conexion con cliente establecida! \n Ahora puede enviar un mensaje desde el cliente, luego ingrese una palabra para continuar:- \n");
+	scanf("%s", str);
+
+	result = RecibirMensaje(nuevoSocket);
+	printf("%s\n",result);
+
+	close(SocketEscucha);
+	close(nuevoSocket);*/

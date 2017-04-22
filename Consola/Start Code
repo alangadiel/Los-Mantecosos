@@ -1,0 +1,17 @@
+char* str;
+
+	printf("%s\n","1 -Conectando con el servidor, acepte la conexion y luego ingrese un texto de hasta %d caracteres para enviar el Handshake-",TAMANIOMAXIMOFIJO);
+	scanf("%s",str);
+	EnviarHandshake(socketFD);
+	printf("%s\n","2 -Handshake enviado, Ahora recibalo en el servidor, luego ingrese un texto de hasta %d caracteres-",TAMANIOMAXIMOFIJO);
+  	scanf("%s",str);
+	char* result = RecibirHandshake(socketFD);
+	printf("%s\n",result);
+	char* mensajeAEnviar;
+	printf("%s\n","3 -Ingrese el mensaje a enviar, un texto de hasta %d caracteres-",TAMANIOMAXIMOFIJO);
+	 //fgets(mensajeAEnviar, 100, stdin);
+	  	scanf("%s",mensajeAEnviar);
+
+	//Enviamos el mensaje
+	mensajeAEnviar = string_substring_until(mensajeAEnviar,20);
+	EnviarMensaje(socketFD,mensajeAEnviar);

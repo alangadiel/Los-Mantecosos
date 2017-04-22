@@ -96,12 +96,11 @@ int main(void)
 
 	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL);
 
+	EnviarHandshakeString(socketFD);
+	RecibirMensajeString(socketFD);
 	char str[100];
-
 	printf("\n\nIngrese un mensaje: \n");
 	scanf("%99[^\n]",str);
-
-	EnviarHandshakeString(socketFD);
 	EnviarMensajeString(socketFD,str);
 
 	/*printf("%s\n","1 -Conectando con el servidor, acepte la conexion y luego ingrese un texto de hasta %d caracteres para enviar el Handshake-",TAMANIOMAXIMOFIJO);

@@ -318,7 +318,7 @@ int main(void)
 						if(header[0] == '1')
 						{
 							printf("Gracias por conectarte\n");
-							//send(nuevoSocket,STRHANDSHAKE,TAMANIOHEADER,1);
+							send(nuevoSocket,STRHANDSHAKE,TAMANIOHEADER,1);
 						}
 						else
 						{
@@ -334,7 +334,8 @@ int main(void)
 								// excepto al listener y a nosotros mismos
 								if (j != SocketEscucha && j != i)
 								{
-									if (send(j, buf, nbytes, 0) == -1)
+									int trySend = send(j, buf, nbytes, 0);
+									if (trySend!=-1)
 									{
 										perror("send");
 									}
