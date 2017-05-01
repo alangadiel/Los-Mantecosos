@@ -70,29 +70,35 @@ int StartServidor(char* MyIP, int MyPort) // obtener socket a la escucha
 
 void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar)
 {
-	Paquete* punteroMsg = msg;
+
+	void* datos = malloc(cantAEnviar);
+	memcpy(datos,&(msg->header),TAMANIOHEADER);
+	if(msg->header.esHandShake=='0')
+		memcpy(datos+TAMANIOHEADER,(msg->Payload),msg->header.tamPayload);
+
+	//Paquete* punteroMsg = datos;
 	int enviado = 0; //bytes enviados
 	int totalEnviado = 0;
 
 	do
 	{
-		enviado = send(socketCliente,punteroMsg+totalEnviado,cantAEnviar-totalEnviado,0);
+		enviado = send(socketCliente,datos+totalEnviado,cantAEnviar-totalEnviado,0);
 		//largo -= totalEnviado;
 		totalEnviado += enviado;
 		//punteroMsg += enviado; //avanza la cant de bytes que ya mando
 	} while (totalEnviado != cantAEnviar);
+	free(datos);
 }
 
 
-void EnviarMensaje(int socketFD, char* msg)
+void EnviarMensaje(int socketFD, char* msg,char emisor[11])
 {
 	Paquete* paquete = malloc(TAMANIOHEADER + string_length(msg));
 	Header header;
-
-	header.esHandShake='0';
-	header.tamPayload= strlen(msg);
-	//strcpy(header.emisor, emisor, 11);
-	printf("%d",sizeof(header));
+	header.esHandShake= '0';
+	header.tamPayload = string_length(msg);
+	strcpy(header.emisor, emisor);
+	//printf("%d",sizeof(header));
 
 	paquete -> header = header;
 	paquete -> Payload = msg;
@@ -103,23 +109,42 @@ void EnviarMensaje(int socketFD, char* msg)
 	free(paquete);
 }
 
-
-void EnviarHandshake(int socketFD)
+void EnviarHandshake(int socketFD,char emisor[11])
 {
-	Paquete* paquete = malloc(TAMANIOHEADER + 1);
+	Paquete* paquete = malloc(TAMANIOHEADER);
 	Header header;
-
-	header.esHandShake='1';
-	header.tamPayload= 0;
-	//strcpy(header.emisor,emisor);
+	header.esHandShake = '1';
+	header.tamPayload = 0;
+	strcpy(header.emisor, emisor);
+	//printf("%d",sizeof(header));
 
 	paquete -> header = header;
-	//paquete.Payload = (void)0; //Seria lo mismo que NULL
+	//paquete -> Payload = ;
+	//paquete.Payload = msg;
 
 	EnviarPaquete(socketFD,paquete,TAMANIOHEADER);
 
 	free(paquete);
 }
+
+/*void EnviarHandshake(int socketFD,char emisor[11])
+{
+	Paquete* paquete = malloc(TAMANIOHEADER + string_length(PAYLOADHANDSHAKE));
+	Header header;
+
+	header.esHandShake = '1';
+	header.tamPayload = string_length(PAYLOADHANDSHAKE);
+	strcpy(header.emisor, emisor);
+	//printf("%d",sizeof(header));
+
+	paquete -> header = header;
+	paquete -> Payload = PAYLOADHANDSHAKE;
+	//paquete.Payload = msg;
+
+	EnviarPaquete(socketFD,paquete,TAMANIOHEADER + string_length(PAYLOADHANDSHAKE));
+
+	free(paquete);
+}*/
 
 
 void EnviarHandshakeString(int socketFD)
@@ -165,7 +190,7 @@ void RecibirMensajeString(int socketFD)
 }
 
 
-char* RecibirHandshake(int socketFD)
+/*char* RecibirHandshake(int socketFD)
 {
 	Paquete* paquete = malloc(TAMANIOHEADER);
 	int var = RecibirPaquete(paquete, socketFD, TAMANIOHEADER);
@@ -187,59 +212,61 @@ char* RecibirHandshake(int socketFD)
 	{
 		return "Hubo un error al intentar recibir";
 	}
-}
+}*/
 
 
 int RecibirPaquete(void* paquete, int socketFD, unsigned short cantARecibir)
 {
+	void* datos = malloc(cantARecibir);
 	//char* punteroMsg = paquete;
 	int recibido = 0;
 	int totalRecibido = 0;
 
 	do
 	{
-		recibido = recv(socketFD, paquete + totalRecibido, cantARecibir - totalRecibido, 0);
+		recibido = recv(socketFD, datos + totalRecibido, cantARecibir - totalRecibido, 0);
 		//send(socketCliente,punteroMsg+totalEnviado,cantAEnviar-totalEnviado,0);
 		totalRecibido += recibido;
 	} while (totalRecibido != cantARecibir);
+	memcpy(paquete,datos,cantARecibir);
 
+	free(datos);
 	return recibido;
 }
 
 
-char* RecibirMensaje(int socketFD)
+int RecibirHeader(int socketFD)
 {
-
 	Header* headerRecibido = malloc(TAMANIOHEADER);
 	//Header* punteroMsg = headerRecibido;
 	int var = RecibirPaquete(headerRecibido, socketFD, TAMANIOHEADER);
 
-	if (headerRecibido -> esHandShake != '0') //chequear que no sea un handshake
-	{
-		var = -1;
-	}
-
 	//chequear que sea el emisor
 	//if (strcmp(emisor, headerRecibido -> emisor) != 0) var = -1;
+	if(var<0)
+		return var;
+	else {
+		if(headerRecibido-> esHandShake =='1')
+			return 0;
+		else {
+			if (headerRecibido->tamPayload!=0)
+				return headerRecibido -> tamPayload;
+			else
+				return -1;
+		}
 
-	unsigned short tamPayload = headerRecibido -> tamPayload; //chequear el tamaño del payload
-
-	free(headerRecibido);
-
-	Paquete* paqueteRecibido = malloc(TAMANIOHEADER + tamPayload);
-	int cantRecibida = RecibirPaquete(paqueteRecibido, socketFD, TAMANIOHEADER + tamPayload);
-    char* msg = paqueteRecibido -> Payload;
-
-	free(paqueteRecibido);
-
-	if (var != -1)
-	{
-		printf("El mensaje es: \n");
-
-		return msg;
 	}
-	else
-	{
-		return "Hubo un error al intentar recibir";
-	}
+
+
+
+}
+int RecibirPayload(int socketFD,char* mensaje,unsigned short tamPayload)
+{
+
+	void* mensajeRecibido = malloc(tamPayload);
+	int cantRecibida = RecibirPaquete(mensajeRecibido, socketFD,tamPayload);
+	strcpy(mensaje,mensajeRecibido);
+	free(mensajeRecibido);
+	return cantRecibida;
+
 }
