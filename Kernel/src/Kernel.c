@@ -296,6 +296,7 @@ int main(void)
 				}
 				else
 				{
+					// inicio de transmision
 					char* header = malloc(TAMANIOHEADER + 1);
 
 					if ((nbytes = recv(i, header, TAMANIOHEADER, 0)) <= 0) // gestionar datos de un cliente
@@ -345,6 +346,7 @@ int main(void)
 					}
 
 					free(header);
+					//fin de transmision
 				}
 			}
 		}

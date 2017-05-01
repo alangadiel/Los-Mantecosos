@@ -227,7 +227,7 @@ int RecibirPaquete(void* paquete, int socketFD, unsigned short cantARecibir)
 		recibido = recv(socketFD, datos + totalRecibido, cantARecibir - totalRecibido, 0);
 		//send(socketCliente,punteroMsg+totalEnviado,cantAEnviar-totalEnviado,0);
 		totalRecibido += recibido;
-	} while (totalRecibido != cantARecibir);
+	} while (totalRecibido != cantARecibir || recibido!=0);
 	memcpy(paquete,datos,cantARecibir);
 
 	free(datos);
@@ -243,8 +243,8 @@ int RecibirHeader(int socketFD)
 
 	//chequear que sea el emisor
 	//if (strcmp(emisor, headerRecibido -> emisor) != 0) var = -1;
-	if(var<0)
-		return var;
+	if(var<=0)
+		return -1;
 	else {
 		if(headerRecibido-> esHandShake =='1')
 			return 0;
