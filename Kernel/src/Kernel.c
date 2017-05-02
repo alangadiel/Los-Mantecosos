@@ -240,7 +240,7 @@ int main(void)
 	int SocketEscucha; // descriptor de socket a la escucha
 	int nuevoSocket; // descriptor de socket de nueva conexión aceptada
 	char buf[256]; // buffer para datos del cliente
-	int nbytes;
+	int resul;
 
 	int addrlen;
 	int i, j;
@@ -297,11 +297,41 @@ int main(void)
 				else
 				{
 					// inicio de transmision
-					char* header = malloc(TAMANIOHEADER + 1);
+					Header* header = malloc(TAMANIOHEADER);
 
-					if ((nbytes = recv(i, header, TAMANIOHEADER, 0)) <= 0) // gestionar datos de un cliente
+					resul = RecibirPaquete(header, i, TAMANIOHEADER);
+						if(resul<0){
+							printf("\nSocket %d: ", i);
+							perror("Error de Recepcion, no se pudo leer el mensaje\n");
+							close(i); // ¡Hasta luego!
+							FD_CLR(i, &master); // eliminar del conjunto maestro
+						} else if (resul==0){
+
+							printf("\nSocket %d: ", i);
+							perror("Fin de Conexion, se cerro la conexion\n");
+							close(i); // ¡Hasta luego!
+							FD_CLR(i, &master); // eliminar del conjunto maestro
+
+						} else {
+						//vemos si es un handshake
+							if (header->esHandShake=='1'){
+								printf("\nGracias por conectarte\n");
+								EnviarHandshake(i, "Kernel");
+							} else {
+								//Paquete* paquete = malloc(TAMANIOHEADER + header->tamPayload);
+								char* payload= malloc((header->tamPayload) + 1); //esto solo funciona con texto
+								RecibirPaquete(payload, i, header->tamPayload);
+								// agregar \0
+								printf("\nTexto recibido: %s", payload);
+								free (payload);
+							}
+
+
+					}
+/*
+					if ((resul = recv(i, header, TAMANIOHEADER, 0)) <= 0) // gestionar datos de un cliente
 					{
-						if (nbytes == 0) // error o conexión cerrada por el cliente
+						if (resul == 0) // error o conexión cerrada por el cliente
 						{
 							// conexión cerrada
 							printf("\nselectserver: socket %d CONEXIÓN FINALIZADA\n", i);
@@ -335,7 +365,7 @@ int main(void)
 								// excepto al listener y a nosotros mismos
 								if (j != SocketEscucha && j != i)
 								{
-									int trySend = send(j, buf, nbytes, 0);
+									int trySend = send(j, buf, resul, 0);//resul era nbytes
 									if (trySend!=-1)
 									{
 										perror("send");
@@ -344,7 +374,7 @@ int main(void)
 							}
 						}
 					}
-
+*/
 					free(header);
 					//fin de transmision
 				}

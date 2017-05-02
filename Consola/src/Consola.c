@@ -96,22 +96,34 @@ int main(void)
 	imprimirArchivoConfiguracion();
 
 	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL);
-
-	//EnviarHandshakeString(socketFD);
-	//Envio el saludo de handshake
 	EnviarHandshake(socketFD,EMISORCONSOLA);
 
-	//recibo el saludo de handshake
-	//RecibirMensajeString(socketFD);
-	RecibirHeader(socketFD);
+	Header* header = malloc(TAMANIOHEADER);
+	int resul = RecibirPaquete(header, socketFD, TAMANIOHEADER);
+		if(resul<0){
+			printf("Socket %d: ", socketFD);
+			perror("Error de Recepcion, no se pudo leer el mensaje\n");
+			close(socketFD); // ¡Hasta luego!
+		} else if (resul==0){
 
+			perror("Error de Conexion, no se pudo leer el mensaje porque se cerro la conexion\n");
+			close(socketFD); // ¡Hasta luego!
+
+		} else {
+		//vemos si es un handshake
+			if (header->esHandShake=='1'){
+				printf("\nConectado con el servidor!\n");
+
+			} else {
+				perror("Error de Conexion, no se recibio un handshake\n");
+			}
+		}
 
 	char str[100];
 	printf("\n\nIngrese un mensaje: \n");
 	scanf("%99[^\n]",str);
-	//EnviarMensajeString(socketFD,str);
-	EnviarMensaje(socketFD,str,EMISORCONSOLA);
 
+	EnviarMensaje(socketFD,str,EMISORCONSOLA);
 
  	close(socketFD);
 	return 0;

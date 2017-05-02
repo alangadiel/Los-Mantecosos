@@ -93,10 +93,10 @@ void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar)
 
 void EnviarMensaje(int socketFD, char* msg,char emisor[11])
 {
-	Paquete* paquete = malloc(TAMANIOHEADER + string_length(msg));
+	Paquete* paquete = malloc(TAMANIOHEADER + string_length(msg)+1);
 	Header header;
 	header.esHandShake= '0';
-	header.tamPayload = string_length(msg);
+	header.tamPayload = string_length(msg)+1;
 	strcpy(header.emisor, emisor);
 	//printf("%d",sizeof(header));
 
@@ -104,7 +104,7 @@ void EnviarMensaje(int socketFD, char* msg,char emisor[11])
 	paquete -> Payload = msg;
 	//paquete.Payload = msg;
 
-	EnviarPaquete(socketFD,paquete,TAMANIOHEADER + string_length(msg));
+	EnviarPaquete(socketFD,paquete,TAMANIOHEADER + string_length(msg)+1);
 
 	free(paquete);
 }
@@ -227,15 +227,15 @@ int RecibirPaquete(void* paquete, int socketFD, unsigned short cantARecibir)
 		recibido = recv(socketFD, datos + totalRecibido, cantARecibir - totalRecibido, 0);
 		//send(socketCliente,punteroMsg+totalEnviado,cantAEnviar-totalEnviado,0);
 		totalRecibido += recibido;
-	} while (totalRecibido != cantARecibir || recibido!=0);
+	} while (totalRecibido != cantARecibir && recibido>0);
 	memcpy(paquete,datos,cantARecibir);
 
 	free(datos);
 	return recibido;
 }
 
-
-int RecibirHeader(int socketFD,Header* headerRecibido)
+/*
+int RecibirHeader(int socketFD, Header* headerRecibido)
 {
 	//TODO: Hacer el malloc en donde invocas a la funcion, asi podemos obtener, cuando finaliza la funcion,
 	//el emisor del mensaje y si poder validar si fue un handshake o no
@@ -254,7 +254,7 @@ int RecibirHeader(int socketFD,Header* headerRecibido)
 			if (headerRecibido->tamPayload>=0)
 				return headerRecibido -> tamPayload;
 			else
-				return -1;
+				return ERRORRECEPCION;
 		}
 
 }
@@ -268,3 +268,4 @@ int RecibirPayload(int socketFD,char* mensaje,unsigned short tamPayload)
 	return cantRecibida;
 
 }
+*/

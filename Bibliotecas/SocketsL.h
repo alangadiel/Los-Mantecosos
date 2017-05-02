@@ -17,9 +17,6 @@
 
 #define TAMANIOHEADER 14
 #define STRHANDSHAKE "10"
-#define PAYLOADHANDSHAKE "HANDSHAKE"
-#define CONEXIONCERRADA -2
-#define ERRORRECEPCION -1
 
 typedef struct
 {
@@ -47,8 +44,8 @@ void EnviarHandshakeString(int socketFD);
 void EnviarMensajeString(int socketFD,char* str);
 void RecibirMensajeString(int socketFD);
 int RecibirPaquete(void* paquete, int socketFD, unsigned short cantARecibir);
-int RecibirPayload(int socketFD,char* mensaje,unsigned short tamPayload);
-int RecibirHeader(int socketFD,Header* headerRecibido);
+//int RecibirPayload(int socketFD,char* mensaje,unsigned short tamPayload);
+//int RecibirHeader(int socketFD,Header* headerRecibido);
 
 
 #endif //SOCKETS_H_
