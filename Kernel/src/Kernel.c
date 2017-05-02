@@ -19,7 +19,6 @@ char* SHARED_VARS[100];
 int STACK_SIZE;
 char* IP_PROG;
 
-
 char* ObtenerTextoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
 {
 	char buffer[10000];
@@ -31,8 +30,6 @@ char* ObtenerTextoSinCorchetes(FILE* f) //Para obtener los valores de los arrays
 
 	return texto;
 }
-
-
 void obtenerValoresArchivoConfiguracion()
 {
 	int contadorDeVariables = 0;
@@ -179,8 +176,6 @@ void obtenerValoresArchivoConfiguracion()
 		fclose(file);
 	}
 }
-
-
 void imprimirArchivoConfiguracion()
 {
 	int c;
@@ -199,66 +194,22 @@ void imprimirArchivoConfiguracion()
 	}
 }
 
-
-int startServidor()
-{
-	int socketFD = socket(AF_INET, SOCK_STREAM, 0);
-	//printf("%i\n", socketFD);
-	struct sockaddr_in estructuraDireccion;
-
-	estructuraDireccion.sin_family = AF_INET;
-	estructuraDireccion.sin_port = htons(PUERTO_PROG);
-	estructuraDireccion.sin_addr.s_addr = inet_addr(IP_PROG);
-	memset(&(estructuraDireccion.sin_zero), '\0', 8);
-
-	bind(socketFD, (struct sockaddr*) &estructuraDireccion, sizeof(struct sockaddr));
-	listen(socketFD, BACKLOG);
-
-	return socketFD;
-}
-
-
-int aceptarConexion(int socketEscucha)
-{
-	struct sockaddr_in their_addr;
-	socklen_t sin_size = sizeof(struct sockaddr_in);
-
-	int nuevoFD = accept(socketEscucha, (struct sockaddr *)&their_addr, &sin_size);
-
-	return nuevoFD;
-
-}
-
-
 int main(void)
 {
-	fd_set master; // conjunto maestro de descriptores de fichero
-	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
-
-	struct sockaddr_in remoteaddr; // dirección del cliente
-	int fdmax; // número máximo de descriptores de fichero
-	int SocketEscucha; // descriptor de socket a la escucha
-	int nuevoSocket; // descriptor de socket de nueva conexión aceptada
-	char buf[256]; // buffer para datos del cliente
-	int resul;
-
-	int addrlen;
-	int i, j;
-
-	FD_ZERO(&master); // borra los conjuntos maestro y temporal
-	FD_ZERO(&read_fds);
-
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	//int SocketEscucha = startServidor();
 
-	SocketEscucha = StartServidor(IP_PROG, PUERTO_PROG);
+	int SocketEscucha = StartServidor(IP_PROG, PUERTO_PROG);
 
+	fd_set master; // conjunto maestro de descriptores de fichero
+	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
+	FD_ZERO(&master); // borra los conjuntos maestro y temporal
+	FD_ZERO(&read_fds);
 	FD_SET(SocketEscucha, &master); // añadir listener al conjunto maestro
-
-	fdmax = SocketEscucha; // seguir la pista del descriptor de fichero mayor, por ahora es éste
-
+	int fdmax = SocketEscucha; // seguir la pista del descriptor de fichero mayor, por ahora es éste
+	struct sockaddr_in remoteaddr; // dirección del cliente
 	// bucle principal
+	int i;
 	for(;;)
 	{
 		read_fds = master; // cópialo
@@ -276,9 +227,9 @@ int main(void)
 			{
 				if (i == SocketEscucha) // gestionar nuevas conexiones
 				{
-					addrlen = sizeof(remoteaddr);
-
-					if ((nuevoSocket = accept(SocketEscucha, (struct sockaddr*)&remoteaddr,&addrlen)) == -1)
+					int addrlen = sizeof(remoteaddr);
+					int nuevoSocket = accept(SocketEscucha, (struct sockaddr*)&remoteaddr,&addrlen);
+					if (nuevoSocket == -1)
 					{
 						perror("accept");
 					}
@@ -299,7 +250,7 @@ int main(void)
 					// inicio de transmision
 					Header* header = malloc(TAMANIOHEADER);
 
-					resul = RecibirPaquete(header, i, TAMANIOHEADER);
+					int resul = RecibirPaquete(header, i, TAMANIOHEADER);
 						if(resul<0){
 							printf("\nSocket %d: ", i);
 							perror("Error de Recepcion, no se pudo leer el mensaje\n");
@@ -321,61 +272,14 @@ int main(void)
 								//Paquete* paquete = malloc(TAMANIOHEADER + header->tamPayload);
 								char* payload= malloc((header->tamPayload) + 1); //esto solo funciona con texto
 								RecibirPaquete(payload, i, header->tamPayload);
-								// agregar \0
+
 								printf("\nTexto recibido: %s", payload);
 								free (payload);
 							}
 
 
 					}
-/*
-					if ((resul = recv(i, header, TAMANIOHEADER, 0)) <= 0) // gestionar datos de un cliente
-					{
-						if (resul == 0) // error o conexión cerrada por el cliente
-						{
-							// conexión cerrada
-							printf("\nselectserver: socket %d CONEXIÓN FINALIZADA\n", i);
-						}
-						else
-						{
-							perror("recv");
-						}
-
-						close(i); // ¡Hasta luego!
-						FD_CLR(i, &master); // eliminar del conjunto maestro
-					}
-					else
-					{
-						if(header[0] == '1')
-						{
-							printf("Gracias por conectarte\n");
-							send(nuevoSocket,STRHANDSHAKE,TAMANIOHEADER,1);
-						}
-						else
-						{
-							recv(nuevoSocket, buf, header[1], 0);
-							printf("\nEl mensaje recibido es: %s\n", buf);
-						}
-
-						for(j = 0; j <= fdmax; j++) // tenemos datos de algún cliente
-						{
-							// ¡enviar a todo el mundo!
-							if (FD_ISSET(j, &master))
-							{
-								// excepto al listener y a nosotros mismos
-								if (j != SocketEscucha && j != i)
-								{
-									int trySend = send(j, buf, resul, 0);//resul era nbytes
-									if (trySend!=-1)
-									{
-										perror("send");
-									}
-								}
-							}
-						}
-					}
-*/
-					free(header);
+						free(header);
 					//fin de transmision
 				}
 			}

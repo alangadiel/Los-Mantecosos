@@ -97,27 +97,7 @@ int main(void)
 
 	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL);
 	EnviarHandshake(socketFD,EMISORCONSOLA);
-
-	Header* header = malloc(TAMANIOHEADER);
-	int resul = RecibirPaquete(header, socketFD, TAMANIOHEADER);
-		if(resul<0){
-			printf("Socket %d: ", socketFD);
-			perror("Error de Recepcion, no se pudo leer el mensaje\n");
-			close(socketFD); // ¡Hasta luego!
-		} else if (resul==0){
-
-			perror("Error de Conexion, no se pudo leer el mensaje porque se cerro la conexion\n");
-			close(socketFD); // ¡Hasta luego!
-
-		} else {
-		//vemos si es un handshake
-			if (header->esHandShake=='1'){
-				printf("\nConectado con el servidor!\n");
-
-			} else {
-				perror("Error de Conexion, no se recibio un handshake\n");
-			}
-		}
+	RecibirHandshake(socketFD);
 
 	char str[100];
 	printf("\n\nIngrese un mensaje: \n");

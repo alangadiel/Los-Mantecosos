@@ -147,72 +147,31 @@ void EnviarHandshake(int socketFD,char emisor[11])
 }*/
 
 
-void EnviarHandshakeString(int socketFD)
+
+void RecibirHandshake(int socketFD)
 {
-	char* paquete = STRHANDSHAKE;
+	Header* header = malloc(TAMANIOHEADER);
+	int resul = RecibirPaquete(header, socketFD, TAMANIOHEADER);
+		if(resul<0){
+			printf("Socket %d: ", socketFD);
+			perror("Error de Recepcion, no se pudo leer el mensaje\n");
+			close(socketFD); // ¡Hasta luego!
+		} else if (resul==0){
 
-	send(socketFD,paquete,strlen(paquete),0);
-}
+			perror("Error de Conexion, no se pudo leer el mensaje porque se cerro la conexion\n");
+			close(socketFD); // ¡Hasta luego!
 
+		} else {
+		//vemos si es un handshake
+			if (header->esHandShake=='1'){
+				printf("\nConectado con el servidor!\n");
 
-void EnviarMensajeString(int socketFD, char* str)
-{
-	char* msj;
-	int largo = strlen(str);
-
-	asprintf(&msj,"%s%d","0",largo);
-	strcat(msj,str);
-
-	//char* mensajeAMandar = "07holaUri";
-
- 	send(socketFD,msj,strlen(msj),0);
-}
-
-
-void RecibirMensajeString(int socketFD)
-{
-	char* header = malloc(TAMANIOHEADER + 1);
-	char buf[256];
-	int nbytes = recv(socketFD, header, TAMANIOHEADER, 0);
-
-	if(nbytes > 0)
-	{
-		if(header[0] == '1')
-		{
-			printf("Gracias por aceptar mi conexion\n");
+			} else {
+				perror("Error de Conexion, no se recibio un handshake\n");
+			}
 		}
-		else
-		{
-			recv(socketFD, buf, header[1], 0);
-			printf("El mensaje recibido es: %s\n", buf);
-		}
-	}
+	free(header);
 }
-
-
-/*char* RecibirHandshake(int socketFD)
-{
-	Paquete* paquete = malloc(TAMANIOHEADER);
-	int var = RecibirPaquete(paquete, socketFD, TAMANIOHEADER);
-
-
-	if (paquete -> header.esHandShake != '1') //chequear que sea un handshake
-	{
-		var = -1;
-	}
-
-	//chequear que sea el emisor
-	//if (strcmp(emisor, paquete->header.emisor)!=0) var=-1;
-
-	if (var != -1)
-	{
-		return "Se recibió el Handshake";
-	}
-	else
-	{
-		return "Hubo un error al intentar recibir";
-	}
-}*/
 
 
 int RecibirPaquete(void* paquete, int socketFD, unsigned short cantARecibir)
