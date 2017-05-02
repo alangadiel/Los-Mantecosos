@@ -16,6 +16,7 @@
 #include "SocketsL.h"
 
 #define TAMANIOMAXIMOFIJO 20
+#define EMISORCONSOLA "Consola"
 
 char* IP_KERNEL;
 int PUERTO_KERNEL;
@@ -96,34 +97,22 @@ int main(void)
 
 	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL);
 
-	EnviarHandshakeString(socketFD);
-	RecibirMensajeString(socketFD);
+	//EnviarHandshakeString(socketFD);
+	//Envio el saludo de handshake
+	EnviarHandshake(socketFD,EMISORCONSOLA);
+
+	//recibo el saludo de handshake
+	//RecibirMensajeString(socketFD);
+	RecibirHeader(socketFD);
+
+
 	char str[100];
 	printf("\n\nIngrese un mensaje: \n");
 	scanf("%99[^\n]",str);
-	EnviarMensajeString(socketFD,str);
+	//EnviarMensajeString(socketFD,str);
+	EnviarMensaje(socketFD,str,EMISORCONSOLA);
 
-	/*printf("%s\n","1 -Conectando con el servidor, acepte la conexion y luego ingrese un texto de hasta %d caracteres para enviar el Handshake-",TAMANIOMAXIMOFIJO);
-	scanf("%s",str);*/
-	//EnviarHandshake(socketFD);
 
-	/*string_append(&mensajeAMandar,largo);
-	free(largo);*/
-	/*mensajeAMandar = strcat(mensajeAMandar,largo);
-	mensajeAMandar = strcat(mensajeAMandar,str);*/
-	/*printf("%s\n","2 -Handshake enviado, Ahora recibalo en el servidor, luego ingrese un texto de hasta %d caracteres-",TAMANIOMAXIMOFIJO);
-  	scanf("%s",str);*/
-	/*char* result = RecibirHandshake(socketFD);
-	printf("%s\n",result);*/
-	/*char* mensajeAEnviar;
-	printf("%s\n","3 -Ingrese el mensaje a enviar, un texto de hasta %d caracteres-",TAMANIOMAXIMOFIJO);
-	 //fgets(mensajeAEnviar, 100, stdin);
-	  	scanf("%s",mensajeAEnviar);*/
-
-	//Enviamos el mensaje
-	/*mensajeAEnviar = string_substring_until(mensajeAEnviar,20);
-	EnviarMensaje(socketFD,mensajeAEnviar);*/
-	//printf("%s","Mensaje enviado");
- 	//close(socketFD);
+ 	close(socketFD);
 	return 0;
 }

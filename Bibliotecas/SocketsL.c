@@ -235,29 +235,27 @@ int RecibirPaquete(void* paquete, int socketFD, unsigned short cantARecibir)
 }
 
 
-int RecibirHeader(int socketFD)
+int RecibirHeader(int socketFD,Header* headerRecibido)
 {
-	Header* headerRecibido = malloc(TAMANIOHEADER);
+	//TODO: Hacer el malloc en donde invocas a la funcion, asi podemos obtener, cuando finaliza la funcion,
+	//el emisor del mensaje y si poder validar si fue un handshake o no
+
+	//Header* headerRecibido = malloc(TAMANIOHEADER);
 	//Header* punteroMsg = headerRecibido;
 	int var = RecibirPaquete(headerRecibido, socketFD, TAMANIOHEADER);
 
 	//chequear que sea el emisor
 	//if (strcmp(emisor, headerRecibido -> emisor) != 0) var = -1;
-	if(var<=0)
-		return -1;
+	if(var<0)
+		return ERRORRECEPCION;
+	else if(var ==0)
+		return CONEXIONCERRADA;
 	else {
-		if(headerRecibido-> esHandShake =='1')
-			return 0;
-		else {
-			if (headerRecibido->tamPayload!=0)
+			if (headerRecibido->tamPayload>=0)
 				return headerRecibido -> tamPayload;
 			else
 				return -1;
 		}
-
-	}
-
-
 
 }
 int RecibirPayload(int socketFD,char* mensaje,unsigned short tamPayload)
