@@ -1,16 +1,4 @@
-/*
- ============================================================================
- Name        : FileSystem.c
- Author      : 
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <SocketsL.c>
+#include "SocketsL.h"
 
 int PUERTO;
 char* PUNTO_MONTAJE;
@@ -70,10 +58,15 @@ int main(void) {
 	//conectarAlServidor("127.0.0.1", 5000);
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL);
-	EnviarHandshakeString(socketFD);
-	RecibirMensajeString(socketFD);
-	RecibirMensajeString(socketFD);
+
+	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, FS);
+
+	Paquete* paquete = malloc(sizeof(Paquete));
+	RecibirPaquete(socketFD, FS, paquete);
+	printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
+
+	free (paquete->Payload); //No olvidar hacer DOS free
+	free(paquete);
 
 	return 0;
 }

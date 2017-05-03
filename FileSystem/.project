@@ -23,4 +23,16 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>src/SocketsL.c</name>
+			<type>1</type>
+			<locationURI>WORKSPACE_LOC/tp-2017-1c-Los-Mantecosos/Bibliotecas/SocketsL.c</locationURI>
+		</link>
+		<link>
+			<name>src/SocketsL.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Bibliotecas/SocketsL.h</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>

@@ -1,22 +1,7 @@
-/*
- ============================================================================
- Name        : Consola.c
- Author      : 
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
-
-
-#include <commons/log.h>
-#include <commons/collections/list.h>
-#include <commons/string.h>
-#include <commons/txt.h>
 #include "SocketsL.h"
 
 #define TAMANIOMAXIMOFIJO 20
-#define EMISORCONSOLA "Consola"
+
 
 char* IP_KERNEL;
 int PUERTO_KERNEL;
@@ -95,15 +80,13 @@ int main(void)
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 
-	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL);
-	EnviarHandshake(socketFD,EMISORCONSOLA);
-	RecibirHandshake(socketFD);
+	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
 
 	char str[100];
 	printf("\n\nIngrese un mensaje: \n");
 	scanf("%99[^\n]",str);
 
-	EnviarMensaje(socketFD,str,EMISORCONSOLA);
+	EnviarMensaje(socketFD,str,CONSOLA);
 
  	close(socketFD);
 	return 0;

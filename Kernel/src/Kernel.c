@@ -209,78 +209,39 @@ int main(void)
 	int fdmax = SocketEscucha; // seguir la pista del descriptor de fichero mayor, por ahora es éste
 	struct sockaddr_in remoteaddr; // dirección del cliente
 	// bucle principal
-	int i;
-	for(;;)
-	{
+	for(;;)	{
 		read_fds = master; // cópialo
-
-		if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1)
-		{
+		if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1)		{
 			perror("select");
 			exit(1);
 		}
-
 		// explorar conexiones existentes en busca de datos que leer
-		for(i = 0; i <= fdmax; i++)
-		{
-			if (FD_ISSET(i, &read_fds)) // ¡¡tenemos datos!!
-			{
-				if (i == SocketEscucha) // gestionar nuevas conexiones
-				{
+		int i;
+		for(i = 0; i <= fdmax; i++)	{
+			if (FD_ISSET(i, &read_fds)) { // ¡¡tenemos datos!!
+				if (i == SocketEscucha) { // gestionar nuevas conexiones
 					int addrlen = sizeof(remoteaddr);
 					int nuevoSocket = accept(SocketEscucha, (struct sockaddr*)&remoteaddr,&addrlen);
 					if (nuevoSocket == -1)
-					{
 						perror("accept");
-					}
-					else
-					{
+					else {
 						FD_SET(nuevoSocket, &master); // añadir al conjunto maestro
-
-						if (nuevoSocket > fdmax)
-						{
-							fdmax = nuevoSocket; // actualizar el máximo
-						}
-
-						printf("\n\nselectserver: new connection from %s on " "socket %d\n", inet_ntoa(remoteaddr.sin_addr),	nuevoSocket);
+						if (nuevoSocket > fdmax) fdmax = nuevoSocket; // actualizar el máximo
+						printf("\nNueva conexion de %s en " "socket %d\n", inet_ntoa(remoteaddr.sin_addr),nuevoSocket);
 					}
 				}
-				else
-				{
-					// inicio de transmision
-					Header* header = malloc(TAMANIOHEADER);
-
-					int resul = RecibirPaquete(header, i, TAMANIOHEADER);
-						if(resul<0){
-							printf("\nSocket %d: ", i);
-							perror("Error de Recepcion, no se pudo leer el mensaje\n");
-							close(i); // ¡Hasta luego!
-							FD_CLR(i, &master); // eliminar del conjunto maestro
-						} else if (resul==0){
-
-							printf("\nSocket %d: ", i);
-							perror("Fin de Conexion, se cerro la conexion\n");
-							close(i); // ¡Hasta luego!
-							FD_CLR(i, &master); // eliminar del conjunto maestro
-
-						} else {
-						//vemos si es un handshake
-							if (header->esHandShake=='1'){
-								printf("\nGracias por conectarte\n");
-								EnviarHandshake(i, "Kernel");
-							} else {
-								//Paquete* paquete = malloc(TAMANIOHEADER + header->tamPayload);
-								char* payload= malloc((header->tamPayload) + 1); //esto solo funciona con texto
-								RecibirPaquete(payload, i, header->tamPayload);
-
-								printf("\nTexto recibido: %s", payload);
-								free (payload);
-							}
+				else  {
+					Paquete* paquete = malloc(sizeof(Paquete));
+					if(	RecibirPaquete(i, KERNEL, paquete)>0){
+						printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
+						//replicar aca!!
 
 
-					}
-						free(header);
-					//fin de transmision
+
+						//Y finalmente, no puede faltar hacer el free
+						free (paquete->Payload); //No olvidar hacer DOS free
+						free(paquete);
+					} else FD_CLR(i, &master); // eliminar del conjunto maestro si falla
 				}
 			}
 		}

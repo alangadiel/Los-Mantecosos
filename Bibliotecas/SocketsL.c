@@ -9,7 +9,7 @@
 #include "SocketsL.h"
 
 
-int ConectarServidor(int PUERTO_KERNEL, char* IP_KERNEL)
+int ConectarServidor(int PUERTO_KERNEL, char* IP_KERNEL, char servidor[11], char cliente[11])
 {
 	int socketFD = socket(AF_INET,SOCK_STREAM,0);
 
@@ -19,9 +19,10 @@ int ConectarServidor(int PUERTO_KERNEL, char* IP_KERNEL)
 	direccionKernel.sin_port = htons(PUERTO_KERNEL);
 	direccionKernel.sin_addr.s_addr = inet_addr(IP_KERNEL);
 	memset(&(direccionKernel.sin_zero), '\0', 8);
-
 	connect(socketFD,(struct sockaddr *)&direccionKernel, sizeof(struct sockaddr));
-	//printf("%s", "Se conecto!Anda a kernel y aceptame\n");
+
+	EnviarHandshake(socketFD,cliente);
+	RecibirHandshake(socketFD, servidor);
 
 	return socketFD;
 }
@@ -127,54 +128,20 @@ void EnviarHandshake(int socketFD,char emisor[11])
 	free(paquete);
 }
 
-/*void EnviarHandshake(int socketFD,char emisor[11])
-{
-	Paquete* paquete = malloc(TAMANIOHEADER + string_length(PAYLOADHANDSHAKE));
-	Header header;
-
-	header.esHandShake = '1';
-	header.tamPayload = string_length(PAYLOADHANDSHAKE);
-	strcpy(header.emisor, emisor);
-	//printf("%d",sizeof(header));
-
-	paquete -> header = header;
-	paquete -> Payload = PAYLOADHANDSHAKE;
-	//paquete.Payload = msg;
-
-	EnviarPaquete(socketFD,paquete,TAMANIOHEADER + string_length(PAYLOADHANDSHAKE));
-
-	free(paquete);
-}*/
-
-
-
-void RecibirHandshake(int socketFD)
+void RecibirHandshake(int socketFD,char emisor[11])
 {
 	Header* header = malloc(TAMANIOHEADER);
-	int resul = RecibirPaquete(header, socketFD, TAMANIOHEADER);
-		if(resul<0){
-			printf("Socket %d: ", socketFD);
-			perror("Error de Recepcion, no se pudo leer el mensaje\n");
-			close(socketFD); // ¡Hasta luego!
-		} else if (resul==0){
-
-			perror("Error de Conexion, no se pudo leer el mensaje porque se cerro la conexion\n");
-			close(socketFD); // ¡Hasta luego!
-
-		} else {
-		//vemos si es un handshake
-			if (header->esHandShake=='1'){
-				printf("\nConectado con el servidor!\n");
-
-			} else {
-				perror("Error de Conexion, no se recibio un handshake\n");
-			}
-		}
+	int resul = RecibirDatos(header, socketFD, TAMANIOHEADER);
+	if(resul>0){ // si no hubo error en la recepcion
+		if(strcmp(header->emisor,emisor)==0){
+			if (header->esHandShake=='1') printf("\nConectado con el servidor!\n");
+			else perror("Error de Conexion, no se recibio un handshake\n");
+		} else perror("Error, no se recibio un handshake del servidor esperado\n");
+	}
 	free(header);
 }
 
-
-int RecibirPaquete(void* paquete, int socketFD, unsigned short cantARecibir)
+int RecibirDatos(void* paquete, int socketFD, unsigned short cantARecibir)
 {
 	void* datos = malloc(cantARecibir);
 	//char* punteroMsg = paquete;
@@ -188,10 +155,36 @@ int RecibirPaquete(void* paquete, int socketFD, unsigned short cantARecibir)
 		totalRecibido += recibido;
 	} while (totalRecibido != cantARecibir && recibido>0);
 	memcpy(paquete,datos,cantARecibir);
-
 	free(datos);
+
+	if(recibido<0){
+		perror("Error de Recepcion, no se pudo leer el mensaje\n");
+		close(socketFD); // ¡Hasta luego!
+	} else if (recibido==0){
+		printf("\nSocket %d: ", socketFD);
+		perror("Fin de Conexion, se cerro la conexion\n");
+		close(socketFD); // ¡Hasta luego!
+	}
+
 	return recibido;
 }
+
+int RecibirPaquete(int socketFD, char receptor[11], Paquete* paquete){
+
+	int resul = RecibirDatos(&(paquete->header),socketFD, TAMANIOHEADER);
+	if(resul>0){ //si no hubo error
+		if (paquete->header.esHandShake=='1'){ //vemos si es un handshake
+			printf("Se establecio conexion con %s\n", paquete->header.emisor);
+			EnviarHandshake(socketFD, KERNEL);
+		} else {  //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
+			paquete->Payload= malloc((paquete->header.tamPayload) + 1);
+			resul= RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
+		}
+	}
+
+	return resul;
+}
+
 
 /*
 int RecibirHeader(int socketFD, Header* headerRecibido)
@@ -201,7 +194,7 @@ int RecibirHeader(int socketFD, Header* headerRecibido)
 
 	//Header* headerRecibido = malloc(TAMANIOHEADER);
 	//Header* punteroMsg = headerRecibido;
-	int var = RecibirPaquete(headerRecibido, socketFD, TAMANIOHEADER);
+	int var = RecibirDatos(headerRecibido, socketFD, TAMANIOHEADER);
 
 	//chequear que sea el emisor
 	//if (strcmp(emisor, headerRecibido -> emisor) != 0) var = -1;
@@ -221,7 +214,7 @@ int RecibirPayload(int socketFD,char* mensaje,unsigned short tamPayload)
 {
 
 	void* mensajeRecibido = malloc(tamPayload);
-	int cantRecibida = RecibirPaquete(mensajeRecibido, socketFD,tamPayload);
+	int cantRecibida = RecibirDatos(mensajeRecibido, socketFD,tamPayload);
 	strcpy(mensaje,mensajeRecibido);
 	free(mensajeRecibido);
 	return cantRecibida;
