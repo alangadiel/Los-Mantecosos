@@ -29,11 +29,14 @@
 #define CONSOLA "Consola   "
 #define FS "FileSystem"
 #define MEMORIA "Memoria   "
+#define ESHANDSHAKE '1'
+#define ESSTRING '0'
+#define ESARCHIVO '2'
 #define CPU "CPU       "
 
 typedef struct
 {
-	char esHandShake;
+	char tipoMensaje;
 	unsigned short tamPayload;
 	char emisor[11];
 }  __attribute__((packed)) Header;

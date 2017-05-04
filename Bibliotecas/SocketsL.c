@@ -74,7 +74,7 @@ void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar)
 
 	void* datos = malloc(cantAEnviar);
 	memcpy(datos,&(msg->header),TAMANIOHEADER);
-	if(msg->header.esHandShake=='0')
+	if(msg->header.tipoMensaje!=ESHANDSHAKE)
 		memcpy(datos+TAMANIOHEADER,(msg->Payload),msg->header.tamPayload);
 
 	//Paquete* punteroMsg = datos;
@@ -96,7 +96,7 @@ void EnviarMensaje(int socketFD, char* msg,char emisor[11])
 {
 	Paquete* paquete = malloc(TAMANIOHEADER + string_length(msg)+1);
 	Header header;
-	header.esHandShake= '0';
+	header.tipoMensaje= ESSTRING;
 	header.tamPayload = string_length(msg)+1;
 	strcpy(header.emisor, emisor);
 	//printf("%d",sizeof(header));
@@ -114,7 +114,7 @@ void EnviarHandshake(int socketFD,char emisor[11])
 {
 	Paquete* paquete = malloc(TAMANIOHEADER);
 	Header header;
-	header.esHandShake = '1';
+	header.tipoMensaje = ESHANDSHAKE;
 	header.tamPayload = 0;
 	strcpy(header.emisor, emisor);
 	//printf("%d",sizeof(header));
@@ -134,7 +134,7 @@ void RecibirHandshake(int socketFD,char emisor[11])
 	int resul = RecibirDatos(header, socketFD, TAMANIOHEADER);
 	if(resul>0){ // si no hubo error en la recepcion
 		if(strcmp(header->emisor,emisor)==0){
-			if (header->esHandShake=='1') printf("\nConectado con el servidor!\n");
+			if (header->tipoMensaje==ESHANDSHAKE) printf("\nConectado con el servidor!\n");
 			else perror("Error de Conexion, no se recibio un handshake\n");
 		} else perror("Error, no se recibio un handshake del servidor esperado\n");
 	}
@@ -173,7 +173,7 @@ int RecibirPaquete(int socketFD, char receptor[11], Paquete* paquete){
 
 	int resul = RecibirDatos(&(paquete->header),socketFD, TAMANIOHEADER);
 	if(resul>0){ //si no hubo error
-		if (paquete->header.esHandShake=='1'){ //vemos si es un handshake
+		if (paquete->header.tipoMensaje==ESHANDSHAKE){ //vemos si es un handshake
 			printf("Se establecio conexion con %s\n", paquete->header.emisor);
 			EnviarHandshake(socketFD, KERNEL);
 		} else {  //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
