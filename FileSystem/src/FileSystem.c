@@ -60,12 +60,13 @@ int main(void) {
 	imprimirArchivoConfiguracion();
 
 	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, FS);
-
 	Paquete* paquete = malloc(sizeof(Paquete));
-	RecibirPaquete(socketFD, FS, paquete);
-	printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
-
-	free (paquete->Payload); //No olvidar hacer DOS free
+	int result = RecibirPaquete(socketFD, FS, paquete);
+	if(result>0){
+		if(paquete->header.esHandShake!='1')
+			printf("Texto recibido: %s",(char*)paquete->Payload);
+	}
+	free(paquete->Payload);
 	free(paquete);
 
 	return 0;

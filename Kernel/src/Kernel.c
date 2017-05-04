@@ -232,16 +232,33 @@ int main(void)
 				}
 				else  {
 					Paquete* paquete = malloc(sizeof(Paquete));
-					if(	RecibirPaquete(i, KERNEL, paquete)>0){
-						printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
-						//replicar aca!!
-
-
+					int result = RecibirPaquete(i, KERNEL, paquete);
+					if(	result>0){
+						if(paquete->header.esHandShake!='1'){ //Solo muestro el mensaje y replico si es handshake
+							printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
+							//replicar aca!!
+							// tenemos datos de algún cliente
+							int j;
+							for (j = 0; j <= fdmax; j++) {
+									// ¡enviar a todo el mundo!
+									if (FD_ISSET(j, &master)) {
+										// excepto al listener y a nosotros mismos
+										if (j != SocketEscucha && j != i) {
+											EnviarMensaje(j,(char*)paquete->Payload,KERNEL);
+											/*if (send(j, paquete, result, 0) == -1) {
+												perror("send");
+											}*/
+										}
+									}
+								}
+							}
 
 						//Y finalmente, no puede faltar hacer el free
 						free (paquete->Payload); //No olvidar hacer DOS free
 						free(paquete);
-					} else FD_CLR(i, &master); // eliminar del conjunto maestro si falla
+				 }
+				else
+					FD_CLR(i, &master); // eliminar del conjunto maestro si falla
 				}
 			}
 		}
