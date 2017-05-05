@@ -23,19 +23,28 @@
 #include <pthread.h>
 
 
-#define TAMANIOHEADER 14
+#define TAMANIOHEADER sizeof(Header)
 #define STRHANDSHAKE "10"
 
 #define KERNEL "Kernel    "
 #define CONSOLA "Consola   "
 #define FS "FileSystem"
 #define MEMORIA "Memoria   "
+#define ESHANDSHAKE '1'
+#define ESSTRING '0'
+#define ESARCHIVO '2'
 #define CPU "CPU       "
+//usar uint32_t
+#define INIC_PROG 0
+#define SOL_BYTES 1
+#define ALM_BYTES 2
+#define ASIG_PAG 3
+#define FIN_PROG 4
 
 typedef struct
 {
-	char esHandShake;
-	unsigned short tamPayload;
+	char tipoMensaje;
+	uint32_t tamPayload;
 	char emisor[11];
 }  __attribute__((packed)) Header;
 
@@ -54,7 +63,7 @@ void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar);
 void EnviarMensaje(int socketFD, char* msg,char emisor[11]);//
 void EnviarHandshake(int socketFD,char emisor[11]);
 void RecibirHandshake(int socketFD,char emisor[11]);
-int RecibirDatos(void* paquete, int socketFD, unsigned short cantARecibir);
-int RecibirPaquete(int socketFD, char receptor[11], Paquete* paquete);//
+int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir);
+int RecibirPaquete(int socketFD, char receptor[11], Paquete* paquete);
 
 #endif //SOCKETS_H_

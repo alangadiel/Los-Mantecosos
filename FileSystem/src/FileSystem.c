@@ -63,7 +63,7 @@ int main(void) {
 	Paquete* paquete = malloc(sizeof(Paquete));
 	int result = RecibirPaquete(socketFD, FS, paquete);
 	if(result>0){
-		if(paquete->header.esHandShake!='1')
+		if(paquete->header.tipoMensaje!='1')
 			printf("Texto recibido: %s",(char*)paquete->Payload);
 	}
 	free(paquete->Payload);
