@@ -141,7 +141,7 @@ void RecibirHandshake(int socketFD,char emisor[11])
 	free(header);
 }
 
-int RecibirDatos(void* paquete, int socketFD, unsigned short cantARecibir)
+int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir)
 {
 	void* datos = malloc(cantARecibir);
 	//char* punteroMsg = paquete;
@@ -210,7 +210,7 @@ int RecibirHeader(int socketFD, Header* headerRecibido)
 		}
 
 }
-int RecibirPayload(int socketFD,char* mensaje,unsigned short tamPayload)
+int RecibirPayload(int socketFD,char* mensaje,uint32_t tamPayload)
 {
 
 	void* mensajeRecibido = malloc(tamPayload);
