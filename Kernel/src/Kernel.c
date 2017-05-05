@@ -19,6 +19,11 @@ char* SHARED_VARS[100];
 int STACK_SIZE;
 char* IP_PROG;
 
+typedef struct {
+	int pid;
+	int pc;
+} PCB ;
+
 char* ObtenerTextoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
 {
 	char buffer[10000];
@@ -234,10 +239,16 @@ int main(void)
 					Paquete* paquete = malloc(sizeof(Paquete));
 					int result = RecibirPaquete(i, KERNEL, paquete);
 					if(	result>0){
-						if(paquete->header.tipoMensaje!=ESHANDSHAKE){ //Solo muestro el mensaje y replico si NO es handshake
+						// tenemos datos de algún cliente
+
+						//if(paquete->header.tipoMensaje==ESSTRING)
+					switch(paquete->header.tipoMensaje)
+					{
+						case ESSTRING:
+							//Solo muestro el mensaje y replico si NO es handshake
 							printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
+
 							//replicar aca!!
-							// tenemos datos de algún cliente
 							int j;
 							for (j = 0; j <= fdmax; j++) {
 									// ¡enviar a todo el mundo!
@@ -251,7 +262,12 @@ int main(void)
 										}
 									}
 								}
-							}
+						break;
+						case ESARCHIVO:
+							FILE* archivoRecibido = (char*)paquete->Payload;
+						break;
+
+						}
 
 						//Y finalmente, no puede faltar hacer el free
 						free (paquete->Payload); //No olvidar hacer DOS free
