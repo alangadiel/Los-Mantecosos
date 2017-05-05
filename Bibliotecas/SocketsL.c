@@ -92,11 +92,11 @@ void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar)
 }
 
 
-void EnviarMensaje(int socketFD, char* msg,char emisor[11])
+void EnviarMensaje(int socketFD, char* msg,char emisor[11], int tipoDeMensaje)
 {
 	Paquete* paquete = malloc(TAMANIOHEADER + string_length(msg)+1);
 	Header header;
-	header.tipoMensaje= ESSTRING;
+	header.tipoMensaje= tipoDeMensaje;
 	header.tamPayload = string_length(msg)+1;
 	strcpy(header.emisor, emisor);
 	//printf("%d",sizeof(header));

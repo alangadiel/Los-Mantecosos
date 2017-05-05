@@ -65,7 +65,7 @@ void programHandler(int socketFD) {
 		printf("\n\nIngrese un mensaje: \n");
 		scanf("%99[^\n]", str);
 
-		EnviarMensaje(socketFD, str, CONSOLA);
+		EnviarMensaje(socketFD, str, CONSOLA, ESSTRING);
 	}
 }
 
@@ -97,7 +97,7 @@ void clean() {
 
 void sendSignalOpenFile(char* programPath, int socketFD) {
 	FILE* fileForSend = txt_open_for_append(programPath);
-	EnviarPaquete()
+	//EnviarPaquete()
 	/*write()
 	EnviarMensaje(socketFD, programPath, CONSOLA);*/
 }
@@ -132,7 +132,7 @@ void userInterfaceHandler(int socketFD) {
 		} else {
 			printf("No se conoce el mensaje %s\n", str);
 		}
-		EnviarMensaje(socketFD, str, CONSOLA);
+		EnviarMensaje(socketFD, str, CONSOLA, ESSTRING);
 	}
 }
 
