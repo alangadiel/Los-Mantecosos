@@ -18,11 +18,23 @@ int SEM_INIT[100];
 char* SHARED_VARS[100];
 int STACK_SIZE;
 char* IP_PROG;
+int ultimoPID=1;
 
+typedef struct  {
+ uint32_t size;
+ int isFree;
+} HeapMetadata
+
+typedef struct{
+	int IdProceso;
+	int CantPaginas;
+} PaginasPorProceso;
 typedef struct {
-	int pid;
-	int pc;
-} PCB ;
+	int PID;
+	int ProgramCounter;
+	int PaginasDeCodigo;
+	int ExitCode;
+} BloqueControlProceso ;
 
 char* ObtenerTextoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
 {
@@ -264,7 +276,15 @@ int main(void)
 								}
 						break;
 						case ESARCHIVO:
-							FILE* archivoRecibido = (char*)paquete->Payload;
+							FILE* archivoRecibido = (FILE*)paquete->Payload;
+							BloqueControlProceso pcb;
+							PaginasPorProceso ppp;
+							//ppp.IdProceso = ul
+							pcb.PID = ultimoPID+1;
+							ultimoPID++;
+
+							//Enviar archivo a la memoria
+							//Verificar que la memoria pueda almacenar el archivo
 						break;
 
 						}
