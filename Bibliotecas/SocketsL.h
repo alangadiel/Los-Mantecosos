@@ -33,12 +33,12 @@
 #define ESSTRING '0'
 #define ESARCHIVO '2'
 #define CPU "CPU       "
-
-#define INIC_PROG '0'
-#define SOL_BYTES '1'
-#define ALM_BYTES '2'
-#define ASIG_PAG '3'
-#define FIN_PROG '4'
+//usar uint32_t
+#define INIC_PROG 0
+#define SOL_BYTES 1
+#define ALM_BYTES 2
+#define ASIG_PAG 3
+#define FIN_PROG 4
 
 typedef struct
 {
@@ -59,7 +59,7 @@ typedef struct
 int StartServidor(char* MyIP,int MyPort);
 int ConectarServidor(int PUERTO_KERNEL, char* IP_KERNEL, char servidor[11], char cliente[11]);
 void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar);
-void EnviarMensaje(int socketFD, char* msg,char emisor[11]);
+void EnviarMensaje(int socketFD, char* msg,char emisor[11], int tipoDeMensaje);
 void EnviarHandshake(int socketFD,char emisor[11]);
 void RecibirHandshake(int socketFD,char emisor[11]);
 int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir);
