@@ -1,15 +1,7 @@
-/*
- ============================================================================
- Name        : Memoria.c
- Author      : 
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
+#include "SocketsL.h"
 
-#include <stdio.h>
-#include <stdlib.h>
+#define IP_MEMORIA 127.0.0.1
+//#define ADM_MAR_SIZE 10 //el tamaño del marco de
 
 int PUERTO;
 int MARCOS;
@@ -18,6 +10,19 @@ int ENTRADAS_CACHE;
 int CACHE_X_PROC;
 char* REEMPLAZO_CACHE;
 int RETARDO_MEMORIA;
+char* IP;
+
+typedef struct {
+	uint32_t Frame;
+	uint32_t PID;
+	uint32_t Pag;
+} tabla_Adm ;
+
+typedef struct {
+	uint32_t PID;
+	uint32_t Pag;
+	void* contenido;
+} tabla_Cache ;
 
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
@@ -28,8 +33,14 @@ void obtenerValoresArchivoConfiguracion() {
 		while ((c = getc(file)) != EOF)
 			if (c == '=')
 			{
+				if (contadorDeVariables == 7) {
+					char buffer[10000];
+					IP = fgets(buffer, sizeof buffer, file);
+					strtok(IP, "\n");
+				}
 				if (contadorDeVariables == 6) {
 					fscanf(file, "%i", &RETARDO_MEMORIA);
+					contadorDeVariables++;
 				}
 				if (contadorDeVariables == 5)
 				{
@@ -77,5 +88,85 @@ void imprimirArchivoConfiguracion() {
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+
+	void* bloquePpal = malloc((MARCOS * MARCO_SIZE) + (sizeof(tabla_Adm) * MARCOS)); //Reservo toda mi memoria
+	//tabla_Adm tablaAdm[MARCOS]; //no, mejor accedamos casteando y recorriendo el bloquePpal
+
+	tabla_Cache tablaCache[ENTRADAS_CACHE]; //crear y allocar cache
+	int i;
+	for (i = 0; i < MARCOS; ++i)
+		tablaCache[i].contenido = malloc(MARCO_SIZE);
+	char* orden;
+//start servidor
+	int SocketEscucha = StartServidor(IP, PUERTO);
+
+	fd_set master; // conjunto maestro de descriptores de fichero
+	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
+	FD_ZERO(&master); // borra los conjuntos maestro y temporal
+	FD_ZERO(&read_fds);
+	FD_SET(SocketEscucha, &master); // añadir listener al conjunto maestro
+	int fdmax = SocketEscucha; // seguir la pista del descriptor de fichero mayor, por ahora es éste
+	struct sockaddr_in remoteaddr; // dirección del cliente
+	// bucle principal
+	for(;;)	{
+		read_fds = master; // cópialo
+		if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1)		{
+			perror("select");
+			exit(1);
+		}
+		// explorar conexiones existentes en busca de datos que leer
+		int i;
+		for(i = 0; i <= fdmax; i++)	{
+			if (FD_ISSET(i, &read_fds)) { // ¡¡tenemos datos!!
+				if (i == SocketEscucha) { // gestionar nuevas conexiones
+					int addrlen = sizeof(remoteaddr);
+					int nuevoSocket = accept(SocketEscucha, (struct sockaddr*)&remoteaddr,&addrlen);
+					if (nuevoSocket == -1)
+						perror("accept");
+					else {
+						FD_SET(nuevoSocket, &master); // añadir al conjunto maestro
+						if (nuevoSocket > fdmax) fdmax = nuevoSocket; // actualizar el máximo
+						printf("\nNueva conexion de %s en " "socket %d\n", inet_ntoa(remoteaddr.sin_addr),nuevoSocket);
+					}
+				}
+				else  {
+					Paquete* paquete = malloc(sizeof(Paquete));
+					int result = RecibirPaquete(i, KERNEL, paquete);
+					if(	result>0){
+						switch (paquete->header.tipoMensaje){
+						case ESSTRING:
+							printf("\nTexto recibido: %s", (char*)paquete->Payload);
+							switch ((*(char*)paquete->Payload)){
+
+							}
+						break;
+						case ESARCHIVO:
+
+
+						break;
+						}
+
+
+
+
+
+						//Y finalmente, no puede faltar hacer el free
+						free (paquete->Payload); //No olvidar hacer DOS free
+						free(paquete);
+				 }
+				else
+					FD_CLR(i, &master); // eliminar del conjunto maestro si falla
+				}
+			}
+		}
+	}
+
+
+
+//fin servidor
+	for (i = 0; i < MARCOS; ++i)  //liberar cache.
+			free(tablaCache[i].contenido);
+	free(bloquePpal);
+
 	return 0;
 }
