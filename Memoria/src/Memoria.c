@@ -89,7 +89,7 @@ void imprimirArchivoConfiguracion() {
 void IniciarPrograma(uint32_t pid, uint32_t cantPag) {
 
 }
-void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam) {
+void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam, int socketFD) {
 
 }
 void AlmacenarBytes(Paquete* paquete) {
@@ -148,7 +148,7 @@ int main(void) {
 				}
 				else  {
 					Paquete* paquete = malloc(sizeof(Paquete));
-					int result = RecibirPaquete(i, KERNEL, paquete);
+					int result = RecibirPaquete(i, MEMORIA, paquete);
 					if(	result>0){
 						switch (paquete->header.tipoMensaje){
 						case ESSTRING:
@@ -158,13 +158,13 @@ int main(void) {
 								IniciarPrograma(DATOS[1],DATOS[2]);
 							break;
 							case SOL_BYTES:
-								SolicitarBytes(DATOS[1],DATOS[2],DATOS[3],DATOS[4]);
+								SolicitarBytes(DATOS[1],DATOS[2],DATOS[3],DATOS[4],i);
 							break;
 							case ALM_BYTES:
 								AlmacenarBytes(paquete);
 							break;
 							case ASIG_PAG:
-								AsignarPaginas(DATOS[1],DATOS[2]);
+								AsignarPaginas(DATOS[1],DATOS[2],i);
 							break;
 							case FIN_PROG:
 								FinalizarPrograma(DATOS[1]);
