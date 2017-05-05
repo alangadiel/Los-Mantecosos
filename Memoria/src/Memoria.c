@@ -1,6 +1,7 @@
 #include "SocketsL.h"
 
 #define IP_MEMORIA 127.0.0.1
+#define DATOS ((uint32_t*)paquete->Payload)
 //#define ADM_MAR_SIZE 10 //el tamaño del marco de
 
 int PUERTO;
@@ -85,6 +86,22 @@ void imprimirArchivoConfiguracion() {
 	}
 }
 
+void IniciarPrograma(uint32_t pid, uint32_t cantPag) {
+
+}
+void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam) {
+
+}
+void AlmacenarBytes(Paquete* paquete) {
+
+}
+void AsignarPaginas(uint32_t pid, uint32_t cantPag) {
+
+}
+void FinalizarPrograma(uint32_t pid) {
+
+}
+
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
@@ -96,7 +113,7 @@ int main(void) {
 	int i;
 	for (i = 0; i < MARCOS; ++i)
 		tablaCache[i].contenido = malloc(MARCO_SIZE);
-	char* orden;
+
 //start servidor
 	int SocketEscucha = StartServidor(IP, PUERTO);
 
@@ -136,8 +153,22 @@ int main(void) {
 						switch (paquete->header.tipoMensaje){
 						case ESSTRING:
 							printf("\nTexto recibido: %s", (char*)paquete->Payload);
-							switch ((*(char*)paquete->Payload)){
-
+							switch ((*(uint32_t*)paquete->Payload)){
+							case INIC_PROG:
+								IniciarPrograma(DATOS[1],DATOS[2]);
+							break;
+							case SOL_BYTES:
+								SolicitarBytes(DATOS[1],DATOS[2],DATOS[3],DATOS[4]);
+							break;
+							case ALM_BYTES:
+								AlmacenarBytes(paquete);
+							break;
+							case ASIG_PAG:
+								AsignarPaginas(DATOS[1],DATOS[2]);
+							break;
+							case FIN_PROG:
+								FinalizarPrograma(DATOS[1]);
+							break;
 							}
 						break;
 						case ESARCHIVO:

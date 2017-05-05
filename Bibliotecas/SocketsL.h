@@ -33,12 +33,12 @@
 #define ESSTRING '0'
 #define ESARCHIVO '2'
 #define CPU "CPU       "
-
-#define INIC_PROG '0'
-#define SOL_BYTES '1'
-#define ALM_BYTES '2'
-#define ASIG_PAG '3'
-#define FIN_PROG '4'
+//usar uint32_t
+#define INIC_PROG 0
+#define SOL_BYTES 1
+#define ALM_BYTES 2
+#define ASIG_PAG 3
+#define FIN_PROG 4
 
 typedef struct
 {
