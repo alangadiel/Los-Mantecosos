@@ -95,7 +95,8 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam
 }
 void AlmacenarBytes(Paquete* paquete) {
 //Buscar pagina
-//esperar tiempo definido por arch de config
+sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
+
 memcpy(bloquePpal+DATOS[3],(void*)DATOS[5],DATOS[4]);
 //actualizar cache
 }

@@ -200,9 +200,8 @@ int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir)
 }
 
 int RecibirPaquete(int socketFD, char receptor[11], Paquete* paquete){
-
-	int resul = RecibirDatos(&(paquete->header),socketFD, TAMANIOHEADER);
 	paquete->Payload= malloc(1);
+	int resul = RecibirDatos(&(paquete->header),socketFD, TAMANIOHEADER);
 	if(resul>0){ //si no hubo error
 		if (paquete->header.tipoMensaje==ESHANDSHAKE){ //vemos si es un handshake
 			printf("Se establecio conexion con %s\n", paquete->header.emisor);
