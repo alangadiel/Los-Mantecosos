@@ -107,6 +107,22 @@ void FinalizarPrograma(uint32_t pid) {
 
 }
 
+void* inputConsola (void* p){
+
+	for(;;){
+	char orden[100];
+	printf("\n\nIngrese una orden: \n");
+	scanf("%s", orden);
+	//bloquear hasta que reciba algo
+
+	if(strcmp(orden,"exit")==0)
+		exit(1);
+	else if (strcmp(orden,"dump")==0)
+		printf("%s",(char*)bloquePpal);
+	}
+	return NULL;
+}
+
 void accion(Paquete* paquete, int socketFD){
 	switch (paquete->header.tipoMensaje){
 	case ESSTRING:
@@ -142,16 +158,22 @@ int main(void) {
 
 	bloquePpal = malloc((MARCOS * MARCO_SIZE) + (sizeof(tabla_Adm) * MARCOS)); //Reservo toda mi memoria
 	//tabla_Adm tablaAdm[MARCOS]; //no, mejor accedamos casteando y recorriendo el bloquePpal
-
+	/*//MEMORIA CACHE, NO BORRAR
 	tabla_Cache tablaCache[ENTRADAS_CACHE]; //crear y allocar cache
 	int i;
 	for (i = 0; i < MARCOS; ++i)
 		tablaCache[i].contenido = malloc(MARCO_SIZE);
+ 	 */
+	pthread_t hiloConsola;
+	pthread_create(&hiloConsola, NULL, inputConsola, NULL);
 
 	Servidor(IP, PUERTO, MEMORIA, accion);
 
+	pthread_join(hiloConsola, NULL);
+	/*//MEMORIA CACHE, NO BORRAR
 	for (i = 0; i < MARCOS; ++i)  //liberar cache.
 			free(tablaCache[i].contenido);
+	*/
 	free(bloquePpal);
 
 	return 0;
