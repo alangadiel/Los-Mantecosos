@@ -71,7 +71,6 @@ int StartServidor(char* MyIP, int MyPort) // obtener socket a la escucha
 
 void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar)
 {
-
 	void* datos = malloc(cantAEnviar);
 	memcpy(datos,&(msg->header),TAMANIOHEADER);
 	if(msg->header.tipoMensaje!=ESHANDSHAKE)

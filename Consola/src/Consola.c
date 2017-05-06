@@ -97,9 +97,8 @@ void clean() {
 
 void sendSignalOpenFile(char* programPath, int socketFD) {
 	FILE* fileForSend = txt_open_for_append(programPath);
-	//EnviarPaquete()
-	/*write()
-	EnviarMensaje(socketFD, programPath, CONSOLA);*/
+	send
+	EnviarMensaje(socketFD, programPath, CONSOLA, ESARCHIVO);
 }
 
 char* getFirstWord(char* string) {
