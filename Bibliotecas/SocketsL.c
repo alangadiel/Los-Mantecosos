@@ -9,15 +9,15 @@
 #include "SocketsL.h"
 
 
-int ConectarServidor(int PUERTO_KERNEL, char* IP_KERNEL, char servidor[11], char cliente[11])
+int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11])
 {
 	int socketFD = socket(AF_INET,SOCK_STREAM,0);
 
 	struct sockaddr_in direccionKernel;
 
 	direccionKernel.sin_family = AF_INET;
-	direccionKernel.sin_port = htons(PUERTO_KERNEL);
-	direccionKernel.sin_addr.s_addr = inet_addr(IP_KERNEL);
+	direccionKernel.sin_port = htons(puertoAConectar);
+	direccionKernel.sin_addr.s_addr = inet_addr(ipAConectar);
 	memset(&(direccionKernel.sin_zero), '\0', 8);
 	connect(socketFD,(struct sockaddr *)&direccionKernel, sizeof(struct sockaddr));
 
@@ -89,6 +89,25 @@ void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar)
 		//punteroMsg += enviado; //avanza la cant de bytes que ya mando
 	} while (totalEnviado != cantAEnviar);
 	free(datos);
+}
+
+
+void EnviarInt(int socketFD, int numero,char emisor[11], int tipoDeMensaje)
+{
+	Paquete* paquete = malloc(TAMANIOHEADER + sizeof(int));
+	Header header;
+	header.tipoMensaje= tipoDeMensaje;
+	header.tamPayload = sizeof(int);
+	strcpy(header.emisor, emisor);
+	//printf("%d",sizeof(header));
+
+	paquete -> header = header;
+	paquete -> Payload = numero;
+	//paquete.Payload = msg;
+
+	EnviarPaquete(socketFD,paquete,TAMANIOHEADER + sizeof(int));
+
+	free(paquete);
 }
 
 

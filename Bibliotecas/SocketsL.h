@@ -58,7 +58,7 @@ typedef struct
 //void Servidor(char nombre[11], void (*queHacer)(void* payload));
 //void Cliente(void (*f)());
 int StartServidor(char* MyIP,int MyPort);
-int ConectarServidor(int PUERTO_KERNEL, char* IP_KERNEL, char servidor[11], char cliente[11]);
+int ConectarServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11]);
 void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar);
 void EnviarMensaje(int socketFD, char* msg,char emisor[11], int tipoDeMensaje);
 void EnviarHandshake(int socketFD,char emisor[11]);

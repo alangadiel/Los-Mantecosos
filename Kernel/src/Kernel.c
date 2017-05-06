@@ -232,7 +232,7 @@ int main(void)
 {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	int socketConMemoria=ConectarServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
+	int socketConMemoria = ConectarServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
 	ObtenerTamanioPagina(socketConMemoria);
 
 
@@ -276,8 +276,6 @@ int main(void)
 						//if(paquete->header.tipoMensaje==ESSTRING)
 					switch(paquete->header.tipoMensaje)
 					{
-					FILE * archivoRecibido;
-
 						case ESSTRING:
 							//Solo muestro el mensaje y replico si NO es handshake
 							printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
@@ -298,19 +296,34 @@ int main(void)
 								}
 						break;
 						case ESARCHIVO:
-							archivoRecibido = (FILE*)paquete->Payload;
-							int tamanioArchivo = GetTamanioArchivo(archivoRecibido);
+							int tamanioArchivo = GetTamanioArchivo((FILE*)paquete->Payload);
 							int tamanioTotal = tamanioArchivo+STACK_SIZE*TamanioPagina;
 							//EnviarMensaje(socketConMemoria,,KERNEL,ESINT);
+							EnviarInt(socketConMemoria, tamanioTotal, KERNEL, ESINT);
+
 							BloqueControlProceso pcb;
 							ContadorDePaginas contPag;
+
 							pcb.PID = ultimoPID+1;
 							contPag.IdProceso = pcb.PID;
 							contPag.CantPaginas = 0;
 							/*pcb.ProgramCounter=0;
 							pcb.IndiceDeCodigo[0]=0;
 							pcb.IndiceDeCodigo[1]=0;*/
+
 							ultimoPID++;
+
+							Paquete* respuestaMemoria = malloc(sizeof(Paquete));
+
+							RecibirPaquete(socketConMemoria, MEMORIA, respuestaMemoria);
+
+							if(respuestaMemoria->Payload != -1) // -1 significa que la memoria no tiene espacio
+							{
+								contPag.CantPaginas += respuestaMemoria->Payload;
+							}
+
+							free(respuestaMemoria->Payload);
+							free(respuestaMemoria);
 
 							//Enviar archivo a la memoria
 							//Verificar que la memoria pueda almacenar el archivo
@@ -319,9 +332,9 @@ int main(void)
 						}
 
 						//Y finalmente, no puede faltar hacer el free
-						free (paquete->Payload); //No olvidar hacer DOS free
+						free(paquete->Payload); //No olvidar hacer DOS free
 						free(paquete);
-				 }
+				}
 				else
 					FD_CLR(i, &master); // eliminar del conjunto maestro si falla
 				}
