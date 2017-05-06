@@ -18,24 +18,26 @@ int SEM_INIT[100];
 char* SHARED_VARS[100];
 int STACK_SIZE;
 char* IP_PROG;
-int ultimoPID=1;
+int ultimoPID=0;
 
 typedef struct  {
  uint32_t size;
  int isFree;
-} HeapMetadata
+} HeapMetadata;
 
 typedef struct{
-	int IdProceso;
-	int CantPaginas;
-} PaginasPorProceso;
+	uint32_t IdProceso;
+	uint32_t CantPaginas;
+} ContadorDePaginas;
 typedef struct {
-	int PID;
-	int ProgramCounter;
-	int PaginasDeCodigo;
-	int ExitCode;
-} BloqueControlProceso ;
+	uint32_t PID;
+	/*uint32_t ProgramCounter;
+	uint32_t IndiceDeCodigo[2];
+	uint32_t PaginasDeCodigo;
 
+	int ExitCode;*/
+} BloqueControlProceso ;
+int TamanioPagina;
 char* ObtenerTextoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
 {
 	char buffer[10000];
@@ -46,6 +48,21 @@ char* ObtenerTextoSinCorchetes(FILE* f) //Para obtener los valores de los arrays
 	texto  = strtok(texto,",");
 
 	return texto;
+}
+int GetTamanioArchivo(FILE * f){
+	fseek(f, 0L, SEEK_END);
+	int size = ftell(f);
+	return size;
+}
+void ObtenerTamanioPagina(int socketFD){
+	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
+	int datosRecibidos = RecibirPaquete(socketFD,KERNEL,datosInicialesMemoria);
+	if(datosRecibidos>0 ){
+		TamanioPagina = *((int*)datosInicialesMemoria->Payload);
+	}
+	free(datosInicialesMemoria->Payload+1);
+	free(datosInicialesMemoria);
+
 }
 void obtenerValoresArchivoConfiguracion()
 {
@@ -215,6 +232,9 @@ int main(void)
 {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+	int socketConMemoria=ConectarServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
+	ObtenerTamanioPagina(socketConMemoria);
+
 
 	int SocketEscucha = StartServidor(IP_PROG, PUERTO_PROG);
 
@@ -256,6 +276,8 @@ int main(void)
 						//if(paquete->header.tipoMensaje==ESSTRING)
 					switch(paquete->header.tipoMensaje)
 					{
+					FILE * archivoRecibido;
+
 						case ESSTRING:
 							//Solo muestro el mensaje y replico si NO es handshake
 							printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
@@ -276,11 +298,18 @@ int main(void)
 								}
 						break;
 						case ESARCHIVO:
-							FILE* archivoRecibido = (FILE*)paquete->Payload;
+							archivoRecibido = (FILE*)paquete->Payload;
+							int tamanioArchivo = GetTamanioArchivo(archivoRecibido);
+							int tamanioTotal = tamanioArchivo+STACK_SIZE*TamanioPagina;
+							//EnviarMensaje(socketConMemoria,,KERNEL,ESINT);
 							BloqueControlProceso pcb;
-							PaginasPorProceso ppp;
-							//ppp.IdProceso = ul
+							ContadorDePaginas contPag;
 							pcb.PID = ultimoPID+1;
+							contPag.IdProceso = pcb.PID;
+							contPag.CantPaginas = 0;
+							/*pcb.ProgramCounter=0;
+							pcb.IndiceDeCodigo[0]=0;
+							pcb.IndiceDeCodigo[1]=0;*/
 							ultimoPID++;
 
 							//Enviar archivo a la memoria

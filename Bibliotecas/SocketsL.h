@@ -32,6 +32,7 @@
 #define ESHANDSHAKE '1'
 #define ESSTRING '0'
 #define ESARCHIVO '2'
+#define ESINT '3'
 #define CPU "CPU       "
 //usar uint32_t
 #define INIC_PROG 0
