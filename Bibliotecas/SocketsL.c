@@ -1,11 +1,3 @@
-/*
- * SocketsL.c
- *
- *  Created on: 14/4/2017
- *      Author: utnso
- */
-
-
 #include "SocketsL.h"
 
 
@@ -68,14 +60,13 @@ int StartServidor(char* MyIP, int MyPort) // obtener socket a la escucha
 	return SocketEscucha;
 }
 
-
-void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar)
+void EnviarPaquete(int socketCliente, Paquete* paquete, int cantAEnviar)
 {
 
 	void* datos = malloc(cantAEnviar);
-	memcpy(datos,&(msg->header),TAMANIOHEADER);
-	if(msg->header.tipoMensaje!=ESHANDSHAKE)
-		memcpy(datos+TAMANIOHEADER,(msg->Payload),msg->header.tamPayload);
+	memcpy(datos,&(paquete->header),TAMANIOHEADER);
+	if(paquete->header.tipoMensaje!=ESHANDSHAKE)
+		memcpy(datos+TAMANIOHEADER,(paquete->Payload),paquete->header.tamPayload);
 
 	//Paquete* punteroMsg = datos;
 	int enviado = 0; //bytes enviados
@@ -94,18 +85,13 @@ void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar)
 
 void EnviarMensaje(int socketFD, char* msg,char emisor[11])
 {
-	Paquete* paquete = malloc(TAMANIOHEADER + string_length(msg)+1);
-	Header header;
-	header.tipoMensaje= ESSTRING;
-	header.tamPayload = string_length(msg)+1;
-	strcpy(header.emisor, emisor);
-	//printf("%d",sizeof(header));
-
-	paquete -> header = header;
+	Paquete* paquete = malloc(sizeof(Paquete));
+	paquete->header.tipoMensaje= ESSTRING;
+	paquete->header.tamPayload = string_length(msg)+1;
+	strcpy(paquete->header.emisor, emisor);
 	paquete -> Payload = msg;
-	//paquete.Payload = msg;
 
-	EnviarPaquete(socketFD,paquete,TAMANIOHEADER + string_length(msg)+1);
+	EnviarPaquete(socketFD,paquete,TAMANIOHEADER + paquete->header.tamPayload);
 
 	free(paquete);
 }
@@ -175,9 +161,9 @@ int RecibirPaquete(int socketFD, char receptor[11], Paquete* paquete){
 	if(resul>0){ //si no hubo error
 		if (paquete->header.tipoMensaje==ESHANDSHAKE){ //vemos si es un handshake
 			printf("Se establecio conexion con %s\n", paquete->header.emisor);
-			EnviarHandshake(socketFD, KERNEL);
+			EnviarHandshake(socketFD, receptor);// paquete->header.emisor
 		} else {  //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
-			paquete->Payload= malloc((paquete->header.tamPayload) + 1);
+			paquete->Payload= malloc((paquete->header.tamPayload));
 			resul= RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 		}
 	}
