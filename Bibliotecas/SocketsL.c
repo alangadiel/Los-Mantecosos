@@ -1,5 +1,49 @@
 #include "SocketsL.h"
 
+void Servidor(char* ip, int puerto, char nombre[11], void (*accion)(Paquete* paquete, int socketFD)){
+	int SocketEscucha = StartServidor(ip, puerto);
+	fd_set master; // conjunto maestro de descriptores de fichero
+	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
+	FD_ZERO(&master); // borra los conjuntos maestro y temporal
+	FD_ZERO(&read_fds);
+	FD_SET(SocketEscucha, &master); // añadir listener al conjunto maestro
+	int fdmax = SocketEscucha; // seguir la pista del descriptor de fichero mayor, por ahora es éste
+	struct sockaddr_in remoteaddr; // dirección del cliente
+
+	for(;;)	{	// bucle principal
+		read_fds = master; // cópialo
+		if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1)		{
+			perror("select");
+			exit(1);
+		}
+		// explorar conexiones existentes en busca de datos que leer
+		int i;
+		for(i = 0; i <= fdmax; i++)	{
+			if (FD_ISSET(i, &read_fds)) { // ¡¡tenemos datos!!
+				if (i == SocketEscucha) { // gestionar nuevas conexiones
+					int addrlen = sizeof(remoteaddr);
+					int nuevoSocket = accept(SocketEscucha, (struct sockaddr*)&remoteaddr,&addrlen);
+					if (nuevoSocket == -1)
+						perror("accept");
+					else {
+						FD_SET(nuevoSocket, &master); // añadir al conjunto maestro
+						if (nuevoSocket > fdmax) fdmax = nuevoSocket; // actualizar el máximo
+						printf("\nNueva conexion de %s en " "socket %d\n", inet_ntoa(remoteaddr.sin_addr),nuevoSocket);
+					}
+				}
+				else  {
+					Paquete paquete;
+					int result = RecibirPaquete(i, nombre, &paquete);
+					if(	result>0)
+						accion(&paquete, i); //>>>>Esto hace el servidor cuando recibe algo<<<<
+					else
+						FD_CLR(i, &master); // eliminar del conjunto maestro si falla
+					free (paquete.Payload); //Y finalmente, no puede faltar hacer el free
+				}
+			}
+		}
+	}
+}
 
 int ConectarServidor(int PUERTO_KERNEL, char* IP_KERNEL, char servidor[11], char cliente[11])
 {
@@ -158,12 +202,13 @@ int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir)
 int RecibirPaquete(int socketFD, char receptor[11], Paquete* paquete){
 
 	int resul = RecibirDatos(&(paquete->header),socketFD, TAMANIOHEADER);
+	paquete->Payload= malloc(1);
 	if(resul>0){ //si no hubo error
 		if (paquete->header.tipoMensaje==ESHANDSHAKE){ //vemos si es un handshake
 			printf("Se establecio conexion con %s\n", paquete->header.emisor);
 			EnviarHandshake(socketFD, receptor);// paquete->header.emisor
 		} else {  //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
-			paquete->Payload= malloc((paquete->header.tamPayload));
+			paquete->Payload= realloc(paquete->Payload, paquete->header.tamPayload);
 			resul= RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 		}
 	}
