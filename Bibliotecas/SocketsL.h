@@ -12,6 +12,7 @@
 #include <commons/collections/list.h>
 #include <commons/string.h>
 #include <commons/txt.h>
+#include <pthread.h>
 
 #define TAMANIOHEADER sizeof(Header)
 #define STRHANDSHAKE "10"
