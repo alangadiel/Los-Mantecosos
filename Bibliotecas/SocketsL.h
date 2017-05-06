@@ -13,25 +13,25 @@
 #include <commons/string.h>
 #include <commons/txt.h>
 
-
 #define TAMANIOHEADER sizeof(Header)
 #define STRHANDSHAKE "10"
-
+//Emisores:
 #define KERNEL "Kernel    "
 #define CONSOLA "Consola   "
 #define FS "FileSystem"
 #define MEMORIA "Memoria   "
 #define CPU "CPU       "
+//Tipos de envios:
 #define ESHANDSHAKE '1'
 #define ESSTRING '0'
 #define ESARCHIVO '2'
 #define ESINT '3'
-
-#define INIC_PROG '0'
-#define SOL_BYTES '1'
-#define ALM_BYTES '2'
-#define ASIG_PAG '3'
-#define FIN_PROG '4'
+//API Memoria: (usar uint32_t)
+#define INIC_PROG 0
+#define SOL_BYTES 1
+#define ALM_BYTES 2
+#define ASIG_PAG 3
+#define FIN_PROG 4
 
 typedef struct
 {
@@ -47,7 +47,7 @@ typedef struct
 	void* Payload;
 }  __attribute__((packed)) Paquete;
 
-//void Servidor(char nombre[11], void (*queHacer)(void* payload));
+void Servidor(char* ip, int puerto, char nombre[11], void (*accion)(Paquete* paquete, int socketFD));
 //void Cliente(void (*f)());
 int StartServidor(char* MyIP,int MyPort);
 int ConectarServidor(int PUERTO_KERNEL, char* IP_KERNEL, char servidor[11], char cliente[11]);
