@@ -86,7 +86,7 @@ int main(void)
 	printf("\n\nIngrese un mensaje: \n");
 	scanf("%99[^\n]",str);
 
-	EnviarMensaje(socketFD,str,CONSOLA, ESSTRING);
+	EnviarMensaje(socketFD,str,CONSOLA);
 
  	close(socketFD);
 	return 0;
