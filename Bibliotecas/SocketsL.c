@@ -1,13 +1,49 @@
-/*
- * SocketsL.c
- *
- *  Created on: 14/4/2017
- *      Author: utnso
- */
-
-
 #include "SocketsL.h"
 
+void Servidor(char* ip, int puerto, char nombre[11], void (*accion)(Paquete* paquete, int socketFD)){
+	int SocketEscucha = StartServidor(ip, puerto);
+	fd_set master; // conjunto maestro de descriptores de fichero
+	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
+	FD_ZERO(&master); // borra los conjuntos maestro y temporal
+	FD_ZERO(&read_fds);
+	FD_SET(SocketEscucha, &master); // añadir listener al conjunto maestro
+	int fdmax = SocketEscucha; // seguir la pista del descriptor de fichero mayor, por ahora es éste
+	struct sockaddr_in remoteaddr; // dirección del cliente
+
+	for(;;)	{	// bucle principal
+		read_fds = master; // cópialo
+		if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1)		{
+			perror("select");
+			exit(1);
+		}
+		// explorar conexiones existentes en busca de datos que leer
+		int i;
+		for(i = 0; i <= fdmax; i++)	{
+			if (FD_ISSET(i, &read_fds)) { // ¡¡tenemos datos!!
+				if (i == SocketEscucha) { // gestionar nuevas conexiones
+					int addrlen = sizeof(remoteaddr);
+					int nuevoSocket = accept(SocketEscucha, (struct sockaddr*)&remoteaddr,&addrlen);
+					if (nuevoSocket == -1)
+						perror("accept");
+					else {
+						FD_SET(nuevoSocket, &master); // añadir al conjunto maestro
+						if (nuevoSocket > fdmax) fdmax = nuevoSocket; // actualizar el máximo
+						printf("\nNueva conexion de %s en " "socket %d\n", inet_ntoa(remoteaddr.sin_addr),nuevoSocket);
+					}
+				}
+				else  {
+					Paquete paquete;
+					int result = RecibirPaquete(i, nombre, &paquete);
+					if(	result>0)
+						accion(&paquete, i); //>>>>Esto hace el servidor cuando recibe algo<<<<
+					else
+						FD_CLR(i, &master); // eliminar del conjunto maestro si falla
+					free (paquete.Payload); //Y finalmente, no puede faltar hacer el free
+				}
+			}
+		}
+	}
+}
 
 int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11])
 {
@@ -68,14 +104,13 @@ int StartServidor(char* MyIP, int MyPort) // obtener socket a la escucha
 	return SocketEscucha;
 }
 
-
-void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar)
+void EnviarPaquete(int socketCliente, Paquete* paquete, int cantAEnviar)
 {
 
 	void* datos = malloc(cantAEnviar);
-	memcpy(datos,&(msg->header),TAMANIOHEADER);
-	if(msg->header.tipoMensaje!=ESHANDSHAKE)
-		memcpy(datos+TAMANIOHEADER,(msg->Payload),msg->header.tamPayload);
+	memcpy(datos,&(paquete->header),TAMANIOHEADER);
+	if(paquete->header.tipoMensaje!=ESHANDSHAKE)
+		memcpy(datos+TAMANIOHEADER,(paquete->Payload),paquete->header.tamPayload);
 
 	//Paquete* punteroMsg = datos;
 	int enviado = 0; //bytes enviados
@@ -92,11 +127,11 @@ void EnviarPaquete(int socketCliente, Paquete* msg, int cantAEnviar)
 }
 
 
-void EnviarInt(int socketFD, int numero,char emisor[11], int tipoDeMensaje)
+void EnviarInt(int socketFD, int numero,char emisor[11])
 {
 	Paquete* paquete = malloc(TAMANIOHEADER + sizeof(int));
 	Header header;
-	header.tipoMensaje= tipoDeMensaje;
+	header.tipoMensaje= ESINT;
 	header.tamPayload = sizeof(int);
 	strcpy(header.emisor, emisor);
 	//printf("%d",sizeof(header));
@@ -111,20 +146,15 @@ void EnviarInt(int socketFD, int numero,char emisor[11], int tipoDeMensaje)
 }
 
 
-void EnviarMensaje(int socketFD, char* msg,char emisor[11], int tipoDeMensaje)
+void EnviarMensaje(int socketFD, char* msg,char emisor[11])
 {
-	Paquete* paquete = malloc(TAMANIOHEADER + string_length(msg)+1);
-	Header header;
-	header.tipoMensaje= tipoDeMensaje;
-	header.tamPayload = string_length(msg)+1;
-	strcpy(header.emisor, emisor);
-	//printf("%d",sizeof(header));
-
-	paquete -> header = header;
+	Paquete* paquete = malloc(sizeof(Paquete));
+	paquete->header.tipoMensaje= ESSTRING;
+	paquete->header.tamPayload = string_length(msg)+1;
+	strcpy(paquete->header.emisor, emisor);
 	paquete -> Payload = msg;
-	//paquete.Payload = msg;
 
-	EnviarPaquete(socketFD,paquete,TAMANIOHEADER + string_length(msg)+1);
+	EnviarPaquete(socketFD,paquete,TAMANIOHEADER + paquete->header.tamPayload);
 
 	free(paquete);
 }
@@ -189,14 +219,14 @@ int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir)
 }
 
 int RecibirPaquete(int socketFD, char receptor[11], Paquete* paquete){
-
+	paquete->Payload= malloc(1);
 	int resul = RecibirDatos(&(paquete->header),socketFD, TAMANIOHEADER);
 	if(resul>0){ //si no hubo error
 		if (paquete->header.tipoMensaje==ESHANDSHAKE){ //vemos si es un handshake
 			printf("Se establecio conexion con %s\n", paquete->header.emisor);
-			EnviarHandshake(socketFD, KERNEL);
+			EnviarHandshake(socketFD, receptor);// paquete->header.emisor
 		} else {  //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
-			paquete->Payload= malloc((paquete->header.tamPayload) + 1);
+			paquete->Payload= realloc(paquete->Payload, paquete->header.tamPayload);
 			resul= RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 		}
 	}

@@ -252,7 +252,7 @@ int main(void)
 {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	int socketConMemoria = ConectarServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
+	int socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
 	ObtenerTamanioPagina(socketConMemoria);
 
 
@@ -291,83 +291,74 @@ int main(void)
 					Paquete* paquete = malloc(sizeof(Paquete));
 					int result = RecibirPaquete(i, KERNEL, paquete);
 					if(	result>0){
-						// tenemos datos de algún cliente
+						switch(paquete->header.tipoMensaje)
+						{
+							case ESSTRING:
+								//Solo muestro el mensaje y replico si NO es handshake
+								printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
 
-					 switch(paquete->header.emisor){
-						case MEMORIA:
-							switch(paquete->header.tipoMensaje)
-								case ESPCB:
-									if(paquete->Payload>0 ) // -1 significa que la memoria no tiene espacio
-									{
-								//Realizar la busquea en el vector de pcb para actualizar la cantidad de paginas que utilizo
-										//contPag.CantPaginas += *(int*)paquete->Payload;
-										//OK: Enviar error a la consola y a la cpu
-										EnviarMensaje(,)
-									}
-									else{
-										//ERROR: Enviar Error a la consola y a la cpu
-									}
-
-								break;
-						break;
-
-						case CONSOLA:
-								switch(paquete->header.tipoMensaje)
-								{
-								case ESARCHIVO:
-									int tamanioArchivo = GetTamanioArchivo((FILE *)paquete->Payload);							);
-									BloqueControlProceso pcb;
-									pcb.PID = ultimoPID+1;
-									pcb.PaginasDeCodigo = 0;
-									pcb.TamanioStack=0;
-									ultimoPID++;
-
-									//Enviar programa a la cpu para que lo parsee
-
-
-									//el tamaño del stack es proporcionado por la CPU, tras parsear el archivo
-									uint32_t tamanioTotal = tamanioArchivo+pcb.TamanioStack;
-									//EnviarMensaje(socketConMemoria,,KERNEL,ESINT);
-									//Enviar(socketConMemoria, tamanioTotal, KERNEL, ESINT);
-									void* envio = malloc(tamanioTotal+sizeof(uint32_t)*5);
-									*envio = ALM_BYTES;
-									((uint32_t*)envio)[1]=pcb.PID;
-									((uint32_t*)envio)[2]= 0; 	//Hardcodeamos un numero de pagina
-									((uint32_t*)envio)[3]= 0; 	//Hardcodeamos offset
-									((uint32_t*)envio)[4]= tamanioTotal;
-									memcpy(envio+sizeof(uint32_t)*5,paquete->Payload,tamanioArchivo);
-									//Añadir el stack
-									//memcpy(envio+sizeof(uint32_t)*5+tamanioArchivo,
-
-
-									free(envio);
-
-								break;
-								case ESSTRING:
-										//Solo muestro el mensaje y replico si NO es handshake
-										printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
-
-								break;
+								//replicar aca!!
+								int j;
+								for (j = 0; j <= fdmax; j++) {
+										// ¡enviar a todo el mundo!
+										if (FD_ISSET(j, &master)) {
+											// excepto al listener y a nosotros mismos
+											if (j != SocketEscucha && j != i) {
+												EnviarMensaje(j,(char*)paquete->Payload,KERNEL);
+												/*if (send(j, paquete, result, 0) == 1) {
+													perror("send");
+												}*/
+											}
+										}
 								}
 							break;
+							case ESARCHIVO:
+							{
+								int tamanioArchivo = GetTamanioArchivo((FILE*)paquete->Payload);
+								int tamanioTotal = tamanioArchivo+STACK_SIZE*TamanioPagina;
+								//EnviarMensaje(socketConMemoria,,KERNEL,ESINT);
+								EnviarInt(socketConMemoria, tamanioTotal, KERNEL);
 
-							case CPU:
-								case ESPCB:
-									//Realizar una busqueda en el array de los PCB para actualizar el tamaño del stack
-									int tamanioStack = (BloqueControlProceso*)paquete->Payload;
-								break;
+								BloqueControlProceso pcb;
+								ContadorDePaginas contPag;
+
+								pcb.PID = ultimoPID+1;
+								contPag.IdProceso = pcb.PID;
+								contPag.CantPaginas = 0;
+								/*pcb.ProgramCounter=0;
+								pcb.IndiceDeCodigo[0]=0;
+								pcb.IndiceDeCodigo[1]=0;*/
+
+								ultimoPID++;
+
+								Paquete* respuestaMemoria = malloc(sizeof(Paquete));
+
+								RecibirPaquete(socketConMemoria, MEMORIA, respuestaMemoria);
+
+								if(respuestaMemoria->Payload != 1) // 1 significa que la memoria no tiene espacio
+								{
+									contPag.CantPaginas += respuestaMemoria->Payload;
+								}
+
+								free(respuestaMemoria->Payload);
+								free(respuestaMemoria);
+
+								//Enviar archivo a la memoria
+								//Verificar que la memoria pueda almacenar el archivo
+							}
 							break;
 						}
+
 						//Y finalmente, no puede faltar hacer el free
 						free(paquete->Payload); //No olvidar hacer DOS free
 						free(paquete);
-				}
+				  }
 				else
 					FD_CLR(i, &master); // eliminar del conjunto maestro si falla
 				}
+
 			}
 		}
 	}
-
 	return 0;
 }
