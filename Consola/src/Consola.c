@@ -92,46 +92,67 @@ void disconnect() {
 }
 
 void clean() {
-	printf("\e[2J\e[H"); // Clear screen and home cursor
+	system ( "clear" ); // Clear screen and home cursor
 }
 
 void sendSignalOpenFile(char* programPath, int socketFD) {
-	FILE* fileForSend = txt_open_for_append(programPath);
-	//send
-	EnviarMensaje(socketFD, programPath, CONSOLA);
+	FILE* fileForSend = fopen(programPath, "r");
+	char * buffer = 0;
+	long length;
+
+	if (fileForSend)
+	{
+	  fseek (fileForSend, 0, SEEK_END);
+	  length = ftell (fileForSend);
+	  fseek (fileForSend, 0, SEEK_SET);
+	  buffer = malloc (length);
+	  if (buffer)
+	  {
+	    fread (buffer, 1, length, fileForSend);
+	  }
+	  fclose (fileForSend);
+	}
+	EnviarMensaje(socketFD,buffer, CONSOLA);
 }
 
-char* getFirstWord(char* string) {
-	return string_split(string, ' ')[0];
+char* getWord(char* string, int pos) {
+	char delimiter[] = " ";
+	char *word, *context;
+	int inputLength = strlen(string);
+	char *inputCopy = (char*) calloc(inputLength + 1, sizeof(char));
+	strncpy(inputCopy, string, inputLength);
+	if (pos == 0){
+		return strtok_r (inputCopy, delimiter, &context);
+	}
+	else{
+		int i;
+		for (i = 1; i <= pos; i++) {
+			word = strtok_r (NULL, delimiter, &context);
+		}
+	}
+	return word;
 }
 
-char* getRestOfString(char* string) {
-	char* firstWord = string_split(string, ' ')[0];
-	char* lengthOfFirstWord = string_length(firstWord);
-	return string_substring_from(string, lengthOfFirstWord);
-}
-
-void userInterfaceHandler(int socketFD) {
+void userInterfaceHandler(void* socketFD) {
 	while (true) {
 		char str[100];
 		printf("\n\nIngrese un mensaje: \n");
 		scanf("%99[^\n]", str);
-		char* command = getFirstWord(str);
-		char* programPath = getRestOfString(str);
-		if (strcmp(command, "start_program")) {
-			startProgram(programPath, socketFD);
-		} else if (strcmp(command, "end_program")) {
-			endProgram(programPath, socketFD);
-		} else if (strcmp(command, "disconnect")) {
+		char* command = getWord(str, 0);
+		char* programPath = getWord(str, 1);
+		if (strcmp(command, "start_program") == 0) {
+			startProgram(programPath, (int) socketFD);
+		} else if (strcmp(command, "end_program") == 0) {
+			endProgram(programPath, (int) socketFD);
+		} else if (strcmp(command, "disconnect") == 0) {
 			disconnect();
-		} else if (strcmp(command, "clean")) {
+		} else if (strcmp(command, "clean") == 0) {
 			clean();
-		} else if (strcmp(command, "open_file")) {
-			sendSignalOpenFile(programPath, socketFD);
+		} else if (strcmp(command, "open_file") == 0) {
+			sendSignalOpenFile(programPath, (int) socketFD);
 		} else {
 			printf("No se conoce el mensaje %s\n", str);
 		}
-		EnviarMensaje(socketFD, str, CONSOLA);
 	}
 }
 
@@ -140,7 +161,7 @@ int main(void) {
 	imprimirArchivoConfiguracion();
 	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
 	pthread_t userInterface;
-	int* arg = &socketFD;
+	void* arg = socketFD;
 	pthread_create(&userInterface, NULL, userInterfaceHandler, (void*) arg);
 	pthread_join(userInterface, NULL);
 	close(socketFD);

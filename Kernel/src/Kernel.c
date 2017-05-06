@@ -235,7 +235,12 @@ int main(void)
 					int result = RecibirPaquete(i, KERNEL, paquete);
 					if(	result>0){
 						if(paquete->header.tipoMensaje!=ESHANDSHAKE){ //Solo muestro el mensaje y replico si NO es handshake
-							printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
+							if (paquete->header.tipoMensaje==ESSTRING) {
+								printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
+							}
+							else if (paquete->header.tipoMensaje==ESARCHIVO) {
+								printf("\Archivo recibido: %s", (char*)paquete->Payload);
+							}
 							//replicar aca!!
 							// tenemos datos de algún cliente
 							int j;
