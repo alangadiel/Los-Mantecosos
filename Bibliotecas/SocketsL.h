@@ -33,6 +33,7 @@
 #define ESSTRING '0'
 #define ESARCHIVO '2'
 #define ESINT '3'
+#define ESPCB '4'
 #define CPU "CPU       "
 //usar uint32_t
 #define INIC_PROG 0
