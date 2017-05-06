@@ -244,7 +244,7 @@ int main(void)
 									if (FD_ISSET(j, &master)) {
 										// excepto al listener y a nosotros mismos
 										if (j != SocketEscucha && j != i) {
-											EnviarMensaje(j,(char*)paquete->Payload,KERNEL, ESSTRING);
+											EnviarMensaje(j,(char*)paquete->Payload,KERNEL);
 											/*if (send(j, paquete, result, 0) == -1) {
 												perror("send");
 											}*/
