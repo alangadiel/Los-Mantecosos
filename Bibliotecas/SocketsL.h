@@ -2,6 +2,7 @@
 #define SOCKETS_H_
 
 #include <stdio.h>
+#include <math.h>
 
 #include <stdlib.h>
 #include <arpa/inet.h>

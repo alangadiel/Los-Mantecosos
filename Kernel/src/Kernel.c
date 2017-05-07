@@ -86,6 +86,7 @@ void ObtenerTamanioPagina(int socketFD){
 	free(datosInicialesMemoria);
 
 }
+
 void obtenerValoresArchivoConfiguracion()
 {
 	int contadorDeVariables = 0;
@@ -252,11 +253,11 @@ void imprimirArchivoConfiguracion()
 
 int main(void)
 {
-	/*t_list* new = list_create();
-	t_list* exit = list_create();
-	t_list* blocked = list_create();
-	t_list* executed = list_create();
-	t_list* ready = list_create();*/
+	t_list* Nuevos = list_create();
+	t_list* Finalizados = list_create();
+	t_list* Bloqueados = list_create();
+	t_list* Ejecutando = list_create();
+	t_list* Listos = list_create();
 
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
@@ -311,9 +312,14 @@ int main(void)
 									if(strcmp(paquete->header.emisor,CONSOLA)==0)
 									{
 										double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
-										//double tamanioTotalPaginas = ceil(tamanioArchivo+STACK_SIZE);
+										double tamanioTotalPaginas = ceil(tamanioArchivo+STACK_SIZE);
+										//Creo el pcb y lo guardo en la lista de nuevos
+										BloqueControlProceso pcb;
+										pcb.PID = ultimoPID+1;
+										ultimoPID++;
+										list_add(Nuevos,&pcb);
 										//Pregunta a la memoria si me puede guardar estas paginas
-										//EnviarInt(socketConMemoria, tamanioTotalPaginas, KERNEL);
+										EnviarInt(socketConMemoria, tamanioTotalPaginas, KERNEL);
 
 										Paquete* respuestaMemoria = malloc(sizeof(Paquete));
 										//Recibo el OK de la memoria
@@ -321,12 +327,14 @@ int main(void)
 
 										if(respuestaMemoria->Payload >0) // N° negativo significa que la memoria no tiene espacio
 										{
-											BloqueControlProceso pcb;
-											pcb.PID = ultimoPID+1;
+
 											pcb.PaginasDeCodigo = respuestaMemoria->Payload;
-											ultimoPID++;
+
+											//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
+											//list_remove_by_condition(Nuevos,CompararPCB())
+											list_add(Listos,&pcb);
 											//Solicito a la memoria que me guarde el codigo del programa
-											EnviarMensaje(socketConMemoria,paquete->Payload,KERNEL);
+											EnviarMensaje(socketConMemoria,(char*)paquete->Payload,KERNEL);
 										}
 										else
 										{
