@@ -1,5 +1,5 @@
 #include "SocketsL.h"
-
+#include <math.h>
 #define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
 
 
@@ -25,10 +25,6 @@ typedef struct  {
  int isFree;
 } HeapMetadata;
 
-typedef struct{
-	uint32_t IdProceso;
-	uint32_t CantPaginas;
-} ContadorDePaginas;
 typedef struct {
 	uint32_t PID;
 	uint32_t TamanioStack;
@@ -37,11 +33,17 @@ typedef struct {
 	uint32_t PaginasDeCodigo;
 	//int ExitCode;
 } BloqueControlProceso ;
+
 typedef struct {
 	FILE * file;
 	BloqueControlProceso pcb;
 } PeticionTamanioStack;
+
 int TamanioPagina;
+
+
+
+
 /*
 //replicar aca!!
 int j;
@@ -250,6 +252,12 @@ void imprimirArchivoConfiguracion()
 
 int main(void)
 {
+	/*t_list* new = list_create();
+	t_list* exit = list_create();
+	t_list* blocked = list_create();
+	t_list* executed = list_create();
+	t_list* ready = list_create();*/
+
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	int socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
@@ -296,56 +304,45 @@ int main(void)
 							case ESSTRING:
 								//Solo muestro el mensaje y replico si NO es handshake
 								printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
-
-								//replicar aca!!
-								int j;
-								for (j = 0; j <= fdmax; j++) {
-										// ¡enviar a todo el mundo!
-										if (FD_ISSET(j, &master)) {
-											// excepto al listener y a nosotros mismos
-											if (j != SocketEscucha && j != i) {
-												EnviarMensaje(j,(char*)paquete->Payload,KERNEL);
-												/*if (send(j, paquete, result, 0) == 1) {
-													perror("send");
-												}*/
-											}
-										}
-								}
 							break;
+
 							case ESARCHIVO:
 							{
-								int tamanioArchivo = GetTamanioArchivo((FILE*)paquete->Payload);
-								int tamanioTotal = tamanioArchivo+STACK_SIZE*TamanioPagina;
-								//EnviarMensaje(socketConMemoria,,KERNEL,ESINT);
-								EnviarInt(socketConMemoria, tamanioTotal, KERNEL);
+									if(strcmp(paquete->header.emisor,CONSOLA)==0)
+									{
+										double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
+										//double tamanioTotalPaginas = ceil(tamanioArchivo+STACK_SIZE);
+										//Pregunta a la memoria si me puede guardar estas paginas
+										//EnviarInt(socketConMemoria, tamanioTotalPaginas, KERNEL);
 
-								BloqueControlProceso pcb;
-								ContadorDePaginas contPag;
+										Paquete* respuestaMemoria = malloc(sizeof(Paquete));
+										//Recibo el OK de la memoria
+										RecibirPaquete(socketConMemoria, MEMORIA, respuestaMemoria);
 
-								pcb.PID = ultimoPID+1;
-								contPag.IdProceso = pcb.PID;
-								contPag.CantPaginas = 0;
-								/*pcb.ProgramCounter=0;
-								pcb.IndiceDeCodigo[0]=0;
-								pcb.IndiceDeCodigo[1]=0;*/
+										if(respuestaMemoria->Payload >0) // N° negativo significa que la memoria no tiene espacio
+										{
+											BloqueControlProceso pcb;
+											pcb.PID = ultimoPID+1;
+											pcb.PaginasDeCodigo = respuestaMemoria->Payload;
+											ultimoPID++;
+											//Solicito a la memoria que me guarde el codigo del programa
+											EnviarMensaje(socketConMemoria,paquete->Payload,KERNEL);
+										}
+										else
+										{
+											EnviarMensaje(i,"No se pudo guardar el programa",KERNEL);
+										}
 
-								ultimoPID++;
+										free(respuestaMemoria->Payload);
+										free(respuestaMemoria);
 
-								Paquete* respuestaMemoria = malloc(sizeof(Paquete));
+										//Enviar archivo a la memoria
+										//Verificar que la memoria pueda almacenar el archivo
+									}
 
-								RecibirPaquete(socketConMemoria, MEMORIA, respuestaMemoria);
-
-								if(respuestaMemoria->Payload != 1) // 1 significa que la memoria no tiene espacio
-								{
-									contPag.CantPaginas += respuestaMemoria->Payload;
 								}
 
-								free(respuestaMemoria->Payload);
-								free(respuestaMemoria);
 
-								//Enviar archivo a la memoria
-								//Verificar que la memoria pueda almacenar el archivo
-							}
 							break;
 						}
 
