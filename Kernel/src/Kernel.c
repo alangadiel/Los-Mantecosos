@@ -40,7 +40,12 @@ typedef struct {
 } PeticionTamanioStack;
 
 int TamanioPagina;
-
+uint32_t PidAComparar;
+t_list* Nuevos;
+t_list* Finalizados;
+t_list* Bloqueados;
+t_list* Ejecutando;
+t_list* Listos;
 
 
 
@@ -86,7 +91,17 @@ void ObtenerTamanioPagina(int socketFD){
 	free(datosInicialesMemoria);
 
 }
-
+int CompararPCB(BloqueControlProceso pcb){
+	return pcb.PID == PidAComparar;
+}
+BloqueControlProceso CrearNuevoProceso(){
+	//Creo el pcb y lo guardo en la lista de nuevos
+	BloqueControlProceso pcb;
+	pcb.PID = ultimoPID+1;
+	ultimoPID++;
+	list_add(Nuevos,&pcb);
+	return pcb;
+}
 void obtenerValoresArchivoConfiguracion()
 {
 	int contadorDeVariables = 0;
@@ -253,11 +268,11 @@ void imprimirArchivoConfiguracion()
 
 int main(void)
 {
-	t_list* Nuevos = list_create();
-	t_list* Finalizados = list_create();
-	t_list* Bloqueados = list_create();
-	t_list* Ejecutando = list_create();
-	t_list* Listos = list_create();
+	Nuevos = list_create();
+	Finalizados= list_create();
+	Bloqueados= list_create();
+    Ejecutando= list_create();
+	Listos= list_create();
 
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
@@ -313,41 +328,38 @@ int main(void)
 									{
 										double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
 										double tamanioTotalPaginas = ceil(tamanioArchivo+STACK_SIZE);
-										//Creo el pcb y lo guardo en la lista de nuevos
-										BloqueControlProceso pcb;
-										pcb.PID = ultimoPID+1;
-										ultimoPID++;
-										list_add(Nuevos,&pcb);
-										//Pregunta a la memoria si me puede guardar estas paginas
-										EnviarInt(socketConMemoria, tamanioTotalPaginas, KERNEL);
+										BloqueControlProceso pcb = CrearNuevoProceso();
+										//Manejo la multiprogramacion
+										if(list_size(Listos>=GRADO_MULTIPROG)){
+											//Pregunta a la memoria si me puede guardar estas paginas
+											EnviarInt(socketConMemoria, tamanioTotalPaginas, KERNEL);
 
-										Paquete* respuestaMemoria = malloc(sizeof(Paquete));
-										//Recibo el OK de la memoria
-										RecibirPaquete(socketConMemoria, MEMORIA, respuestaMemoria);
+											Paquete* respuestaMemoria = malloc(sizeof(Paquete));
+											//Recibo el OK de la memoria
+											RecibirPaquete(socketConMemoria, MEMORIA, respuestaMemoria);
 
-										if(respuestaMemoria->Payload >0) // N° negativo significa que la memoria no tiene espacio
-										{
+											if(respuestaMemoria->Payload >0) // N° negativo significa que la memoria no tiene espacio
+											{
 
-											pcb.PaginasDeCodigo = respuestaMemoria->Payload;
+												pcb.PaginasDeCodigo = respuestaMemoria->Payload;
 
-											//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
-											//list_remove_by_condition(Nuevos,CompararPCB())
-											list_add(Listos,&pcb);
-											//Solicito a la memoria que me guarde el codigo del programa
-											EnviarMensaje(socketConMemoria,(char*)paquete->Payload,KERNEL);
+												//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
+												PidAComparar = pcb.PID;
+												list_remove_by_condition(Nuevos,CompararPCB);
+												list_add(Listos,&pcb);
+												//Solicito a la memoria que me guarde el codigo del programa
+												EnviarMensaje(socketConMemoria,(char*)paquete->Payload,KERNEL);
+											}
+											else
+											{
+												EnviarMensaje(i,"No se pudo guardar el programa",KERNEL);
+											}
+
+											free(respuestaMemoria->Payload);
+											free(respuestaMemoria);
 										}
-										else
-										{
-											EnviarMensaje(i,"No se pudo guardar el programa",KERNEL);
-										}
 
-										free(respuestaMemoria->Payload);
-										free(respuestaMemoria);
-
-										//Enviar archivo a la memoria
-										//Verificar que la memoria pueda almacenar el archivo
 									}
-
 								}
 
 
