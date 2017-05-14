@@ -2,6 +2,8 @@
 #define SOCKETS_H_
 
 #include <stdio.h>
+#include <math.h>
+
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
@@ -59,5 +61,12 @@ void EnviarHandshake(int socketFD,char emisor[11]);
 void RecibirHandshake(int socketFD,char emisor[11]);
 int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir);
 int RecibirPaquete(int socketFD, char receptor[11], Paquete* paquete);
+
+//Interfaz para comunicarse con Memoria: (definido por el TP, no se puede modificar)
+void IM_InicializarPrograma(uint32_t ID_Prog, uint32_t CantPag); //Solicitar paginas para un programa nuevo
+void* IM_LeerDatos(uint32_t ID_Prog, uint32_t PagNum, uint32_t offset, uint32_t cantBytes); //Devuelve los datos de una pagina, ¡Recordar hacer free(puntero) cuando los terminamos de usar!
+void IM_GuardarDatos(uint32_t ID_Prog, uint32_t PagNum, uint32_t offset, uint32_t cantBytes, void* buffer);
+uint32_t IM_AsignarPaginas(uint32_t ID_Prog, uint32_t CantPag);//Devuelve la cant de paginas que pudo asignar
+void IM_FinalizarPrograma(uint32_t ID_Prog);//Borra las paginas de ese programa.
 
 #endif //SOCKETS_H_
