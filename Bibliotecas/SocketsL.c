@@ -233,7 +233,7 @@ int RecibirPaqueteCliente (int socketFD, char receptor[11], Paquete* paquete){
 }
 
 //Interfaz para comunicarse con Memoria: (definido por el TP, no se puede modificar)
-void IM_InicializarPrograma(int socketFD,char emisor[11], uint32_t ID_Prog, uint32_t CantPag){ //Solicitar paginas para un programa nuevo
+uint32_t IM_InicializarPrograma(int socketFD,char emisor[11], uint32_t ID_Prog, uint32_t CantPag){ //Solicitar paginas para un programa nuevo, devuelve la cant de paginas que pudo asignar
 	int tamDatos = sizeof(uint32_t)*3;
 	void* datos = malloc(tamDatos);
 	((uint32_t*)datos)[0]=INIC_PROG;
@@ -241,6 +241,12 @@ void IM_InicializarPrograma(int socketFD,char emisor[11], uint32_t ID_Prog, uint
 	((uint32_t*)datos)[2]=CantPag;
 	EnviarDatos(socketFD,emisor, datos, tamDatos);
 	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while(RecibirPaqueteCliente(socketFD, MEMORIA, paquete)<=0){}
+	uint32_t r = *(uint32_t*)(paquete->Payload);
+	free(paquete->Payload);
+	free(paquete);
+	return r;
 }
 void* IM_LeerDatos(int socketFD,char emisor[11], uint32_t ID_Prog, uint32_t PagNum, uint32_t offset, uint32_t cantBytes){ //Devuelve los datos de una pagina, ¡Recordar hacer free(puntero) cuando los terminamos de usar!
 	int tamDatos = sizeof(uint32_t)*5;

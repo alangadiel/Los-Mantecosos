@@ -67,7 +67,7 @@ int RecibirPaqueteServidor(int socketFD, char receptor[11], Paquete* paquete); /
 int RecibirPaqueteCliente(int socketFD, char receptor[11], Paquete* paquete); //No responde los Handshakes
 
 //Interfaz para comunicarse con Memoria: (definido por el TP, no se puede modificar)
-void IM_InicializarPrograma(int socketFD,char emisor[11], uint32_t ID_Prog, uint32_t CantPag); //Solicitar paginas para un programa nuevo
+uint32_t IM_InicializarPrograma(int socketFD,char emisor[11], uint32_t ID_Prog, uint32_t CantPag); //Solicitar paginas para un programa nuevo, devuelve la cant de paginas que pudo asignar
 void* IM_LeerDatos(int socketFD,char emisor[11], uint32_t ID_Prog, uint32_t PagNum, uint32_t offset, uint32_t cantBytes); //Devuelve los datos de una pagina, ¡Recordar hacer free(puntero) cuando los terminamos de usar!
 void IM_GuardarDatos(int socketFD,char emisor[11], uint32_t ID_Prog, uint32_t PagNum, uint32_t offset, uint32_t cantBytes, void* buffer);
 uint32_t IM_AsignarPaginas(int socketFD,char emisor[11], uint32_t ID_Prog, uint32_t CantPag);//Devuelve la cant de paginas que pudo asignar
