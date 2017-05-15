@@ -232,7 +232,7 @@ int main(void)
 				}
 				else  {
 					Paquete* paquete = malloc(sizeof(Paquete));
-					int result = RecibirPaquete(i, KERNEL, paquete);
+					int result = RecibirPaqueteServidor(i, KERNEL, paquete);
 					if(	result>0){
 						if(paquete->header.tipoMensaje!=ESHANDSHAKE){ //Solo muestro el mensaje y replico si NO es handshake
 							printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
