@@ -83,7 +83,7 @@ int GetTamanioArchivo(FILE * f){
 }
 void ObtenerTamanioPagina(int socketFD){
 	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
-	int datosRecibidos = RecibirPaquete(socketFD,KERNEL,datosInicialesMemoria);
+	int datosRecibidos = RecibirPaqueteCliente(socketFD,KERNEL,datosInicialesMemoria);
 	if(datosRecibidos>0 ){
 		TamanioPagina = *((int*)datosInicialesMemoria->Payload);
 	}
@@ -313,7 +313,7 @@ int main(void)
 				}
 				else  {
 					Paquete* paquete = malloc(sizeof(Paquete));
-					int result = RecibirPaquete(i, KERNEL, paquete);
+					int result = RecibirPaqueteServidor(i, KERNEL, paquete);
 					if(	result>0){
 						switch(paquete->header.tipoMensaje)
 						{
@@ -332,11 +332,12 @@ int main(void)
 										//Manejo la multiprogramacion
 										if(list_size(Listos>=GRADO_MULTIPROG)){
 											//Pregunta a la memoria si me puede guardar estas paginas
-											EnviarInt(socketConMemoria, tamanioTotalPaginas, KERNEL);
+											IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
+
 
 											Paquete* respuestaMemoria = malloc(sizeof(Paquete));
 											//Recibo el OK de la memoria
-											RecibirPaquete(socketConMemoria, MEMORIA, respuestaMemoria);
+											RecibirPaqueteCliente(socketConMemoria, MEMORIA, respuestaMemoria);
 
 											if(respuestaMemoria->Payload >0) // N° negativo significa que la memoria no tiene espacio
 											{
