@@ -330,25 +330,18 @@ int main(void)
 										double tamanioTotalPaginas = ceil(tamanioArchivo+STACK_SIZE);
 										BloqueControlProceso pcb = CrearNuevoProceso();
 										//Manejo la multiprogramacion
-										if(list_size(Listos>=GRADO_MULTIPROG)){
+										if(list_size(Listos)>=GRADO_MULTIPROG){
 											//Pregunta a la memoria si me puede guardar estas paginas
-											IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
-
-
-											Paquete* respuestaMemoria = malloc(sizeof(Paquete));
-											//Recibo el OK de la memoria
-											RecibirPaqueteCliente(socketConMemoria, MEMORIA, respuestaMemoria);
-
-											if(respuestaMemoria->Payload >0) // N° negativo significa que la memoria no tiene espacio
+											pcb.PaginasDeCodigo = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
+											if(pcb.PaginasDeCodigo != tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
 											{
-
-												pcb.PaginasDeCodigo = respuestaMemoria->Payload;
-
 												//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
 												PidAComparar = pcb.PID;
 												list_remove_by_condition(Nuevos,CompararPCB);
 												list_add(Listos,&pcb);
 												//Solicito a la memoria que me guarde el codigo del programa
+
+												IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
 												EnviarMensaje(socketConMemoria,(char*)paquete->Payload,KERNEL);
 											}
 											else
@@ -356,8 +349,6 @@ int main(void)
 												EnviarMensaje(i,"No se pudo guardar el programa",KERNEL);
 											}
 
-											free(respuestaMemoria->Payload);
-											free(respuestaMemoria);
 										}
 
 									}
