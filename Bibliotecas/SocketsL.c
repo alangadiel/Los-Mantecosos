@@ -44,15 +44,15 @@ void Servidor(char* ip, int puerto, char nombre[11], void (*accion)(Paquete* paq
 		}
 	}
 }
-int ConectarServidor(int PUERTO_KERNEL, char* IP_KERNEL, char servidor[11], char cliente[11])
+int ConectarServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11])
 {
 	int socketFD = socket(AF_INET,SOCK_STREAM,0);
 
 	struct sockaddr_in direccionKernel;
 
 	direccionKernel.sin_family = AF_INET;
-	direccionKernel.sin_port = htons(PUERTO_KERNEL);
-	direccionKernel.sin_addr.s_addr = inet_addr(IP_KERNEL);
+	direccionKernel.sin_port = htons(puertoAConectar);
+	direccionKernel.sin_addr.s_addr = inet_addr(ipAConectar);
 	memset(&(direccionKernel.sin_zero), '\0', 8);
 	connect(socketFD,(struct sockaddr *)&direccionKernel, sizeof(struct sockaddr));
 
