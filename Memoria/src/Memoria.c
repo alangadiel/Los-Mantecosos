@@ -97,7 +97,7 @@ void AlmacenarBytes(Paquete* paquete) {
 //Buscar pagina
 sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
 
-memcpy(bloquePpal+DATOS[3],(void*)DATOS[5],DATOS[4]);
+memcpy(bloquePpal+DATOS[2],(void*)DATOS[4],DATOS[3]);
 //actualizar cache
 }
 void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
@@ -127,21 +127,22 @@ void accion(Paquete* paquete, int socketFD){
 	switch (paquete->header.tipoMensaje){
 	case ESSTRING:
 		printf("\nTexto recibido: %s", (char*)paquete->Payload);
-		switch ((*(uint32_t*)paquete->Payload)){
+		switch ((*(uint8_t*)paquete->Payload)){
+		(uint8_t*)paquete->Payload++;
 		case INIC_PROG:
-			IniciarPrograma(DATOS[1],DATOS[2]);
+			IniciarPrograma(DATOS[0],DATOS[1]);
 		break;
 		case SOL_BYTES:
-			SolicitarBytes(DATOS[1],DATOS[2],DATOS[3],DATOS[4],socketFD);
+			SolicitarBytes(DATOS[0],DATOS[1],DATOS[2],DATOS[3],socketFD);
 		break;
 		case ALM_BYTES:
 			AlmacenarBytes(paquete);
 		break;
 		case ASIG_PAG:
-			AsignarPaginas(DATOS[1],DATOS[2],socketFD);
+			AsignarPaginas(DATOS[0],DATOS[1],socketFD);
 		break;
 		case FIN_PROG:
-			FinalizarPrograma(DATOS[1]);
+			FinalizarPrograma(DATOS[0]);
 		break;
 		}
 	break;
