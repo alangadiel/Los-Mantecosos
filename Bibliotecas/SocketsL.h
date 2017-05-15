@@ -25,12 +25,12 @@
 #define MEMORIA "Memoria   "
 #define CPU "CPU       "
 //Tipos de envios:
-#define ESHANDSHAKE '1'
-#define ESSTRING '0'
-#define ESARCHIVO '2'
-#define ESINT '3'
-#define ESDATOS '4' //tipo generico
-#define ESPCB '5'
+#define ESHANDSHAKE -1
+#define ESDATOS 0 //tipo generico
+#define ESSTRING 1
+#define ESARCHIVO 2
+#define ESINT 3
+#define ESPCB 4
 //API Memoria:
 #define INIC_PROG 0
 #define SOL_BYTES 1
@@ -40,7 +40,7 @@
 
 typedef struct
 {
-	char tipoMensaje;
+	int8_t tipoMensaje;
 	uint32_t tamPayload;
 	char emisor[11];
 }  __attribute__((packed)) Header;
@@ -54,7 +54,7 @@ typedef struct
 
 void Servidor(char* ip, int puerto, char nombre[11], void (*accion)(Paquete* paquete, int socketFD));
 int StartServidor(char* MyIP,int MyPort);
-int ConectarServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11]);
+int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11]);
 
 void EnviarHandshake(int socketFD,char emisor[11]);
 void EnviarDatos(int socketFD,char emisor[11], void* datos, int tamDatos);

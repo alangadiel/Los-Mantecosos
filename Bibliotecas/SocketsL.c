@@ -44,7 +44,7 @@ void Servidor(char* ip, int puerto, char nombre[11], void (*accion)(Paquete* paq
 		}
 	}
 }
-int ConectarServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11])
+int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11])
 {
 	int socketFD = socket(AF_INET,SOCK_STREAM,0);
 
@@ -117,7 +117,7 @@ void EnviarPaquete(int socketCliente, Paquete* paquete)
 	int cantAEnviar= sizeof(Header)+ paquete->header.tamPayload;
 	void* datos = malloc(cantAEnviar);
 	memcpy(datos,&(paquete->header),TAMANIOHEADER);
-	if(paquete->header.tipoMensaje!=ESHANDSHAKE)
+	if(paquete->header.tipoMensaje>=0) //No sea handshake
 		memcpy(datos+TAMANIOHEADER,(paquete->Payload),paquete->header.tamPayload);
 
 	//Paquete* punteroMsg = datos;
@@ -224,7 +224,7 @@ int RecibirPaqueteServidor(int socketFD, char receptor[11], Paquete* paquete){
 int RecibirPaqueteCliente (int socketFD, char receptor[11], Paquete* paquete){
 	paquete->Payload= malloc(1);
 	int resul = RecibirDatos(&(paquete->header),socketFD, TAMANIOHEADER);
-	if(resul>0 && paquete->header.tipoMensaje!=ESHANDSHAKE){ //si no hubo error ni es un handshake
+	if(resul>0 && paquete->header.tipoMensaje>=0){ //si no hubo error ni es un handshake
 		paquete->Payload= realloc(paquete->Payload, paquete->header.tamPayload);
 		resul= RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 	}
