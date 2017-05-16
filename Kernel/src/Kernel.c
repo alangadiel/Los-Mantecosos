@@ -302,7 +302,7 @@ void accion(Paquete* paquete, int socketConectado){
 							//Solicito a la memoria que me guarde el codigo del programa
 
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
-							EnviarMensaje(socketConMemoria,(char*)paquete->Payload,KERNEL);
+
 						}
 						else
 						{
