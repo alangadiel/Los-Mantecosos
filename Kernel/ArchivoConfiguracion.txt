@@ -13,3 +13,4 @@ SEM_INIT=[0, 0, 5]
 SHARED_VARS=[!Global, !UnaVar, !tiempo3]
 STACK_SIZE=2
 IP_PROG=127.0.0.1
+TAM_PAG=128000

@@ -80,7 +80,7 @@ int main(void)
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 
-	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
+	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
 
 	char str[100];
 	printf("\n\nIngrese un mensaje: \n");

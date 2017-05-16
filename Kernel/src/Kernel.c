@@ -1,7 +1,7 @@
 #include "SocketsL.h"
 #include <math.h>
 #define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
-
+#define LAMBDA(c_) ({ c_ _;}) //Para funciones lamda
 
 int PUERTO_PROG;
 int PUERTO_CPU;
@@ -18,7 +18,10 @@ int SEM_INIT[100];
 char* SHARED_VARS[100];
 int STACK_SIZE;
 char* IP_PROG;
+int TAM_PAG;
+
 int ultimoPID=0;
+int socketConMemoria;
 
 typedef struct  {
  uint32_t size;
@@ -39,7 +42,7 @@ typedef struct {
 	BloqueControlProceso pcb;
 } PeticionTamanioStack;
 
-int TamanioPagina;
+
 uint32_t PidAComparar;
 t_list* Nuevos;
 t_list* Finalizados;
@@ -81,19 +84,18 @@ int GetTamanioArchivo(FILE * f){
 	int size = ftell(f);
 	return size;
 }
+/*
 void ObtenerTamanioPagina(int socketFD){
 	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
 	int datosRecibidos = RecibirPaqueteCliente(socketFD,KERNEL,datosInicialesMemoria);
 	if(datosRecibidos>0 ){
-		TamanioPagina = *((int*)datosInicialesMemoria->Payload);
+		TamanioPagina = *((TamanioPagina*)datosInicialesMemoria->Payload);
 	}
 	free(datosInicialesMemoria->Payload+1);
 	free(datosInicialesMemoria);
 
-}
-int CompararPCB(BloqueControlProceso pcb){
-	return pcb.PID == PidAComparar;
-}
+}*/
+
 BloqueControlProceso CrearNuevoProceso(){
 	//Creo el pcb y lo guardo en la lista de nuevos
 	BloqueControlProceso pcb;
@@ -116,12 +118,19 @@ void obtenerValoresArchivoConfiguracion()
 		{
 			if (c == '=')
 			{
+				if (contadorDeVariables == 15)
+				{
+					fscanf(file, "%i", &TAM_PAG);
+					contadorDeVariables++;
+
+				}
 				if (contadorDeVariables == 14)
 				{
 					char buffer[10000];
 
 					IP_PROG = fgets(buffer, sizeof buffer, file);
 					strtok(IP_PROG, "\n");
+					contadorDeVariables++;
 				}
 
 				if (contadorDeVariables == 13)
@@ -266,6 +275,48 @@ void imprimirArchivoConfiguracion()
 	}
 }
 
+void accion(Paquete* paquete, int socketConectado){
+	switch(paquete->header.tipoMensaje) {
+		case ESSTRING:
+			//Solo muestro el mensaje y replico si NO es handshake
+			printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
+		break;
+
+		case ESARCHIVO:
+
+				if(strcmp(paquete->header.emisor,CONSOLA)==0)
+				{
+					double tamanioArchivo = paquete->header.tamPayload/TAM_PAG;
+					double tamanioTotalPaginas = ceil(tamanioArchivo+STACK_SIZE);
+					BloqueControlProceso pcb = CrearNuevoProceso();
+					//Manejo la multiprogramacion
+					if(list_size(Listos)>=GRADO_MULTIPROG){
+						//Pregunta a la memoria si me puede guardar estas paginas
+						pcb.PaginasDeCodigo = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
+						if(pcb.PaginasDeCodigo != tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
+						{
+							//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
+							PidAComparar = pcb.PID;
+							list_remove_by_condition(Nuevos, LAMBDA(bool _(BloqueControlProceso* pcb) { return pcb->PID == PidAComparar; }));
+							list_add(Listos,&pcb);
+							//Solicito a la memoria que me guarde el codigo del programa
+
+							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
+							EnviarMensaje(socketConMemoria,(char*)paquete->Payload,KERNEL);
+						}
+						else
+						{
+							EnviarMensaje(socketConectado,"No se pudo guardar el programa",KERNEL);
+						}
+
+					}
+
+				}
+
+		break;
+	}
+}
+
 int main(void)
 {
 	Nuevos = list_create();
@@ -276,98 +327,10 @@ int main(void)
 
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	int socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
-	ObtenerTamanioPagina(socketConMemoria);
+	socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
+	//ObtenerTamanioPagina(socketConMemoria);
 
+	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion);
 
-	int SocketEscucha = StartServidor(IP_PROG, PUERTO_PROG);
-
-	fd_set master; // conjunto maestro de descriptores de fichero
-	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
-	FD_ZERO(&master); // borra los conjuntos maestro y temporal
-	FD_ZERO(&read_fds);
-	FD_SET(SocketEscucha, &master); // añadir listener al conjunto maestro
-	int fdmax = SocketEscucha; // seguir la pista del descriptor de fichero mayor, por ahora es éste
-	struct sockaddr_in remoteaddr; // dirección del cliente
-	// bucle principal
-	for(;;)	{
-		read_fds = master; // cópialo
-		if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1)		{
-			perror("select");
-			exit(1);
-		}
-		// explorar conexiones existentes en busca de datos que leer
-		int i;
-		for(i = 0; i <= fdmax; i++)	{
-			if (FD_ISSET(i, &read_fds)) { // ¡¡tenemos datos!!
-				if (i == SocketEscucha) { // gestionar nuevas conexiones
-					int addrlen = sizeof(remoteaddr);
-					int nuevoSocket = accept(SocketEscucha, (struct sockaddr*)&remoteaddr,&addrlen);
-					if (nuevoSocket == -1)
-						perror("accept");
-					else {
-						FD_SET(nuevoSocket, &master); // añadir al conjunto maestro
-						if (nuevoSocket > fdmax) fdmax = nuevoSocket; // actualizar el máximo
-						printf("\nNueva conexion de %s en " "socket %d\n", inet_ntoa(remoteaddr.sin_addr),nuevoSocket);
-					}
-				}
-				else  {
-					Paquete* paquete = malloc(sizeof(Paquete));
-					int result = RecibirPaqueteServidor(i, KERNEL, paquete);
-					if(	result>0){
-						switch(paquete->header.tipoMensaje)
-						{
-							case ESSTRING:
-								//Solo muestro el mensaje y replico si NO es handshake
-								printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
-							break;
-
-							case ESARCHIVO:
-							{
-									if(strcmp(paquete->header.emisor,CONSOLA)==0)
-									{
-										double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
-										double tamanioTotalPaginas = ceil(tamanioArchivo+STACK_SIZE);
-										BloqueControlProceso pcb = CrearNuevoProceso();
-										//Manejo la multiprogramacion
-										if(list_size(Listos)>=GRADO_MULTIPROG){
-											//Pregunta a la memoria si me puede guardar estas paginas
-											pcb.PaginasDeCodigo = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
-											if(pcb.PaginasDeCodigo != tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
-											{
-												//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
-												PidAComparar = pcb.PID;
-												list_remove_by_condition(Nuevos,CompararPCB);
-												list_add(Listos,&pcb);
-												//Solicito a la memoria que me guarde el codigo del programa
-
-												IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
-												EnviarMensaje(socketConMemoria,(char*)paquete->Payload,KERNEL);
-											}
-											else
-											{
-												EnviarMensaje(i,"No se pudo guardar el programa",KERNEL);
-											}
-
-										}
-
-									}
-								}
-
-
-							break;
-						}
-
-						//Y finalmente, no puede faltar hacer el free
-						free(paquete->Payload); //No olvidar hacer DOS free
-						free(paquete);
-				  }
-				else
-					FD_CLR(i, &master); // eliminar del conjunto maestro si falla
-				}
-
-			}
-		}
-	}
 	return 0;
 }
