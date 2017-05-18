@@ -101,6 +101,7 @@ int StartServidor(char* MyIP, int MyPort) // obtener socket a la escucha
 	return SocketEscucha;
 }
 
+
 void EnviarDatos(int socketFD,char emisor[11], void* datos, int tamDatos){
 	Paquete* paquete = malloc(sizeof(Paquete));
 	paquete->header.tipoMensaje= ESDATOS;
@@ -133,14 +134,20 @@ void EnviarPaquete(int socketCliente, Paquete* paquete)
 	} while (totalEnviado != cantAEnviar);
 	free(datos);
 }
+
+Paquete* crearPaquete(char emisor[11]) {
+	Paquete* paquete = malloc(sizeof(Paquete));
+	strcpy(paquete->header.emisor, emisor);
+	return paquete;
+}
+
+
 void EnviarMensaje(int socketFD, char* msg,char emisor[11])
 {
-	Paquete* paquete = malloc(sizeof(Paquete));
+	Paquete* paquete = crearPaquete(emisor);
 	paquete->header.tipoMensaje= ESSTRING;
 	paquete->header.tamPayload = string_length(msg)+1;
-	strcpy(paquete->header.emisor, emisor);
 	paquete -> Payload = msg;
-
 	EnviarPaquete(socketFD,paquete);
 
 	free(paquete);

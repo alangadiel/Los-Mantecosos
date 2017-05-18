@@ -329,8 +329,8 @@ int main(void)
 	imprimirArchivoConfiguracion();
 	socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
 	//ObtenerTamanioPagina(socketConMemoria);
-
 	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion);
+
 
 	return 0;
 }
