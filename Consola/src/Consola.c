@@ -89,10 +89,6 @@ int endProgram(char* programPath, int socketFD) {
 	return 0;
 }
 
-
-	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
-
-
 void disconnect() {
 
 }
@@ -165,7 +161,7 @@ void userInterfaceHandler(void* socketFD) {
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
+	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
 	pthread_t userInterface;
 	void* arg = socketFD;
 	pthread_create(&userInterface, NULL, userInterfaceHandler, (void*) arg);
