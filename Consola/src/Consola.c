@@ -82,6 +82,7 @@ int main(void)
 
 	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
 
+
 	char str[100];
 	printf("\n\nIngrese un mensaje: \n");
 	scanf("%99[^\n]",str);
