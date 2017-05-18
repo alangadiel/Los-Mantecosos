@@ -3,6 +3,9 @@
 #define TAMANIOMAXIMOFIJO 20
 #define true 1
 #define false 0
+#ifndef NULL
+#define NULL   ((void *) 0)
+#endif
 
 char* IP_KERNEL;
 int PUERTO_KERNEL;
@@ -46,7 +49,6 @@ void imprimirArchivoConfiguracion() {
 		while ((c = getc(file)) != EOF) {
 			putchar(c);
 		}
-
 		fclose(file);
 	}
 }
@@ -147,7 +149,6 @@ void userInterfaceHandler(void* socketFD) {
 		char* programPath = getWord(str, 1);
 		if (strcmp(command, "start_program") == 0) {
 			startProgram(programPath, (int) socketFD);
-		} else if (strcmp(command, "end_program") == 0) {
 			endProgram(programPath, (int) socketFD);
 		} else if (strcmp(command, "disconnect") == 0) {
 			disconnect();

@@ -22,7 +22,7 @@ int TAM_PAG;
 
 int ultimoPID=0;
 int socketConMemoria;
-
+uint32_t TamanioPagina;
 typedef struct  {
  uint32_t size;
  int isFree;
@@ -84,17 +84,17 @@ int GetTamanioArchivo(FILE * f){
 	int size = ftell(f);
 	return size;
 }
-/*
+
 void ObtenerTamanioPagina(int socketFD){
 	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
-	int datosRecibidos = RecibirPaqueteCliente(socketFD,KERNEL,datosInicialesMemoria);
+	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD,KERNEL,datosInicialesMemoria);
 	if(datosRecibidos>0 ){
-		TamanioPagina = *((TamanioPagina*)datosInicialesMemoria->Payload);
+		TamanioPagina = *((uint32_t*)datosInicialesMemoria->Payload);
 	}
 	free(datosInicialesMemoria->Payload+1);
 	free(datosInicialesMemoria);
 
-}*/
+}
 
 BloqueControlProceso CrearNuevoProceso(){
 	//Creo el pcb y lo guardo en la lista de nuevos
@@ -328,7 +328,7 @@ int main(void)
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
-	//ObtenerTamanioPagina(socketConMemoria);
+	ObtenerTamanioPagina(socketConMemoria);
 	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion);
 
 

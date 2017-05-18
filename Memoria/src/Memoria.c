@@ -5,7 +5,7 @@
 
 int PUERTO;
 int MARCOS;
-int MARCO_SIZE;
+uint32_t MARCO_SIZE;
 int ENTRADAS_CACHE;
 int CACHE_X_PROC;
 char* REEMPLAZO_CACHE;
@@ -94,11 +94,11 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam
 
 }
 void AlmacenarBytes(Paquete* paquete) {
-//Buscar pagina
-sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
+	//Buscar pagina
+	sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
 
-memcpy(bloquePpal+DATOS[2],(void*)DATOS[4],DATOS[3]);
-//actualizar cache
+	memcpy(bloquePpal+DATOS[2],(void*)DATOS[4],DATOS[3]);
+	//actualizar cache
 }
 void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
 
@@ -147,8 +147,12 @@ void accion(Paquete* paquete, int socketFD){
 		}
 	break;
 	case ESARCHIVO:
+	break;
 
-
+	case ESINT:
+		if(strcmp(paquete->header.emisor,KERNEL)==0){
+			EnviarDatos(socketFD,MEMORIA,MARCO_SIZE,sizeof(MARCO_SIZE));
+		}
 	break;
 	}
 }

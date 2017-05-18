@@ -19,7 +19,6 @@
 #include <sys/sendfile.h>
 
 
-
 #define TAMANIOHEADER sizeof(Header)
 #define STRHANDSHAKE "10"
 //Emisores:
