@@ -1,0 +1,33 @@
+#ifndef HELPER_
+#define HELPER_
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <unistd.h>
+#include <commons/log.h>
+#include <commons/collections/list.h>
+#include <commons/string.h>
+#include <commons/txt.h>
+#include <pthread.h>
+#include <fcntl.h>
+#include <time.h>
+#include <string.h>
+#include <stdint.h>
+#include <sys/types.h>
+
+typedef struct {
+	uint32_t PID;
+	uint32_t TamanioStack;
+	uint32_t ProgramCounter;
+	uint32_t IndiceDeCodigo[2];
+	uint32_t PaginasDeCodigo;
+	int ExitCode;
+} __attribute__((packed)) BloqueControlProceso;
+
+
+char* getWord(char* string, int pos);
+char* integer_to_string(int x);
+char* obtenerTiempoString(time_t t);
+int GetTamanioArchivo(FILE * f);
+#endif /* HELPER_*/

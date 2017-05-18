@@ -1,24 +1,11 @@
 #ifndef SOCKETS_H_
 #define SOCKETS_H_
 
-#include <stdio.h>
-#include <math.h>
+#include "Helper.h"
 
-#include <stdlib.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
 #include <sys/socket.h>
-#include <string.h>
-#include <unistd.h>
-#include <commons/log.h>
-#include <commons/collections/list.h>
-#include <commons/string.h>
-#include <commons/txt.h>
-#include <pthread.h>
-#include <fcntl.h>
+#include <arpa/inet.h>
 #include <sys/sendfile.h>
-#include <time.h>
-
 
 #define TAMANIOHEADER sizeof(Header)
 #define STRHANDSHAKE "10"

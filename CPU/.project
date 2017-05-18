@@ -25,6 +25,16 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>src/Helper.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Bibliotecas/Helper.c</locationURI>
+		</link>
+		<link>
+			<name>src/Helper.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Bibliotecas/Helper.h</locationURI>
+		</link>
+		<link>
 			<name>src/SocketsL.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Bibliotecas/SocketsL.c</locationURI>

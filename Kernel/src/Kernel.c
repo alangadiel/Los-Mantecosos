@@ -1,5 +1,6 @@
 #include "SocketsL.h"
-#include <math.h>
+#include "Helper.h"
+
 #define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
 #define LAMBDA(c_) ({ c_ _;}) //Para funciones lamda
 
@@ -29,15 +30,6 @@ typedef struct  {
 } HeapMetadata;
 
 typedef struct {
-	uint32_t PID;
-	uint32_t TamanioStack;
-	/*uint32_t ProgramCounter;
-	uint32_t IndiceDeCodigo[2];*/
-	uint32_t PaginasDeCodigo;
-	//int ExitCode;
-} BloqueControlProceso ;
-
-typedef struct {
 	FILE * file;
 	BloqueControlProceso pcb;
 } PeticionTamanioStack;
@@ -49,8 +41,6 @@ t_list* Finalizados;
 t_list* Bloqueados;
 t_list* Ejecutando;
 t_list* Listos;
-
-
 
 /*
 //replicar aca!!
@@ -68,7 +58,7 @@ for (j = 0; j <= fdmax; j++) {
 		}
 	}
 */
-char* ObtenerTextoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
+char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
 {
 	char buffer[10000];
 	char *line = fgets(buffer,sizeof buffer,f);
@@ -79,11 +69,7 @@ char* ObtenerTextoSinCorchetes(FILE* f) //Para obtener los valores de los arrays
 
 	return texto;
 }
-int GetTamanioArchivo(FILE * f){
-	fseek(f, 0L, SEEK_END);
-	int size = ftell(f);
-	return size;
-}
+
 
 void ObtenerTamanioPagina(int socketFD){
 	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
@@ -141,7 +127,7 @@ void obtenerValoresArchivoConfiguracion()
 
 				if (contadorDeVariables == 12)
 				{
-					char* texto = ObtenerTextoSinCorchetes(file);
+					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
 
 					while (texto != NULL)
@@ -155,7 +141,7 @@ void obtenerValoresArchivoConfiguracion()
 
 				if (contadorDeVariables == 11)
 				{
-					char* texto = ObtenerTextoSinCorchetes(file);
+					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
 
 					while (texto != NULL)
@@ -168,7 +154,7 @@ void obtenerValoresArchivoConfiguracion()
 				}
 
 				if (contadorDeVariables == 10){
-					char * texto = ObtenerTextoSinCorchetes(file);
+					char * texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
 
 					while (texto != NULL)
