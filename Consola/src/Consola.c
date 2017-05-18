@@ -10,6 +10,24 @@
 char* IP_KERNEL;
 int PUERTO_KERNEL;
 
+char* getWord(char* string, int pos) {
+	char delimiter[] = " ";
+	char *word, *context;
+	int inputLength = strlen(string);
+	char *inputCopy = (char*) calloc(inputLength + 1, sizeof(char));
+	strncpy(inputCopy, string, inputLength);
+	if (pos == 0){
+		return strtok_r (inputCopy, delimiter, &context);
+	}
+	else{
+		int i;
+		for (i = 1; i <= pos; i++) {
+			word = strtok_r (NULL, delimiter, &context);
+		}
+	}
+	return word;
+}
+
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
 	int c;
@@ -61,32 +79,67 @@ char* integer_to_string(int x) {
 	return buffer; // caller is expected to invoke free() on this buffer to release memory
 }
 
-void programHandler(int socketFD) {
-	while (true) {
-		char str[100];
-		printf("\n\nIngrese un mensaje: \n");
-		scanf("%99[^\n]", str);
+char* obtenerTiempoString(time_t t) {
+	struct tm *tm = localtime(&t);
+	char s[64];
+	strftime(s, sizeof(s), "%c", tm);
+	return s;
+}
 
-		EnviarMensaje(socketFD, str, CONSOLA);
+void programHandler(void *programPath) {
+	time_t tiempoDeInicio = time(NULL);
+	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
+	int pid;
+	sendSignalOpenFile((char*)programPath, socketFD);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
+	while(datosRecibidos<=0){
+		datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
+	}
+	pid = *((uint32_t*)paquete->Payload);
+	free(paquete->Payload+1);
+	free(paquete);
+	int end = 1;
+	int cantMensajes = 0;
+	while (end) {
+		Paquete* paquete = malloc(sizeof(Paquete));
+		uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
+		while(datosRecibidos<=0){
+			datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
+		}
+		char* mensaje = *((uint32_t*)paquete->Payload);
+		cantMensajes++;
+
+		if (strcmp(mensaje, "kill") == 0) {
+			end = 0;
+			time_t tiempoFinalizacion = time(NULL);
+			printf("%s\n", obtenerTiempoString(tiempoDeInicio));
+			printf("%s\n", obtenerTiempoString(tiempoFinalizacion));
+			printf("%d\n", cantMensajes);
+			double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
+			printf("La duracion del programa en segundos es de %f\n", diferencia);
+		}
+		else if(strcmp(mensaje, "imprimir") == 0) {
+			printf("%s\n", mensaje);
+		}
 	}
 }
 
-int startProgram(char* programPath, int socketFD) {
+int startProgram(char* programPath) {
 	pthread_t program;
-	int arg = socketFD;
-	int r = pthread_create(&program, NULL, programHandler, (void*) arg);
+	char* arg = programPath;
+	int r = pthread_create(&program, NULL, programHandler, (void*)arg);
 	pthread_join(program, NULL);
 	return 0;
 }
 
-int endProgram(char* programPath, int socketFD) {
-
-	/*Mostrar esto cuando termina el proceso:
-	 ● Fecha y hora de inicio de ejecución
-	 ● Fecha y hora de fin de ejecución
-	 ● Cantidad de impresiones por pantalla
-	 ● Tiempo total de ejecución (diferencia entre tiempo de inicio y tiempo de fin)*/
-	return 0;
+void endProgram(int pid, int socketFD) {
+	Paquete* paquete;
+	strcpy(paquete->header.emisor, CONSOLA);
+	paquete->header.tipoMensaje = KILLPROGRAM;
+	paquete->header.tamPayload = sizeof(int);
+	paquete->Payload = (int)pid;
+	EnviarPaquete(socketFD, paquete);
 }
 
 void disconnect() {
@@ -118,40 +171,25 @@ void sendSignalOpenFile(char* programPath, int socketFD) {
 	EnviarMensaje(socketFD,buffer, CONSOLA);
 }
 
-char* getWord(char* string, int pos) {
-	char delimiter[] = " ";
-	char *word, *context;
-	int inputLength = strlen(string);
-	char *inputCopy = (char*) calloc(inputLength + 1, sizeof(char));
-	strncpy(inputCopy, string, inputLength);
-	if (pos == 0){
-		return strtok_r (inputCopy, delimiter, &context);
-	}
-	else{
-		int i;
-		for (i = 1; i <= pos; i++) {
-			word = strtok_r (NULL, delimiter, &context);
-		}
-	}
-	return word;
-}
+
 
 void userInterfaceHandler(void* socketFD) {
-	while (true) {
+	int end = 1;
+	while (end) {
 		char str[100];
 		printf("\n\nIngrese un mensaje: \n");
 		scanf("%99[^\n]", str);
 		char* command = getWord(str, 0);
-		char* programPath = getWord(str, 1);
+		char* parameter = getWord(str, 1);
+		int pid = atoi(parameter);
 		if (strcmp(command, "start_program") == 0) {
-			startProgram(programPath, (int) socketFD);
-			endProgram(programPath, (int) socketFD);
+			startProgram(parameter);
+		} if (strcmp(command, "end_program") == 0) {
+			endProgram(pid, (int) socketFD);
 		} else if (strcmp(command, "disconnect") == 0) {
-			disconnect();
+			end = 0;
 		} else if (strcmp(command, "clean") == 0) {
 			clean();
-		} else if (strcmp(command, "open_file") == 0) {
-			sendSignalOpenFile(programPath, (int) socketFD);
 		} else {
 			printf("No se conoce el mensaje %s\n", str);
 		}
@@ -162,10 +200,9 @@ int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
+	void *arg = socketFD;
 	pthread_t userInterface;
-	void* arg = socketFD;
 	pthread_create(&userInterface, NULL, userInterfaceHandler, (void*) arg);
 	pthread_join(userInterface, NULL);
-	close(socketFD);
 	return 0;
 }

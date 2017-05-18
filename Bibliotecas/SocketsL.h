@@ -17,6 +17,7 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
+#include <time.h>
 
 
 #define TAMANIOHEADER sizeof(Header)
@@ -34,6 +35,7 @@
 #define ESARCHIVO 2
 #define ESINT 3
 #define ESPCB 4
+#define KILLPROGRAM 5
 //API Memoria:
 #define INIC_PROG 0
 #define SOL_BYTES 1
