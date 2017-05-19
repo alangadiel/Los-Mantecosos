@@ -19,7 +19,6 @@ int SEM_INIT[100];
 char* SHARED_VARS[100];
 int STACK_SIZE;
 char* IP_PROG;
-int TAM_PAG;
 
 int ultimoPID=0;
 int socketConMemoria;
@@ -74,7 +73,7 @@ char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de l
 void ObtenerTamanioPagina(int socketFD){
 	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
 	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD,KERNEL,datosInicialesMemoria);
-	if(datosRecibidos>0 ){
+	if(datosRecibidos>0){
 		TamanioPagina = *((uint32_t*)datosInicialesMemoria->Payload);
 	}
 	free(datosInicialesMemoria->Payload+1);
@@ -104,12 +103,12 @@ void obtenerValoresArchivoConfiguracion()
 		{
 			if (c == '=')
 			{
-				if (contadorDeVariables == 15)
+				/*if (contadorDeVariables == 15)
 				{
 					fscanf(file, "%i", &TAM_PAG);
 					contadorDeVariables++;
 
-				}
+				}*/
 				if (contadorDeVariables == 14)
 				{
 					char buffer[10000];
@@ -272,21 +271,22 @@ void accion(Paquete* paquete, int socketConectado){
 
 				if(strcmp(paquete->header.emisor,CONSOLA)==0)
 				{
-					double tamanioArchivo = paquete->header.tamPayload/TAM_PAG;
+					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
 					double tamanioTotalPaginas = ceil(tamanioArchivo+STACK_SIZE);
 					BloqueControlProceso pcb = CrearNuevoProceso();
 					//Manejo la multiprogramacion
 					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
 						//Pregunta a la memoria si me puede guardar estas paginas
-						pcb.PaginasDeCodigo = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
-						if(pcb.PaginasDeCodigo != tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
+						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
+						if(paginasConfirmadas == tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
 						{
+							pcb.PaginasDeCodigo = tamanioTotalPaginas;
 							//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
 							PidAComparar = pcb.PID;
 							list_remove_by_condition(Nuevos, LAMBDA(bool _(BloqueControlProceso* pcb) { return pcb->PID == PidAComparar; }));
 							list_add(Listos,&pcb);
-							//Solicito a la memoria que me guarde el codigo del programa
 
+							//Solicito a la memoria que me guarde el codigo del programa
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
 
 						}
