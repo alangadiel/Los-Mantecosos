@@ -290,7 +290,7 @@ void accion(Paquete* paquete, int socketConectado){
 					double tamanioTotalPaginas = ceil(tamanioArchivo+STACK_SIZE);
 					BloqueControlProceso pcb = CrearNuevoProceso();
 					//Manejo la multiprogramacion
-					if(list_size(Listos)>=GRADO_MULTIPROG){
+					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
 						//Pregunta a la memoria si me puede guardar estas paginas
 						pcb.PaginasDeCodigo = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
 						if(pcb.PaginasDeCodigo != tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
