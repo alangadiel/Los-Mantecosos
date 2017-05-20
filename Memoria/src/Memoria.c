@@ -11,8 +11,14 @@ int CACHE_X_PROC;
 char* REEMPLAZO_CACHE;
 int RETARDO_MEMORIA;
 char* IP;
+t_list* listaHilos;
 
 void* bloquePpal;
+
+typedef struct {
+	pthread_t hilo;
+	int socket;
+} structHilo;
 
 typedef struct {
 	uint32_t Frame;
@@ -90,6 +96,7 @@ void imprimirArchivoConfiguracion() {
 void IniciarPrograma(uint32_t pid, uint32_t cantPag) {
 //TODO
 }
+
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam, int socketFD) {
 
 }
@@ -98,14 +105,17 @@ void AlmacenarBytes(Paquete* paquete) {
 	sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
 
 	memcpy(bloquePpal+DATOS[2],(void*)DATOS[4],DATOS[3]);
+	printf("%s\n", DATOS[4]);
 	printf("Datos Almacenados correctamente!"); //TODO: imprimir datos
 	//actualizar cache
 }
+
 void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
 
 }
-void FinalizarPrograma(uint32_t pid) {
 
+void FinalizarPrograma(uint32_t pid) {
+	//join de hilo correspondiente
 }
 
 void* inputConsola (void* p){
@@ -124,12 +134,36 @@ void* inputConsola (void* p){
 	return NULL;
 }
 
+void* accionHilo(int* socketFD){
+	while(true) {
+
+	}
+}
+
+pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
+	structHilo* structActual = list_find(listaHilos, LAMBDA(bool _(structHilo* shilo) { return shilo->socket == socketFD; }));
+	if (structActual != 0) { //el hilo ya existe
+		return structActual->hilo;
+	}
+	else { // crear hilo y agregar a lista
+		pthread_t threadNuevo;
+		pthread_create(&threadNuevo, NULL, accionHilo, &socketFD);
+		structHilo itemNuevo;
+		itemNuevo.hilo = threadNuevo;
+		itemNuevo.socket = socketFD;
+		list_add(listaHilos, &itemNuevo);
+		return threadNuevo;
+	}
+}
+
 void accion(Paquete* paquete, int socketFD){
+
+	pthread_t hilo = agregarAListaHiloSiNoEsta(listaHilos, socketFD);
 	switch (paquete->header.tipoMensaje){
 	case ESSTRING:
 		printf("\nTexto recibido: %s", (char*)paquete->Payload);
-		switch ((*(uint8_t*)paquete->Payload)){
-		(uint8_t*)paquete->Payload++;
+		switch ((*(uint32_t*)paquete->Payload)){
+		(uint32_t*)paquete->Payload++; //Queda un vector de 4 (0..3) posiciones por el ++
 		case INIC_PROG:
 			IniciarPrograma(DATOS[0],DATOS[1]);
 		break;
@@ -187,7 +221,7 @@ int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-
+	listaHilos = list_create();
 	bloquePpal = malloc((MARCOS * MARCO_SIZE) + (sizeof(tabla_Adm) * MARCOS)); //Reservo toda mi memoria
 	//tabla_Adm tablaAdm[MARCOS]; //no, mejor accedamos casteando y recorriendo el bloquePpal
 	/*//MEMORIA CACHE, NO BORRAR

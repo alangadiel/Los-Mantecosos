@@ -1,5 +1,6 @@
 #ifndef HELPER_
 #define HELPER_
+#define LAMBDA(c_) ({ c_ _;}) //Para funciones lamda
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,8 +26,11 @@ typedef struct {
 	int ExitCode;
 }__attribute__((packed)) BloqueControlProceso;
 
+
+
 char* getWord(char* string, int pos);
 char* integer_to_string(int x);
 char* obtenerTiempoString(time_t t);
 int GetTamanioArchivo(FILE * f);
+
 #endif /* HELPER_*/

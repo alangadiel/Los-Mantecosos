@@ -2,7 +2,6 @@
 #include "Helper.h"
 
 #define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
-#define LAMBDA(c_) ({ c_ _;}) //Para funciones lamda
 
 int PUERTO_PROG;
 int PUERTO_CPU;
