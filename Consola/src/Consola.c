@@ -56,62 +56,61 @@ void imprimirArchivoConfiguracion() {
 
 void programHandler(void *programPath) {
 	time_t tiempoDeInicio = time(NULL);
-	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
+	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
 	int pid;
-	sendSignalOpenFile((char*)programPath, socketFD);
+	sendSignalOpenFile((char*) programPath, socketFD);
 	Paquete* paquete = malloc(sizeof(Paquete));
 	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
-	while(datosRecibidos<=0){
+	while (datosRecibidos <= 0) {
 		datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
 	}
-	pid = *((uint32_t*)paquete->Payload);
-	free(paquete->Payload+1);
+	pid = *((uint32_t*) paquete->Payload);
+	free(paquete->Payload + 1);
 	free(paquete);
 	int end = 1;
 	int cantMensajes = 0;
 	while (end) {
 		Paquete* paquete = malloc(sizeof(Paquete));
-		uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
-		while(datosRecibidos<=0){
+		uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA,
+				paquete);
+		while (datosRecibidos <= 0) {
 			datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
 		}
-		char* mensaje = *((uint32_t*)paquete->Payload);
-		cantMensajes++;
 
-		if (strcmp(mensaje, "kill") == 0) {
+		cantMensajes++;
+		if (strcmp(paquete->Payload, "kill") == 0) {
 			end = 0;
 			time_t tiempoFinalizacion = time(NULL);
 			printf("%s\n", obtenerTiempoString(tiempoDeInicio));
 			printf("%s\n", obtenerTiempoString(tiempoFinalizacion));
 			printf("%d\n", cantMensajes);
 			double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
-			printf("La duracion del programa en segundos es de %f\n", diferencia);
-		}
-		else if(strcmp(mensaje, "imprimir") == 0) {
-			printf("%s\n", mensaje);
+			printf("La duracion del programa en segundos es de %f\n",
+					diferencia);
+		} else if (strcmp(paquete->Payload, "imprimir") == 0) {
+			printf("%s\n", (char*)paquete->Payload);
 		}
 	}
 }
 
 int startProgram(char* programPath) {
 	pthread_t program;
-	char* arg = programPath;
-	int r = pthread_create(&program, NULL, programHandler, (void*)arg);
+	int r = pthread_create(&program, NULL, programHandler, programPath);
 	pthread_join(program, NULL);
 	return 0;
 }
 
 void endProgram(int pid, int socketFD) {
-	Paquete* paquete;
-	strcpy(paquete->header.emisor, CONSOLA);
-	paquete->header.tipoMensaje = KILLPROGRAM;
-	paquete->header.tamPayload = sizeof(int);
-	paquete->Payload = (int)pid;
-	EnviarPaquete(socketFD, paquete);
+	Paquete paquete;
+	strcpy(paquete.header.emisor, CONSOLA);
+	paquete.header.tipoMensaje = KILLPROGRAM;
+	paquete.header.tamPayload = sizeof(int);
+	paquete.Payload = &pid;
+	EnviarPaquete(socketFD, &paquete);
 }
 
 void clean() {
-	system ( "clear" ); // Clear screen and home cursor
+	system("clear"); // Clear screen and home cursor
 }
 
 void sendSignalOpenFile(char* programPath, int socketFD) {
@@ -119,19 +118,17 @@ void sendSignalOpenFile(char* programPath, int socketFD) {
 	char * buffer = 0;
 	long length;
 
-	if (fileForSend)
-	{
-	  fseek (fileForSend, 0, SEEK_END);
-	  length = ftell (fileForSend);
-	  fseek (fileForSend, 0, SEEK_SET);
-	  buffer = malloc (length);
-	  if (buffer)
-	  {
-	    fread (buffer, 1, length, fileForSend);
-	  }
-	  fclose (fileForSend);
+	if (fileForSend) {
+		fseek(fileForSend, 0, SEEK_END);
+		length = ftell(fileForSend);
+		fseek(fileForSend, 0, SEEK_SET);
+		buffer = malloc(length);
+		if (buffer) {
+			fread(buffer, 1, length, fileForSend);
+		}
+		fclose(fileForSend);
 	}
-	EnviarMensaje(socketFD,buffer, CONSOLA);
+	EnviarMensaje(socketFD, buffer, CONSOLA);
 }
 
 void userInterfaceHandler(void* socketFD) {
@@ -145,7 +142,8 @@ void userInterfaceHandler(void* socketFD) {
 		int pid = atoi(parameter);
 		if (strcmp(command, "start_program") == 0) {
 			startProgram(parameter);
-		} if (strcmp(command, "end_program") == 0) {
+		}
+		if (strcmp(command, "end_program") == 0) {
 			endProgram(pid, (int) socketFD);
 		} else if (strcmp(command, "disconnect") == 0) {
 			end = 0;
@@ -160,10 +158,9 @@ void userInterfaceHandler(void* socketFD) {
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA);
-	void *arg = socketFD;
+	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
 	pthread_t userInterface;
-	pthread_create(&userInterface, NULL, userInterfaceHandler, (void*) arg);
+	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler, &socketFD);
 	pthread_join(userInterface, NULL);
 	return 0;
 }

@@ -23,8 +23,7 @@ typedef struct {
 	uint32_t IndiceDeCodigo[2];
 	uint32_t PaginasDeCodigo;
 	int ExitCode;
-} __attribute__((packed)) BloqueControlProceso;
-
+}__attribute__((packed)) BloqueControlProceso;
 
 char* getWord(char* string, int pos);
 char* integer_to_string(int x);

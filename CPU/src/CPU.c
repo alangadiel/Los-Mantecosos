@@ -74,7 +74,7 @@ void imprimirArchivoConfiguracion() {
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	int socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU);
-	int socketMEMORIA = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU);
+	int socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake);
+	int socketMEMORIA = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake);
 	return 0;
 }

@@ -262,12 +262,8 @@ void imprimirArchivoConfiguracion()
 
 void accion(Paquete* paquete, int socketConectado){
 	switch(paquete->header.tipoMensaje) {
-		case ESSTRING:
-			//Solo muestro el mensaje y replico si NO es handshake
-			printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
-		break;
 
-		case ESARCHIVO:
+		case ESSTRING:
 
 				if(strcmp(paquete->header.emisor,CONSOLA)==0)
 				{
@@ -303,6 +299,27 @@ void accion(Paquete* paquete, int socketConectado){
 	}
 }
 
+void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
+	Paquete* paquete =  malloc(sizeof(Paquete));
+	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
+	if (resul > 0 && paquete->header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
+		if (strcmp(paquete->header.emisor, emisor) == 0) {
+				printf("\nConectado con el servidor!\n");
+				if(strcmp(paquete->header.emisor, MEMORIA) == 0){
+					paquete->Payload = malloc(paquete->header.tamPayload);
+					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
+					TamanioPagina = *((uint32_t*)paquete->Payload);
+					free(paquete->Payload);
+				}
+		} else
+			perror("Error, no se recibio un handshake del servidor esperado\n");
+	} else
+	perror("Error de Conexion, no se recibio un handshake\n");
+
+
+	free(paquete);
+}
+
 int main(void)
 {
 	Nuevos = list_create();
@@ -313,9 +330,8 @@ int main(void)
 
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL);
-	ObtenerTamanioPagina(socketConMemoria);
-	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion);
+	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
+	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidor);
 
 
 	return 0;

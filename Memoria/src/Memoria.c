@@ -88,7 +88,7 @@ void imprimirArchivoConfiguracion() {
 }
 
 void IniciarPrograma(uint32_t pid, uint32_t cantPag) {
-
+//TODO
 }
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam, int socketFD) {
 
@@ -98,6 +98,7 @@ void AlmacenarBytes(Paquete* paquete) {
 	sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
 
 	memcpy(bloquePpal+DATOS[2],(void*)DATOS[4],DATOS[3]);
+	printf("Datos Almacenados correctamente!"); //TODO: imprimir datos
 	//actualizar cache
 }
 void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
@@ -151,10 +152,36 @@ void accion(Paquete* paquete, int socketFD){
 
 	case ESINT:
 		if(strcmp(paquete->header.emisor,KERNEL)==0){
-			EnviarDatos(socketFD,MEMORIA,MARCO_SIZE,sizeof(MARCO_SIZE));
+			EnviarDatos(socketFD,MEMORIA,&MARCO_SIZE,sizeof(MARCO_SIZE));
 		}
 	break;
 	}
+}
+
+int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
+	paquete->Payload = malloc(1);
+	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
+	if (resul > 0) { //si no hubo error
+		if (paquete->header.tipoMensaje == ESHANDSHAKE) { //vemos si es un handshake
+			printf("Se establecio conexion con %s\n", paquete->header.emisor);
+			if(strcmp(paquete->header.emisor, KERNEL) == 0){
+				Paquete paquete;
+				paquete.header.tipoMensaje = ESHANDSHAKE;
+				paquete.header.tamPayload = sizeof(uint32_t);
+				strcpy(paquete.header.emisor, MEMORIA);
+				paquete.Payload=&MARCO_SIZE;
+				EnviarPaquete(socketFD, &paquete);
+			} else
+			EnviarHandshake(socketFD, receptor); // paquete->header.emisor
+		} else { //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
+			paquete->Payload = realloc(paquete->Payload,
+					paquete->header.tamPayload);
+			resul = RecibirDatos(paquete->Payload, socketFD,
+					paquete->header.tamPayload);
+		}
+	}
+
+	return resul;
 }
 
 int main(void) {
@@ -172,7 +199,7 @@ int main(void) {
 	pthread_t hiloConsola;
 	pthread_create(&hiloConsola, NULL, inputConsola, NULL);
 
-	Servidor(IP, PUERTO, MEMORIA, accion);
+	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteMemoria);
 
 	pthread_join(hiloConsola, NULL);
 	/*//MEMORIA CACHE, NO BORRAR

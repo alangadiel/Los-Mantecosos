@@ -59,7 +59,7 @@ int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 
-	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, FS);
+	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, FS, RecibirHandshake);
 	Paquete* paquete = malloc(sizeof(Paquete));
 	int result = RecibirPaqueteCliente(socketFD, FS, paquete);
 	if(result>0){
