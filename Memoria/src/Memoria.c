@@ -112,7 +112,8 @@ if(list_size(TablaPaginacion)<1){  //El checkpoint 2 dice que por ahora hay solo
 	list_add(TablaPaginacion,&nuevoRegistros);
 	cantPaginasAsignadas = cantPag;
 }
-EnviarDatos(socketFD,MEMORIA,cantPaginasAsignadas,sizeof(uint32_t));
+printf("Cant paginas asignadas: %d",cantPaginasAsignadas);
+EnviarDatos(socketFD,MEMORIA,&cantPaginasAsignadas,sizeof(uint32_t));
 }
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam, int socketFD) {
@@ -162,7 +163,7 @@ bool buscarPorSocket(structHilo* shilo){
 
 pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
 	socketABuscar = socketFD;
-	structHilo* structActual = list_find(listaHilos, LAMBDA(bool _(structHilo* shilo) { return shilo->socket == socketFD; }));
+	structHilo* structActual = list_find(listaHilos, buscarPorSocket);
 		if (structActual != 0) { //el hilo ya existe
 			return structActual->hilo;
 		}
@@ -181,8 +182,8 @@ void accion(Paquete* paquete, int socketFD){
 
 	pthread_t hilo = agregarAListaHiloSiNoEsta(listaHilos, socketFD);
 	switch (paquete->header.tipoMensaje){
-	case ESSTRING:
-		printf("\nTexto recibido: %s", (char*)paquete->Payload);
+	case ESDATOS:
+		//printf("\nTexto recibido: %s\n", (char*)paquete->Payload);
 		switch ((*(uint32_t*)paquete->Payload)){
 		(uint32_t*)paquete->Payload++; //Queda un vector de 4 (0..3) posiciones por el ++
 		case INIC_PROG:

@@ -246,8 +246,7 @@ uint32_t IM_InicializarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog,
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0) {
-	}
+	uint32_t result = RecibirPaqueteCliente(socketFD, MEMORIA, paquete);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);

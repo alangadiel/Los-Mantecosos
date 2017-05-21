@@ -21,7 +21,7 @@ char* IP_PROG;
 
 int ultimoPID=0;
 int socketConMemoria;
-uint32_t TamanioPagina;
+double TamanioPagina;
 typedef struct  {
  uint32_t size;
  int isFree;
@@ -267,7 +267,8 @@ void accion(Paquete* paquete, int socketConectado){
 				if(strcmp(paquete->header.emisor,CONSOLA)==0)
 				{
 					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
-					double tamanioTotalPaginas = ceil(tamanioArchivo+STACK_SIZE);
+					double tamanioTotalPaginas = ceil(tamanioArchivo);//+STACK_SIZE);
+
 					BloqueControlProceso pcb = CrearNuevoProceso();
 					//Manejo la multiprogramacion
 					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
@@ -275,11 +276,14 @@ void accion(Paquete* paquete, int socketConectado){
 						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
 						if(paginasConfirmadas == tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
 						{
+							printf("Cant paginas asignadas: %d",paginasConfirmadas);
+
 							pcb.PaginasDeCodigo = tamanioTotalPaginas;
 							//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
 							PidAComparar = pcb.PID;
 							list_remove_by_condition(Nuevos, LAMBDA(bool _(BloqueControlProceso* pcb) { return pcb->PID == PidAComparar; }));
 							list_add(Listos,&pcb);
+							printf("el programa %d se cargo en memoria",pcb.PID);
 
 							//Solicito a la memoria que me guarde el codigo del programa
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
