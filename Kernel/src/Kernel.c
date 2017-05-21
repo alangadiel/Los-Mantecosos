@@ -287,6 +287,7 @@ void accion(Paquete* paquete, int socketConectado){
 						}
 						else
 						{
+							printf("%s","No se pudo guardar programa");
 							EnviarMensaje(socketConectado,"No se pudo guardar el programa",KERNEL);
 						}
 
