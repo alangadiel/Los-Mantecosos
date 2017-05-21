@@ -49,6 +49,56 @@ void Servidor(char* ip, int puerto, char nombre[11],
 	}
 }
 
+
+
+void ServidorConcurrente(char* ip, int puerto, char nombre[11], t_list* listaHilos, fd_set master,
+		void* (*accionHilo)(void* socketFD)) {
+	int SocketEscucha = StartServidor(ip, puerto);
+
+	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
+	FD_ZERO(&master); // borra los conjuntos maestro y temporal
+	FD_ZERO(&read_fds);
+	FD_SET(SocketEscucha, &master); // añadir listener al conjunto maestro
+	int fdmax = SocketEscucha; // seguir la pista del descriptor de fichero mayor, por ahora es éste
+	struct sockaddr_in remoteaddr; // dirección del cliente
+
+	for (;;) {	// bucle principal
+		read_fds = master; // cópialo
+		if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
+			perror("select");
+			exit(1);
+		}
+		// explorar conexiones existentes en busca de datos que leer
+		int i;
+		for (i = 0; i <= fdmax; i++) {
+			if (FD_ISSET(i, &read_fds)) { // ¡¡tenemos datos!!
+				if (i == SocketEscucha) { // gestionar nuevas conexiones
+					socklen_t addrlen = sizeof(remoteaddr);
+					int nuevoSocket = accept(SocketEscucha,(struct sockaddr*) &remoteaddr, &addrlen);
+					if (nuevoSocket == -1)
+						perror("accept");
+					else {
+						FD_SET(nuevoSocket, &master); // añadir al conjunto maestro
+						if (nuevoSocket > fdmax)
+							fdmax = nuevoSocket; // actualizar el máximo
+						printf("\nNueva conexion de %s en " "socket %d\n", inet_ntoa(remoteaddr.sin_addr), nuevoSocket);
+
+						pthread_t threadNuevo;
+						pthread_create(&threadNuevo, NULL, accionHilo, &i);
+						structHilo itemNuevo;
+						itemNuevo.hilo = threadNuevo;
+						itemNuevo.socket = i;
+						list_add(listaHilos, &itemNuevo);
+
+
+
+					}
+				}
+			}
+		}
+	}
+}
+
 int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11],
 		void RecibirElHandshake(int socketFD, char emisor[11])) {
 	int socketFD = socket(AF_INET, SOCK_STREAM, 0);

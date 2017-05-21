@@ -44,6 +44,7 @@ typedef struct {
 void Servidor(char* ip, int puerto, char nombre[11],
 		void (*accion)(Paquete* paquete, int socketFD),
 		int (*RecibirPaquete)(int socketFD, char receptor[11], Paquete* paquete));
+void ServidorConcurrente(char* ip, int puerto, char nombre[11], t_list* listaHilos,fd_set master, void* (*accionHilo)(void* socketFD)); //Crea un hilo por cada nueva conexion
 int StartServidor(char* MyIP, int MyPort);
 int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11],
 		void RecibirElHandshake(int socketFD, char emisor[11])); //Sobrecarga para Kernel

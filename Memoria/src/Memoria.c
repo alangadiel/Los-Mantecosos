@@ -2,7 +2,7 @@
 
 
 #define IP_MEMORIA 127.0.0.1
-#define DATOS ((uint32_t*)paquete->Payload)
+#define DATOS ((uint32_t*)paquete.Payload)
 
 int PUERTO;
 int MARCOS;
@@ -13,13 +13,7 @@ char* REEMPLAZO_CACHE;
 int RETARDO_MEMORIA;
 char* IP;
 t_list* listaHilos;
-
-
-typedef struct {
-	pthread_t hilo;
-	int socket;
-} structHilo;
-
+fd_set ConjuntoDeSocketsFD; // conjunto maestro de descriptores de fichero
 
 typedef struct {
 	uint32_t Frame;
@@ -101,29 +95,29 @@ void imprimirArchivoConfiguracion() {
 }
 
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
-//TODO
-//Sacar hardcodeo y programarlo bien
-uint32_t cantPaginasAsignadas = 0;
-if(list_size(TablaPaginacion)<1){  //El checkpoint 2 dice que por ahora hay solo una unica pagina
-	RegistroTablaPaginacion nuevoRegistros;
-	nuevoRegistros.Frame = 3;
-	nuevoRegistros.PID = pid;
-	nuevoRegistros.Pag = 2;
-	list_add(TablaPaginacion,&nuevoRegistros);
-	cantPaginasAsignadas = cantPag;
-}
-EnviarDatos(socketFD,MEMORIA,cantPaginasAsignadas,sizeof(uint32_t));
+	//TODO
+	//Sacar hardcodeo y programarlo bien
+	uint32_t cantPaginasAsignadas = 0;
+	if(list_size(TablaPaginacion)<1){  //El checkpoint 2 dice que por ahora hay solo una unica pagina
+		RegistroTablaPaginacion nuevoRegistros;
+		nuevoRegistros.Frame = 3;
+		nuevoRegistros.PID = pid;
+		nuevoRegistros.Pag = 2;
+		list_add(TablaPaginacion,&nuevoRegistros);
+		cantPaginasAsignadas = cantPag;
+	}
+	EnviarDatos(socketFD,MEMORIA,&cantPaginasAsignadas,sizeof(uint32_t));
 }
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam, int socketFD) {
 
 }
-void AlmacenarBytes(Paquete* paquete) {
+void AlmacenarBytes(Paquete paquete) {
 	//Buscar pagina
 	sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
 
 	memcpy(bloquePpal+DATOS[2],(void*)DATOS[4],DATOS[3]);
-	printf("%s\n", DATOS[4]);
+	printf("%s\n", (char*)&(DATOS[4]));
 	printf("Datos Almacenados correctamente!"); //TODO: imprimir datos
 	//actualizar cache
 }
@@ -132,8 +126,9 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
 
 }
 
-void FinalizarPrograma(uint32_t pid) {
+void FinalizarPrograma(uint32_t pid, int socketFD) {
 	//join de hilo correspondiente
+	FD_CLR(socketFD, &ConjuntoDeSocketsFD); // eliminar del conjunto maestro
 }
 
 void* inputConsola (void* p){
@@ -150,67 +145,6 @@ void* inputConsola (void* p){
 		printf("%s",(char*)bloquePpal);
 	}
 	return NULL;
-}
-
-void* accionHilo(int* socketFD){
-	while(true) {
-	}
-}
-bool buscarPorSocket(structHilo* shilo){
-	return shilo->socket == socketABuscar;
-}
-
-pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
-	socketABuscar = socketFD;
-	structHilo* structActual = list_find(listaHilos, LAMBDA(bool _(structHilo* shilo) { return shilo->socket == socketFD; }));
-		if (structActual != 0) { //el hilo ya existe
-			return structActual->hilo;
-		}
-	else { // crear hilo y agregar a lista
-		pthread_t threadNuevo;
-		pthread_create(&threadNuevo, NULL, accionHilo, &socketFD);
-		structHilo itemNuevo;
-		itemNuevo.hilo = threadNuevo;
-		itemNuevo.socket = socketFD;
-		list_add(listaHilos, &itemNuevo);
-		return threadNuevo;
-	}
-}
-
-void accion(Paquete* paquete, int socketFD){
-
-	pthread_t hilo = agregarAListaHiloSiNoEsta(listaHilos, socketFD);
-	switch (paquete->header.tipoMensaje){
-	case ESSTRING:
-		printf("\nTexto recibido: %s", (char*)paquete->Payload);
-		switch ((*(uint32_t*)paquete->Payload)){
-		(uint32_t*)paquete->Payload++; //Queda un vector de 4 (0..3) posiciones por el ++
-		case INIC_PROG:
-			IniciarPrograma(DATOS[0],DATOS[1],socketFD);
-		break;
-		case SOL_BYTES:
-			SolicitarBytes(DATOS[0],DATOS[1],DATOS[2],DATOS[3],socketFD);
-		break;
-		case ALM_BYTES:
-			AlmacenarBytes(paquete);
-		break;
-		case ASIG_PAG:
-			AsignarPaginas(DATOS[0],DATOS[1],socketFD);
-		break;
-		case FIN_PROG:
-			FinalizarPrograma(DATOS[0]);
-		break;
-		}
-	break;
-	case ESARCHIVO:
-	break;
-
-	case ESINT:
-		if(strcmp(paquete->header.emisor,KERNEL)==0){
-			EnviarDatos(socketFD,MEMORIA,&MARCO_SIZE,sizeof(MARCO_SIZE));
-		}
-	break;
-	}
 }
 
 int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
@@ -239,6 +173,65 @@ int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
 	return resul;
 }
 
+
+void* accionHilo(void* socketRecibido){
+	int socketFD = *(int*)socketRecibido;
+	while(true) {
+		Paquete paquete;
+		int result = RecibirPaqueteMemoria(socketFD, MEMORIA, &paquete);
+		if (result > 0){
+			switch (paquete.header.tipoMensaje){
+				case ESSTRING:
+					printf("\nTexto recibido: %s", (char*)paquete.Payload);
+					switch ((*(uint32_t*)paquete.Payload)){
+					(uint32_t*)paquete.Payload++; //Queda un vector de 4 (0..3) posiciones por el ++
+					case INIC_PROG:
+						IniciarPrograma(DATOS[0],DATOS[1],socketFD);
+					break;
+					case SOL_BYTES:
+						SolicitarBytes(DATOS[0],DATOS[1],DATOS[2],DATOS[3],socketFD);
+					break;
+					case ALM_BYTES:
+						AlmacenarBytes(paquete);
+					break;
+					case ASIG_PAG:
+						AsignarPaginas(DATOS[0],DATOS[1],socketFD);
+					break;
+					case FIN_PROG:
+						FinalizarPrograma(DATOS[0], socketFD);
+					break;
+					}
+				break;
+			}
+		}
+		free(paquete.Payload); //Y finalmente, no puede faltar hacer el free
+	}
+}
+/*
+pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
+	socketABuscar = socketFD;
+	structHilo* structActual = list_find(listaHilos, LAMBDA(bool _(void* shilo) { return ((structHilo*)shilo)->socket == socketFD; }));
+		if (structActual != 0) { //el hilo ya existe
+			return structActual->hilo;
+		}
+	else { // crear hilo y agregar a lista
+		pthread_t threadNuevo;
+		pthread_create(&threadNuevo, NULL, accionHilo, &socketFD);
+		structHilo itemNuevo;
+		itemNuevo.hilo = threadNuevo;
+		itemNuevo.socket = socketFD;
+		list_add(listaHilos, &itemNuevo);
+		return threadNuevo;
+	}
+}
+
+void accion(Paquete* paquete, int socketFD){
+
+	pthread_t hilo = agregarAListaHiloSiNoEsta(listaHilos, socketFD);
+
+}*/
+
+
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
@@ -256,7 +249,7 @@ int main(void) {
 	pthread_t hiloConsola;
 	pthread_create(&hiloConsola, NULL, inputConsola, NULL);
 
-	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteMemoria);
+	ServidorConcurrente(IP, PUERTO, MEMORIA, listaHilos,ConjuntoDeSocketsFD, accionHilo);
 
 	pthread_join(hiloConsola, NULL);
 	/*//MEMORIA CACHE, NO BORRAR

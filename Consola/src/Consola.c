@@ -64,6 +64,7 @@ void programHandler(void *programPath) {
 	while (datosRecibidos <= 0) {
 		datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
 	}
+	//TODO: falta que revise si recibio un error o no.
 	pid = *((uint32_t*) paquete->Payload);
 	free(paquete->Payload + 1);
 	free(paquete);

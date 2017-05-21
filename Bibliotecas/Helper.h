@@ -26,7 +26,10 @@ typedef struct {
 	int ExitCode;
 }__attribute__((packed)) BloqueControlProceso;
 
-
+typedef struct {
+	pthread_t hilo;
+	int socket;
+} structHilo;
 
 char* getWord(char* string, int pos);
 char* integer_to_string(int x);
