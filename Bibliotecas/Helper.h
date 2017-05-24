@@ -27,6 +27,11 @@ typedef struct {
 }__attribute__((packed)) BloqueControlProceso;
 
 
+typedef struct {
+	uint32_t* Atributos;
+	char* buffer;
+
+}__attribute__((packed)) BufferArchivo;
 
 char* getWord(char* string, int pos);
 char* integer_to_string(int x);

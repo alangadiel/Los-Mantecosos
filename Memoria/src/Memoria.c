@@ -122,10 +122,11 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam
 void AlmacenarBytes(Paquete* paquete) {
 	//Buscar pagina
 	sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
-
 	memcpy(bloquePpal+DATOS[2],(void*)DATOS[4],DATOS[3]);
-	printf("%s\n", DATOS[4]);
+	//printf("%s\n", DATOS[4]);
 	printf("Datos Almacenados correctamente!"); //TODO: imprimir datos
+	printf("%s",(char*)bloquePpal);
+
 	//actualizar cache
 }
 
@@ -180,7 +181,7 @@ pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
 
 void accion(Paquete* paquete, int socketFD){
 
-	pthread_t hilo = agregarAListaHiloSiNoEsta(listaHilos, socketFD);
+	//pthread_t hilo = agregarAListaHiloSiNoEsta(listaHilos, socketFD);
 	switch (paquete->header.tipoMensaje){
 	case ESDATOS:
 		//printf("\nTexto recibido: %s\n", (char*)paquete->Payload);
@@ -254,12 +255,12 @@ int main(void) {
 	for (i = 0; i < MARCOS; ++i)
 		tablaCache[i].contenido = malloc(MARCO_SIZE);
  	 */
-	pthread_t hiloConsola;
-	pthread_create(&hiloConsola, NULL, inputConsola, NULL);
+	/*pthread_t hiloConsola;
+	pthread_create(&hiloConsola, NULL, inputConsola, NULL);*/
 
 	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteMemoria);
 
-	pthread_join(hiloConsola, NULL);
+	//pthread_join(hiloConsola, NULL);
 	/*//MEMORIA CACHE, NO BORRAR
 	for (i = 0; i < MARCOS; ++i)  //liberar cache.
 			free(tablaCache[i].contenido);

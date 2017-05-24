@@ -276,14 +276,14 @@ void accion(Paquete* paquete, int socketConectado){
 						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
 						if(paginasConfirmadas == tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
 						{
-							printf("Cant paginas asignadas: %d",paginasConfirmadas);
+							printf("Cant paginas asignadas: %d \n",paginasConfirmadas);
 
 							pcb.PaginasDeCodigo = tamanioTotalPaginas;
 							//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
 							PidAComparar = pcb.PID;
 							list_remove_by_condition(Nuevos, LAMBDA(bool _(BloqueControlProceso* pcb) { return pcb->PID == PidAComparar; }));
 							list_add(Listos,&pcb);
-							printf("el programa %d se cargo en memoria",pcb.PID);
+							printf("el programa %d se cargo en memoria \n",pcb.PID);
 
 							//Solicito a la memoria que me guarde el codigo del programa
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
@@ -291,7 +291,7 @@ void accion(Paquete* paquete, int socketConectado){
 						}
 						else
 						{
-							printf("%s","No se pudo guardar programa");
+							printf("%s","No se pudo guardar programa \n");
 							EnviarMensaje(socketConectado,"No se pudo guardar el programa",KERNEL);
 						}
 
