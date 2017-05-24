@@ -279,7 +279,7 @@ void IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 	((uint32_t*) datos)[2] = PagNum;
 	((uint32_t*) datos)[3] = offset;
 	((uint32_t*) datos)[4] = cantBytes;
-	memcpy(&(((uint32_t*) datos)[5]), buffer, cantBytes);
+	memcpy(datos+sizeof(uint32_t) * 5, buffer, cantBytes);
 
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);

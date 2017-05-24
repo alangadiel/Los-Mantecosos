@@ -112,7 +112,6 @@ if(list_size(TablaPaginacion)<1){  //El checkpoint 2 dice que por ahora hay solo
 	list_add(TablaPaginacion,&nuevoRegistros);
 	cantPaginasAsignadas = cantPag;
 }
-printf("Cant paginas asignadas: %d",cantPaginasAsignadas);
 EnviarDatos(socketFD,MEMORIA,&cantPaginasAsignadas,sizeof(uint32_t));
 }
 
@@ -122,10 +121,10 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam
 void AlmacenarBytes(Paquete* paquete) {
 	//Buscar pagina
 	sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
-	memcpy(bloquePpal+DATOS[2],(void*)DATOS[4],DATOS[3]);
+	memcpy(bloquePpal+DATOS[3],(paquete->Payload)+sizeof(uint32_t)*5,DATOS[4]);
 	//printf("%s\n", DATOS[4]);
-	printf("Datos Almacenados correctamente!"); //TODO: imprimir datos
-	printf("%s",(char*)bloquePpal);
+	printf("Datos Almacenados correctamente! \n"); //TODO: imprimir datos
+	printf("El contenido de la memoria es: %s",(char*)bloquePpal);
 
 	//actualizar cache
 }
