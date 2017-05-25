@@ -269,7 +269,7 @@ void accion(Paquete* paquete, int socketConectado){
 				if(strcmp(paquete->header.emisor,CONSOLA)==0)
 				{
 					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
-					double tamanioTotalPaginas = ceil(tamanioArchivo);//+STACK_SIZE;
+					double tamanioTotalPaginas = ceil(tamanioArchivo)+STACK_SIZE;
 
 					BloqueControlProceso pcb = CrearNuevoProceso();
 					//Manejo la multiprogramacion
