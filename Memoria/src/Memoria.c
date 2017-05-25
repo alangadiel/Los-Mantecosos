@@ -101,18 +101,20 @@ void imprimirArchivoConfiguracion() {
 }
 
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
-//TODO
-//Sacar hardcodeo y programarlo bien
-uint32_t cantPaginasAsignadas = 0;
-if(list_size(TablaPaginacion)<1){  //El checkpoint 2 dice que por ahora hay solo una unica pagina
-	RegistroTablaPaginacion nuevoRegistros;
-	nuevoRegistros.Frame = 3;
-	nuevoRegistros.PID = pid;
-	nuevoRegistros.Pag = 2;
-	list_add(TablaPaginacion,&nuevoRegistros);
-	cantPaginasAsignadas = cantPag;
-}
-EnviarDatos(socketFD,MEMORIA,&cantPaginasAsignadas,sizeof(uint32_t));
+	//TODO
+	//Sacar hardcodeo y programarlo bien
+	uint32_t cantPaginasAsignadas = 0;
+	if(list_size(TablaPaginacion)<1)
+	{
+		//El checkpoint 2 dice que por ahora hay solo una unica pagina
+		RegistroTablaPaginacion nuevoRegistros;
+		nuevoRegistros.Frame = 3;
+		nuevoRegistros.PID = pid;
+		nuevoRegistros.Pag = 2;
+		list_add(TablaPaginacion,&nuevoRegistros);
+		cantPaginasAsignadas = cantPag;
+	}
+	EnviarDatos(socketFD,MEMORIA,&cantPaginasAsignadas,sizeof(uint32_t));
 }
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam, int socketFD) {

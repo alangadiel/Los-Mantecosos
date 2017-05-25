@@ -59,26 +59,24 @@ void programHandler(void *programPath) {
 	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
 	int pid;
 	sendSignalOpenFile((char*) programPath, socketFD);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
+	Paquete paquete;
+	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, &paquete);
 	while (datosRecibidos <= 0) {
-		datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
+		datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, &paquete);
 	}
-	pid = *((uint32_t*) paquete->Payload);
-	free(paquete->Payload + 1);
-	free(paquete);
+	pid = *((uint32_t*) paquete.Payload);
+	free(paquete.Payload);
 	int end = 1;
 	int cantMensajes = 0;
 	while (end) {
-		Paquete* paquete = malloc(sizeof(Paquete));
 		uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA,
-				paquete);
+				&paquete);
 		while (datosRecibidos <= 0) {
-			datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, paquete);
+			datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, &paquete);
 		}
 
 		cantMensajes++;
-		if (strcmp(paquete->Payload, "kill") == 0) {
+		if (strcmp(paquete.Payload, "kill") == 0) {
 			end = 0;
 			time_t tiempoFinalizacion = time(NULL);
 			printf("%s\n", obtenerTiempoString(tiempoDeInicio));
@@ -87,8 +85,8 @@ void programHandler(void *programPath) {
 			double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
 			printf("La duracion del programa en segundos es de %f\n",
 					diferencia);
-		} else if (strcmp(paquete->Payload, "imprimir") == 0) {
-			printf("%s\n", (char*)paquete->Payload);
+		} else if (strcmp(paquete.Payload, "imprimir") == 0) {
+			printf("%s\n", (char*)paquete.Payload);
 		}
 	}
 }

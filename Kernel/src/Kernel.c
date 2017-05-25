@@ -267,7 +267,7 @@ void accion(Paquete* paquete, int socketConectado){
 				if(strcmp(paquete->header.emisor,CONSOLA)==0)
 				{
 					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
-					double tamanioTotalPaginas = ceil(tamanioArchivo);//+STACK_SIZE);
+					double tamanioTotalPaginas = ceil(tamanioArchivo);//+STACK_SIZE;
 
 					BloqueControlProceso pcb = CrearNuevoProceso();
 					//Manejo la multiprogramacion
@@ -283,7 +283,7 @@ void accion(Paquete* paquete, int socketConectado){
 							PidAComparar = pcb.PID;
 							list_remove_by_condition(Nuevos, LAMBDA(bool _(BloqueControlProceso* pcb) { return pcb->PID == PidAComparar; }));
 							list_add(Listos,&pcb);
-							printf("el programa %d se cargo en memoria \n",pcb.PID);
+							printf("El programa %d se cargo en memoria \n",pcb.PID);
 
 							//Solicito a la memoria que me guarde el codigo del programa
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
