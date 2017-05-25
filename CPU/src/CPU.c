@@ -1,8 +1,9 @@
 #include "SocketsL.h"
-#include <parser/parser.h>
 
 char* IP_KERNEL;
 int PUERTO_KERNEL;
+char* IP_MEMORIA;
+int PUERTO_MEMORIA;
 
 void obtenerValoresArchivoConfiguracion()
 {
@@ -18,16 +19,32 @@ void obtenerValoresArchivoConfiguracion()
 		{
 			if (c == '=')
 			{
+				if (contadorDeVariables == 3)
+				{
+					fscanf(file, "%i", &PUERTO_MEMORIA);
+					contadorDeVariables++;
+				}
+
+				if (contadorDeVariables == 2)
+				{
+					char buffer[10000];
+
+					IP_MEMORIA = fgets(buffer, sizeof buffer, file);
+					strtok(IP_MEMORIA, "\n");
+
+					contadorDeVariables++;
+				}
 				if (contadorDeVariables == 1)
 				{
 					fscanf(file, "%i", &PUERTO_KERNEL);
+					contadorDeVariables++;
 				}
 
 				if (contadorDeVariables == 0)
 				{
 					char buffer[10000];
 
-					IP_KERNEL = fgets(buffer, sizeof buffer, file);
+					IP_MEMORIA = fgets(buffer, sizeof buffer, file);
 					strtok(IP_KERNEL, "\n");
 
 					contadorDeVariables++;
@@ -39,46 +56,25 @@ void obtenerValoresArchivoConfiguracion()
 	}
 }
 
-
-void imprimirArchivoConfiguracion()
-{
+void imprimirArchivoConfiguracion() {
 	int c;
 	FILE *file;
 
 	file = fopen("ArchivoConfiguracion.txt", "r");
 
-	if (file)
-	{
-		while ((c = getc(file)) != EOF)
-		{
+	if (file) {
+		while ((c = getc(file)) != EOF) {
 			putchar(c);
 		}
-
 		fclose(file);
 	}
 }
 
-int main(void)
-{
+
+int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-
-	int socketFD = ConectarServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU);
-
-	Paquete* paquete = malloc(sizeof(Paquete));
-		int result = RecibirPaquete(socketFD, CPU, paquete);
-		if(result>0)
-		{
-			if(paquete->header.tipoMensaje!='1')
-			{
-				printf("Texto recibido: %s",(char*)paquete->Payload);
-				//QUÉ CARAJO HACER????????????
-
-
-			}
-		}
-		free(paquete->Payload);
-		free(paquete);
-
+	int socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake);
+	int socketMEMORIA = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake);
 	return 0;
 }

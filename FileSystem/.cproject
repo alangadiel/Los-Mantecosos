@@ -28,8 +28,9 @@
 								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.exe.debug.option.optimization.level.1634568190" name="Optimization Level" superClass="gnu.c.compiler.exe.debug.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.exe.debug.option.debugging.level.956585644" name="Debug Level" superClass="gnu.c.compiler.exe.debug.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.254669641" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="${WorkspaceDirPath}/tp-2017-1c-Los-Mantecosos/Bibliotecas"/>
+									<listOptionValue builtIn="false" value="&quot;${WorkspaceDirPath}/tp-2017-1c-Los-Mantecosos/Bibliotecas&quot;"/>
 								</option>
+								<option id="gnu.c.compiler.option.include.files.312972400" name="Include files (-include)" superClass="gnu.c.compiler.option.include.files" valueType="includeFiles"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.492727722" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.1117724275" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug">

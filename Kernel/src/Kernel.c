@@ -1,7 +1,7 @@
 #include "SocketsL.h"
+#include "Helper.h"
 
 #define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
-
 
 int PUERTO_PROG;
 int PUERTO_CPU;
@@ -19,7 +19,44 @@ char* SHARED_VARS[100];
 int STACK_SIZE;
 char* IP_PROG;
 
-char* ObtenerTextoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
+int ultimoPID=0;
+int socketConMemoria;
+double TamanioPagina;
+typedef struct  {
+ uint32_t size;
+ int isFree;
+} HeapMetadata;
+
+typedef struct {
+	FILE * file;
+	BloqueControlProceso pcb;
+} PeticionTamanioStack;
+
+
+uint32_t PidAComparar;
+t_list* Nuevos;
+t_list* Finalizados;
+t_list* Bloqueados;
+t_list* Ejecutando;
+t_list* Listos;
+
+/*
+//replicar aca!!
+int j;
+for (j = 0; j <= fdmax; j++) {
+		// ¡enviar a todo el mundo!
+		if (FD_ISSET(j, &master)) {
+			// excepto al listener y a nosotros mismos
+			if (j != SocketEscucha && j != i) {
+				EnviarMensaje(j,(char*)paquete->Payload,KERNEL, ESSTRING);
+				//if (send(j, paquete, result, 0) == -1) {
+					//perror("send");
+				//}
+			}
+		}
+	}
+*/
+char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
 {
 	char buffer[10000];
 	char *line = fgets(buffer,sizeof buffer,f);
@@ -29,6 +66,29 @@ char* ObtenerTextoSinCorchetes(FILE* f) //Para obtener los valores de los arrays
 	texto  = strtok(texto,",");
 
 	return texto;
+}
+
+bool buscarBloqueControlProceso(void* pcb){
+	return ((BloqueControlProceso*)pcb)->PID==PidAComparar;
+}
+void ObtenerTamanioPagina(int socketFD){
+	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
+	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD,KERNEL,datosInicialesMemoria);
+	if(datosRecibidos>0){
+		TamanioPagina = *((uint32_t*)datosInicialesMemoria->Payload);
+	}
+	free(datosInicialesMemoria->Payload+1);
+	free(datosInicialesMemoria);
+
+}
+
+BloqueControlProceso CrearNuevoProceso(){
+	//Creo el pcb y lo guardo en la lista de nuevos
+	BloqueControlProceso pcb;
+	pcb.PID = ultimoPID+1;
+	ultimoPID++;
+	list_add(Nuevos,&pcb);
+	return pcb;
 }
 void obtenerValoresArchivoConfiguracion()
 {
@@ -44,12 +104,19 @@ void obtenerValoresArchivoConfiguracion()
 		{
 			if (c == '=')
 			{
+				/*if (contadorDeVariables == 15)
+				{
+					fscanf(file, "%i", &TAM_PAG);
+					contadorDeVariables++;
+
+				}*/
 				if (contadorDeVariables == 14)
 				{
 					char buffer[10000];
 
 					IP_PROG = fgets(buffer, sizeof buffer, file);
 					strtok(IP_PROG, "\n");
+					contadorDeVariables++;
 				}
 
 				if (contadorDeVariables == 13)
@@ -60,7 +127,7 @@ void obtenerValoresArchivoConfiguracion()
 
 				if (contadorDeVariables == 12)
 				{
-					char* texto = ObtenerTextoSinCorchetes(file);
+					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
 
 					while (texto != NULL)
@@ -74,7 +141,7 @@ void obtenerValoresArchivoConfiguracion()
 
 				if (contadorDeVariables == 11)
 				{
-					char* texto = ObtenerTextoSinCorchetes(file);
+					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
 
 					while (texto != NULL)
@@ -87,7 +154,7 @@ void obtenerValoresArchivoConfiguracion()
 				}
 
 				if (contadorDeVariables == 10){
-					char * texto = ObtenerTextoSinCorchetes(file);
+					char * texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
 
 					while (texto != NULL)
@@ -194,75 +261,86 @@ void imprimirArchivoConfiguracion()
 	}
 }
 
+void accion(Paquete* paquete, int socketConectado){
+	switch(paquete->header.tipoMensaje) {
+
+		case ESSTRING:
+
+				if(strcmp(paquete->header.emisor,CONSOLA)==0)
+				{
+					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
+					double tamanioTotalPaginas = ceil(tamanioArchivo)+STACK_SIZE;
+
+					BloqueControlProceso pcb = CrearNuevoProceso();
+					//Manejo la multiprogramacion
+					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
+						//Pregunta a la memoria si me puede guardar estas paginas
+						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
+						if(paginasConfirmadas == tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
+						{
+							printf("Cant paginas asignadas: %d \n",paginasConfirmadas);
+
+							pcb.PaginasDeCodigo = tamanioTotalPaginas;
+							//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
+							PidAComparar = pcb.PID;
+
+							list_remove_by_condition(Nuevos, (bool*)buscarBloqueControlProceso);
+							printf("Tamanio de la lista de nuevos programas: %d \n",list_size(Nuevos));
+							list_add(Listos,&pcb);
+							printf("El programa %d se cargo en memoria \n",pcb.PID);
+
+							//Solicito a la memoria que me guarde el codigo del programa
+							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
+
+						}
+						else
+						{
+							printf("%s","No se pudo guardar programa \n");
+							EnviarMensaje(socketConectado,"No se pudo guardar el programa",KERNEL);
+						}
+
+					}
+
+				}
+
+		break;
+	}
+}
+
+void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
+	Paquete* paquete =  malloc(sizeof(Paquete));
+	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
+	if (resul > 0 && paquete->header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
+		if (strcmp(paquete->header.emisor, emisor) == 0) {
+				printf("\nConectado con el servidor!\n");
+				if(strcmp(paquete->header.emisor, MEMORIA) == 0){
+					paquete->Payload = malloc(paquete->header.tamPayload);
+					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
+					TamanioPagina = *((uint32_t*)paquete->Payload);
+					free(paquete->Payload);
+				}
+		} else
+			perror("Error, no se recibio un handshake del servidor esperado\n");
+	} else
+	perror("Error de Conexion, no se recibio un handshake\n");
+
+
+	free(paquete);
+}
+
 int main(void)
 {
+	Nuevos = list_create();
+	Finalizados= list_create();
+	Bloqueados= list_create();
+    Ejecutando= list_create();
+	Listos= list_create();
+
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
+	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidor);
 
-	int SocketEscucha = StartServidor(IP_PROG, PUERTO_PROG);
-
-	fd_set master; // conjunto maestro de descriptores de fichero
-	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
-	FD_ZERO(&master); // borra los conjuntos maestro y temporal
-	FD_ZERO(&read_fds);
-	FD_SET(SocketEscucha, &master); // añadir listener al conjunto maestro
-	int fdmax = SocketEscucha; // seguir la pista del descriptor de fichero mayor, por ahora es éste
-	struct sockaddr_in remoteaddr; // dirección del cliente
-	// bucle principal
-	for(;;)	{
-		read_fds = master; // cópialo
-		if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1)		{
-			perror("select");
-			exit(1);
-		}
-		// explorar conexiones existentes en busca de datos que leer
-		int i;
-		for(i = 0; i <= fdmax; i++)	{
-			if (FD_ISSET(i, &read_fds)) { // ¡¡tenemos datos!!
-				if (i == SocketEscucha) { // gestionar nuevas conexiones
-					int addrlen = sizeof(remoteaddr);
-					int nuevoSocket = accept(SocketEscucha, (struct sockaddr*)&remoteaddr,&addrlen);
-					if (nuevoSocket == -1)
-						perror("accept");
-					else {
-						FD_SET(nuevoSocket, &master); // añadir al conjunto maestro
-						if (nuevoSocket > fdmax) fdmax = nuevoSocket; // actualizar el máximo
-						printf("\nNueva conexion de %s en " "socket %d\n", inet_ntoa(remoteaddr.sin_addr),nuevoSocket);
-					}
-				}
-				else  {
-					Paquete* paquete = malloc(sizeof(Paquete));
-					int result = RecibirPaquete(i, KERNEL, paquete);
-					if(	result>0){
-						if(paquete->header.tipoMensaje!=ESHANDSHAKE){ //Solo muestro el mensaje y replico si NO es handshake
-							printf("\nTexto recibido: %s", (char*)paquete->Payload); //lo mostramos
-							//replicar aca!!
-							// tenemos datos de algún cliente
-							int j;
-							for (j = 0; j <= fdmax; j++) {
-									// ¡enviar a todo el mundo!
-									if (FD_ISSET(j, &master)) {
-										// excepto al listener y a nosotros mismos
-										if (j != SocketEscucha && j != i) {
-											EnviarMensaje(j,(char*)paquete->Payload,KERNEL);
-											/*if (send(j, paquete, result, 0) == -1) {
-												perror("send");
-											}*/
-										}
-									}
-								}
-							}
-
-						//Y finalmente, no puede faltar hacer el free
-						free (paquete->Payload); //No olvidar hacer DOS free
-						free(paquete);
-				 }
-				else
-					FD_CLR(i, &master); // eliminar del conjunto maestro si falla
-				}
-			}
-		}
-	}
 
 	return 0;
 }
