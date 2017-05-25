@@ -134,23 +134,28 @@ void sendSignalOpenFile(char* programPath, int socketFD) {
 void userInterfaceHandler(void* socketFD) {
 	int end = 1;
 	while (end) {
-		char str[100];
-		printf("\n\nIngrese un mensaje: \n");
-		scanf("%99[^\n]", str);
-		char* command = getWord(str, 0);
-		char* parameter = getWord(str, 1);
-		int pid = atoi(parameter);
+		char command[100];
+		char parametro[100];
+		printf("\n\nIngrese SOLO el comando: \n");
+		scanf("%s", command);
+		/*char* command = getWord(str, 0);
+		char* parameter = getWord(str, 1);*/
 		if (strcmp(command, "start_program") == 0) {
-			startProgram(parameter);
+			printf("\n\nIngrese parametro: \n");
+			scanf("%s", parametro);
+			startProgram(parametro);
 		}
 		if (strcmp(command, "end_program") == 0) {
+			printf("\n\nIngrese parametro: \n");
+			scanf("%s", parametro);
+			int pid = atoi(parametro);
 			endProgram(pid, (int) socketFD);
 		} else if (strcmp(command, "disconnect") == 0) {
 			end = 0;
 		} else if (strcmp(command, "clean") == 0) {
 			clean();
 		} else {
-			printf("No se conoce el mensaje %s\n", str);
+			printf("No se conoce el comando: %s\n", command);
 		}
 	}
 }

@@ -121,7 +121,7 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam
 void AlmacenarBytes(Paquete* paquete) {
 	//Buscar pagina
 	sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
-	memcpy(bloquePpal+DATOS[3],(paquete->Payload)+sizeof(uint32_t)*5,DATOS[4]);
+	memcpy(bloquePpal+DATOS[3],(paquete->Payload) + sizeof(uint32_t)*5,DATOS[4]);
 	//printf("%s\n", DATOS[4]);
 	printf("Datos Almacenados correctamente! \n"); //TODO: imprimir datos
 	printf("El contenido de la memoria es: %s",(char*)bloquePpal);
@@ -136,7 +136,25 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
 void FinalizarPrograma(uint32_t pid) {
 	//join de hilo correspondiente
 }
-
+void userInterfaceHandler(void* socketFD) {
+	int end = 1;
+	while (end) {
+		char orden[100];
+		printf("\n\nIngrese una orden: \n");
+		scanf("%s", orden);
+		char* command = getWord(orden, 0);
+		if(strcmp(command,"exit")==0)
+				exit(1);
+		else if (strcmp(command, "dump") == 0) {
+			printf("El contenido de la memoria es: %s",(char*)bloquePpal);
+			}
+		else if (strcmp(command, "disconnect") == 0) {
+			end = 0;
+		}  else {
+			printf("No se conoce el mensaje %s\n", orden);
+		}
+	}
+}
 void* inputConsola (void* p){
 
 	for(;;){
@@ -254,12 +272,12 @@ int main(void) {
 	for (i = 0; i < MARCOS; ++i)
 		tablaCache[i].contenido = malloc(MARCO_SIZE);
  	 */
-	/*pthread_t hiloConsola;
-	pthread_create(&hiloConsola, NULL, inputConsola, NULL);*/
+	pthread_t hiloConsola;
+	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, NULL);
 
 	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteMemoria);
 
-	//pthread_join(hiloConsola, NULL);
+	pthread_join(hiloConsola, NULL);
 	/*//MEMORIA CACHE, NO BORRAR
 	for (i = 0; i < MARCOS; ++i)  //liberar cache.
 			free(tablaCache[i].contenido);
