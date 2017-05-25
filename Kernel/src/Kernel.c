@@ -68,9 +68,6 @@ char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de l
 	return texto;
 }
 
-bool buscarBloqueControlProceso(void* pcb){
-	return ((BloqueControlProceso*)pcb)->PID==PidAComparar;
-}
 void ObtenerTamanioPagina(int socketFD){
 	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
 	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD,KERNEL,datosInicialesMemoria);
@@ -284,7 +281,7 @@ void accion(Paquete* paquete, int socketConectado){
 							//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
 							PidAComparar = pcb.PID;
 
-							list_remove_by_condition(Nuevos, (bool*)buscarBloqueControlProceso);
+							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != PidAComparar; }));
 							printf("Tamanio de la lista de nuevos programas: %d \n",list_size(Nuevos));
 							list_add(Listos,&pcb);
 							printf("El programa %d se cargo en memoria \n",pcb.PID);
