@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <commons/log.h>
-#include <string.h>
 #include <parser/metadata_program.h>
 #include "Primitivas.h"
 
@@ -111,10 +108,17 @@ int main(void) {
 		switch(paquete -> header.tipoMensaje)
 		{
 			case ESSTRING:
-				if (strcmp(paquete -> header.emisor, KERNEL) == 0)
+				if (strcmp(paquete -> header.emisor, MEMORIA) == 0)
 				{
 					printf("Texto recibido: %s", (char*)paquete -> Payload);
-					//analizadorLinea(PROGRAMA, AnSISOP_funciones, AnSISOP_funciones_kernel);
+					analizadorLinea(PROGRAMA, &functions, &kernel_functions);
+				}
+			break;
+
+			case ESPCB:
+				if (strcmp(paquete -> header.emisor, KERNEL) == 0)
+				{
+					//BloqueControlProceso pcb = (BloqueControlProceso) paquete -> Payload;
 				}
 			break;
 		}
