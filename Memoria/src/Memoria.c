@@ -177,13 +177,10 @@ void* accionHilo(int* socketFD){
 	while(true) {
 	}
 }
-bool buscarPorSocket(structHilo* shilo){
-	return shilo->socket == socketABuscar;
-}
 
 pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
 	socketABuscar = socketFD;
-	structHilo* structActual = list_find(listaHilos, buscarPorSocket);
+	structHilo* structActual = list_find(listaHilos, LAMBDA(bool _(void* shilo) { return ((structHilo*)shilo)->socket != socketABuscar; }));
 		if (structActual != 0) { //el hilo ya existe
 			return structActual->hilo;
 		}
