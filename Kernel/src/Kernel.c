@@ -285,7 +285,7 @@ void accion(Paquete* paquete, int socketConectado){
 							PidAComparar = pcb.PID;
 
 							list_remove_by_condition(Nuevos, (bool*)buscarBloqueControlProceso);
-							printf("tamanio: %d",list_size(Nuevos));
+							printf("Tamanio de la lista de nuevos programas: %d \n",list_size(Nuevos));
 							list_add(Listos,&pcb);
 							printf("El programa %d se cargo en memoria \n",pcb.PID);
 
