@@ -395,9 +395,9 @@ void accion(Paquete* paquete, int socketConectado){
 				if(finalizadoConExito==true){
 					EnviarMensaje(socketConectado,"kill",KERNEL);
 				}
-				else{
+				else
 					EnviarMensaje(socketConectado,"Error al finalizar programa",KERNEL);
-				}
+
 
 			}
 		break;
