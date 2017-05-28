@@ -168,7 +168,7 @@ void RecibirHandshake(int socketFD, char emisor[11]) {
 	if (resul > 0) { // si no hubo error en la recepcion
 		if (strcmp(header->emisor, emisor) == 0) {
 			if (header->tipoMensaje == ESHANDSHAKE)
-				printf("\nConectado con el servidor!\n");
+				printf("\nConectado con el servidor %s\n", emisor);
 			else
 				perror("Error de Conexion, no se recibio un handshake\n");
 		} else

@@ -1,8 +1,15 @@
 #include "SocketsL.h"
 #include "Helper.h"
+#define NUEVOS "NUEVOS"
+#define LISTOS "LISTOS"
+#define EJECUTANDO "EJECUTANDO"
+#define BLOQUEADOS "BLOQUEADOS"
+#define FINALIZADOS "FINALIZADOS"
+
 
 #define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
-
+#define DESCONECTADODESDECOMANDOCONSOLA -7
+//Variables archivo de configuracion
 int PUERTO_PROG;
 int PUERTO_CPU;
 char* IP_MEMORIA;
@@ -19,6 +26,8 @@ char* SHARED_VARS[100];
 int STACK_SIZE;
 char* IP_PROG;
 
+
+int pidAFinalizar;
 int ultimoPID=0;
 int socketConMemoria;
 double TamanioPagina;
@@ -39,6 +48,8 @@ t_list* Finalizados;
 t_list* Bloqueados;
 t_list* Ejecutando;
 t_list* Listos;
+t_list* Estados;
+t_list* EstadosConProgramasFinalizables;
 
 /*
 //replicar aca!!
@@ -68,9 +79,7 @@ char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de l
 	return texto;
 }
 
-bool buscarBloqueControlProceso(void* pcb){
-	return ((BloqueControlProceso*)pcb)->PID==PidAComparar;
-}
+
 void ObtenerTamanioPagina(int socketFD){
 	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
 	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD,KERNEL,datosInicialesMemoria);
@@ -81,11 +90,28 @@ void ObtenerTamanioPagina(int socketFD){
 	free(datosInicialesMemoria);
 
 }
+void CrearListasEstados(){
+	Nuevos = list_create();
+	Finalizados= list_create();
+	Bloqueados= list_create();
+	Ejecutando= list_create();
+	Listos= list_create();
+	//Creo una lista de listas
+	Estados = list_create();
+	EstadosConProgramasFinalizables = list_create();
+	list_add(Estados,Nuevos);
+	list_add(EstadosConProgramasFinalizables,Listos);
+	list_add(EstadosConProgramasFinalizables,Ejecutando);
+	list_add_all(Estados,EstadosConProgramasFinalizables);
+	list_add(Estados,Bloqueados);
+	list_add(Estados,Finalizados);
 
+}
 BloqueControlProceso CrearNuevoProceso(){
 	//Creo el pcb y lo guardo en la lista de nuevos
 	BloqueControlProceso pcb;
 	pcb.PID = ultimoPID+1;
+	pcb.ProgramCounter = 0;
 	ultimoPID++;
 	list_add(Nuevos,&pcb);
 	return pcb;
@@ -260,6 +286,65 @@ void imprimirArchivoConfiguracion()
 		fclose(file);
 	}
 }
+void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator){
+	printf("Procesos de la lista: %s \n",discriminator);
+	int index=0;
+	for (index = 0; index < list_size(lista); index++) {
+		BloqueControlProceso* proceso = (BloqueControlProceso*)list_get(lista,index);
+		printf("Proceso N°: %d \n",proceso->PID);
+	}
+}
+void ConsultarEstado(int pidAConsultar){
+	int i =0;
+	void* result;
+	//Busco el proceso en todas las listas
+	while(i<list_size(Estados) && result==NULL){
+		t_list* lista = list_get(Estados,i);
+		result = list_find(lista,LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != pidAConsultar; }));
+		i++;
+	}
+	if(result==NULL)
+		printf("No se encontro el proceso a consultar. Intente nuevamente");
+	else{
+		BloqueControlProceso* proceso = (BloqueControlProceso*)proceso;
+		printf("Proceso N°: %d \n",proceso->PID);
+		//printf("Indice de codigo: %d \n",proceso->IndiceDeCodigo);
+		printf("Tamaño del stack: %d \n",proceso->TamanioStack);
+		printf("Paginas de codigo: %d \n",proceso->PaginasDeCodigo);
+		printf("Contador de programa: %d \n",proceso->ProgramCounter);
+	}
+}
+void MostrarTodosLosProcesos(){
+	MostrarProcesosDeUnaLista(Nuevos,NUEVOS);
+	MostrarProcesosDeUnaLista(Listos,LISTOS);
+	MostrarProcesosDeUnaLista(Ejecutando,EJECUTANDO);
+	MostrarProcesosDeUnaLista(Bloqueados,BLOQUEADOS);
+	MostrarProcesosDeUnaLista(Finalizados,FINALIZADOS);
+}
+
+bool KillProgram(int pidAFinalizar,int tipoFinalizacion){
+	int i =0;
+	void* result;
+	//Busco el proceso en todas las listas
+	while(i<list_size(EstadosConProgramasFinalizables) && result==NULL){
+		t_list* lista = list_get(EstadosConProgramasFinalizables,i);
+		result = list_find(lista,LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != pidAFinalizar; }));
+	}
+	if(result==NULL){
+		printf("No se encuentro el programa finalizar");
+		return false;
+	}
+	else
+	{
+		list_remove_by_condition(Listos, LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != pidAFinalizar; }));
+		BloqueControlProceso* pcb = (BloqueControlProceso*)result;
+		//Le asigno el codigo de finalización de programa y lo pongo en la lista de Exit
+		pcb->ExitCode = tipoFinalizacion;
+		list_add(Finalizados,pcb);
+		// TODO: Liberar las paginas de memoria asignadas a ese proceso
+		return true;
+	}
+}
 
 void accion(Paquete* paquete, int socketConectado){
 	switch(paquete->header.tipoMensaje) {
@@ -284,25 +369,37 @@ void accion(Paquete* paquete, int socketConectado){
 							//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
 							PidAComparar = pcb.PID;
 
-							list_remove_by_condition(Nuevos, (bool*)buscarBloqueControlProceso);
-							printf("tamanio: %d",list_size(Nuevos));
+							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != PidAComparar; }));
+							printf("Tamanio de la lista de nuevos programas: %d \n",list_size(Nuevos));
 							list_add(Listos,&pcb);
 							printf("El programa %d se cargo en memoria \n",pcb.PID);
 
 							//Solicito a la memoria que me guarde el codigo del programa
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
-
+							EnviarDatos(socketConectado,KERNEL,&pcb.PID,sizeof(uint32_t));
 						}
 						else
 						{
-							printf("%s","No se pudo guardar programa \n");
-							EnviarMensaje(socketConectado,"No se pudo guardar el programa",KERNEL);
+							EnviarMensaje(socketConectado,"No se pudo guardar el programa porque no hay espacio suficiente",KERNEL);
 						}
 
 					}
 
 				}
 
+		break;
+		case KILLPROGRAM:
+			if(strcmp(paquete->header.emisor,CONSOLA)){
+				pidAFinalizar = *(uint32_t*)paquete->Payload;
+				bool finalizadoConExito = KillProgram(pidAFinalizar,DESCONECTADODESDECOMANDOCONSOLA);
+				if(finalizadoConExito==true){
+					EnviarMensaje(socketConectado,"kill",KERNEL);
+				}
+				else{
+					EnviarMensaje(socketConectado,"Error al finalizar programa",KERNEL);
+				}
+
+			}
 		break;
 	}
 }
@@ -327,20 +424,60 @@ void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
 
 	free(paquete);
 }
+void userInterfaceHandler(void* socketFD) {
+	int end = 1;
+	while (end) {
+		char orden[100];
+		int pidConsulta=0;
+		char lista[100];
+		printf("\n\nIngrese una orden: \n");
+		scanf("%s", orden);
+		char* command = getWord(orden, 0);
+		if(strcmp(command,"exit")==0)
+				exit(1);
+		 else if (strcmp(command, "disconnect") == 0) {
+				end = 0;
+			}
+		 else if (strcmp(command, "MOSTRARPROCESOS") == 0) {
+			printf("\n\nIngrese lista en la que buscar: \n");
+			scanf("%s", lista);
+			if(strcmp(lista,NUEVOS)==0)
+				MostrarProcesosDeUnaLista(Nuevos,NUEVOS);
+			else if(strcmp(lista,LISTOS)==0)
+				MostrarProcesosDeUnaLista(Listos,LISTOS);
+			else if(strcmp(lista,EJECUTANDO)==0)
+				MostrarProcesosDeUnaLista(Ejecutando,EJECUTANDO);
+			else if(strcmp(lista,BLOQUEADOS)==0)
+				MostrarProcesosDeUnaLista(Bloqueados,BLOQUEADOS);
+			else if(strcmp(lista,FINALIZADOS)==0)
+				MostrarProcesosDeUnaLista(Finalizados,FINALIZADOS);
+			else if(strcmp(lista,"TODAS")==0)
+				MostrarTodosLosProcesos();
+			else
+				printf("No se reconoce la lista ingresada");
+
+			}
+
+		else if (strcmp(command, "ConsultarPrograma") == 0) {
+			printf("\n\nIngrese numero de programa: \n");
+			scanf("%d", &pidAFinalizar);
+			ConsultarEstado(pidConsulta);
+		}  else {
+			printf("No se conoce el mensaje %s\n", orden);
+		}
+	}
+}
 
 int main(void)
 {
-	Nuevos = list_create();
-	Finalizados= list_create();
-	Bloqueados= list_create();
-    Ejecutando= list_create();
-	Listos= list_create();
-
+	CrearListasEstados();
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
+	pthread_t hiloConsola;
+	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, NULL);
 	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidor);
-
+	pthread_join(hiloConsola, NULL);
 
 	return 0;
 }
