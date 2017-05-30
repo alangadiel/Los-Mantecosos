@@ -2,7 +2,7 @@
 
 
 #define IP_MEMORIA 127.0.0.1
-#define DATOS ((uint32_t*)paquete->Payload)
+#define DATOS ((uint32_t*)paquete.Payload)
 
 int PUERTO;
 int MARCOS;
@@ -13,7 +13,7 @@ char* REEMPLAZO_CACHE;
 int RETARDO_MEMORIA;
 char* IP;
 t_list* listaHilos;
-
+char end;
 
 typedef struct {
 	pthread_t hilo;
@@ -120,12 +120,12 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam, int socketFD) {
 
 }
-void AlmacenarBytes(Paquete* paquete) {
+void AlmacenarBytes(Paquete paquete) {
 	//Buscar pagina
 	sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
-	memcpy(bloquePpal+DATOS[3],(paquete->Payload) + sizeof(uint32_t)*5,DATOS[4]);
+	memcpy(bloquePpal+DATOS[3],(paquete.Payload) + sizeof(uint32_t)*5,DATOS[4]);
 	//printf("%s\n", DATOS[4]);
-	printf("Datos Almacenados correctamente! \n"); //TODO: imprimir datos
+	printf("Datos Almacenados correctamente! \n");
 	printf("El contenido de la memoria es: %s",(char*)bloquePpal);
 
 	//actualizar cache
@@ -139,43 +139,88 @@ void FinalizarPrograma(uint32_t pid) {
 	//join de hilo correspondiente
 }
 void userInterfaceHandler(void* socketFD) {
-	int end = 1;
-	while (end) {
+
+	while (!end) {
 		char orden[100];
 		printf("\n\nIngrese una orden: \n");
 		scanf("%s", orden);
 		char* command = getWord(orden, 0);
-		if(strcmp(command,"exit")==0)
-				exit(1);
+		if(strcmp(command,"exit")==0){
+			end=1;
+			pthread_exit(3);
+		}
 		else if (strcmp(command, "dump") == 0) {
 			printf("El contenido de la memoria es: %s",(char*)bloquePpal);
-			}
-		else if (strcmp(command, "disconnect") == 0) {
-			end = 0;
 		}  else {
 			printf("No se conoce el mensaje %s\n", orden);
 		}
 	}
 }
-void* inputConsola (void* p){
 
-	for(;;){
-	char orden[100];
-	printf("\n\nIngrese una orden: \n");
-	scanf("%s", orden);
-	//bloquear hasta que reciba algo
-
-	if(strcmp(orden,"exit")==0)
-		exit(1);
-	else if (strcmp(orden,"dump")==0)
-		printf("%s",(char*)bloquePpal);
+int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
+	paquete->Payload = malloc(1);
+	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
+	if (resul > 0) { //si no hubo error
+		if (paquete->header.tipoMensaje == ESHANDSHAKE) { //vemos si es un handshake y le respondemos con el tam de pag
+			if( !strcmp(paquete->header.emisor, KERNEL) || !strcmp(paquete->header.emisor, CPU)){
+				printf("Se establecio conexion con %s\n", paquete->header.emisor);
+				Paquete paquete;
+				paquete.header.tipoMensaje = ESHANDSHAKE;
+				paquete.header.tamPayload = sizeof(uint32_t);
+				strcpy(paquete.header.emisor, MEMORIA);
+				paquete.Payload=&MARCO_SIZE;
+				EnviarPaquete(socketFD, &paquete);
+			}
+		} else { //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
+			paquete->Payload = realloc(paquete->Payload,
+					paquete->header.tamPayload);
+			resul = RecibirDatos(paquete->Payload, socketFD,
+					paquete->header.tamPayload);
+		}
 	}
-	return NULL;
+
+	return resul;
 }
 
-void* accionHilo(int* socketFD){
-	while(true) {
+void* accionHilo(void* socket){
+	int socketFD = *(int*)socket;
+	Paquete paquete;
+	while (RecibirPaqueteMemoria(socketFD, MEMORIA, &paquete) > 0) {
+		switch (paquete.header.tipoMensaje){
+		case ESDATOS:
+			//printf("\nTexto recibido: %s\n", (char*)paquete->Payload);
+			switch ((*(uint32_t*)paquete.Payload)){
+			(uint32_t*)paquete.Payload++; //Queda un vector de 4 (0..3) posiciones por el ++
+			case INIC_PROG:
+				IniciarPrograma(DATOS[0],DATOS[1],socketFD);
+			break;
+			case SOL_BYTES:
+				SolicitarBytes(DATOS[0],DATOS[1],DATOS[2],DATOS[3],socketFD);
+			break;
+			case ALM_BYTES:
+				AlmacenarBytes(paquete);
+			break;
+			case ASIG_PAG:
+				AsignarPaginas(DATOS[0],DATOS[1],socketFD);
+			break;
+			case FIN_PROG:
+				FinalizarPrograma(DATOS[0]);
+			break;
+			}
+		break;
+		case ESARCHIVO:
+		break;
+
+		case ESINT:
+			if(strcmp(paquete.header.emisor,KERNEL)==0){
+				EnviarDatos(socketFD,MEMORIA,&MARCO_SIZE,sizeof(MARCO_SIZE));
+			}
+		break;
+		}
 	}
+	close(socketFD);
+	free(paquete.Payload);
+	return NULL;
 }
 
 pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
@@ -195,65 +240,6 @@ pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
 	}
 }
 
-void accion(Paquete* paquete, int socketFD){
-
-	//pthread_t hilo = agregarAListaHiloSiNoEsta(listaHilos, socketFD);
-	switch (paquete->header.tipoMensaje){
-	case ESDATOS:
-		//printf("\nTexto recibido: %s\n", (char*)paquete->Payload);
-		switch ((*(uint32_t*)paquete->Payload)){
-		(uint32_t*)paquete->Payload++; //Queda un vector de 4 (0..3) posiciones por el ++
-		case INIC_PROG:
-			IniciarPrograma(DATOS[0],DATOS[1],socketFD);
-		break;
-		case SOL_BYTES:
-			SolicitarBytes(DATOS[0],DATOS[1],DATOS[2],DATOS[3],socketFD);
-		break;
-		case ALM_BYTES:
-			AlmacenarBytes(paquete);
-		break;
-		case ASIG_PAG:
-			AsignarPaginas(DATOS[0],DATOS[1],socketFD);
-		break;
-		case FIN_PROG:
-			FinalizarPrograma(DATOS[0]);
-		break;
-		}
-	break;
-	case ESARCHIVO:
-	break;
-
-	case ESINT:
-		if(strcmp(paquete->header.emisor,KERNEL)==0){
-			EnviarDatos(socketFD,MEMORIA,&MARCO_SIZE,sizeof(MARCO_SIZE));
-		}
-	break;
-	}
-}
-
-int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
-	paquete->Payload = malloc(1);
-	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
-	if (resul > 0) { //si no hubo error
-		if (paquete->header.tipoMensaje == ESHANDSHAKE) { //vemos si es un handshake y le respondemos con el tam de pag
-			printf("Se establecio conexion con %s\n", paquete->header.emisor);
-			Paquete paquete;
-			paquete.header.tipoMensaje = ESHANDSHAKE;
-			paquete.header.tamPayload = sizeof(uint32_t);
-			strcpy(paquete.header.emisor, MEMORIA);
-			paquete.Payload=&MARCO_SIZE;
-			EnviarPaquete(socketFD, &paquete);
-		} else { //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
-			paquete->Payload = realloc(paquete->Payload,
-					paquete->header.tamPayload);
-			resul = RecibirDatos(paquete->Payload, socketFD,
-					paquete->header.tamPayload);
-		}
-	}
-
-	return resul;
-}
-
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
@@ -261,6 +247,7 @@ int main(void) {
 	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE) + (sizeof(RegistroTablaPaginacion) * MARCOS);
 	bloquePpal = malloc(tamanioTotalBytesMemoria); //Reservo toda mi memoria
 	TablaPaginacion = list_create();
+	end = 0;
 	//tabla_Adm tablaAdm[MARCOS]; //no, mejor accedamos casteando y recorriendo el bloquePpal
 	/*//MEMORIA CACHE, NO BORRAR
 	tabla_Cache tablaCache[ENTRADAS_CACHE]; //crear y allocar cache
@@ -271,14 +258,36 @@ int main(void) {
 	pthread_t hiloConsola;
 	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, NULL);
 
-	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteMemoria);
+	int socketFD = StartServidor(IP, PUERTO);
+	struct sockaddr_in their_addr; // información sobre la dirección del cliente
+	int new_fd;
+	socklen_t sin_size;
 
+	while(!end) { // main accept() loop
+		sin_size = sizeof(struct sockaddr_in);
+		if ((new_fd = accept(socketFD, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
+			perror("accept");
+			continue;
+		}
+		printf("\nNueva conexion de %s en " "socket %d\n", inet_ntoa(their_addr.sin_addr), new_fd);
+		//pthread_t hilo = agregarAListaHiloSiNoEsta(listaHilos, socketFD);
+		pthread_t threadNuevo;
+		pthread_create(&threadNuevo, NULL, accionHilo, &new_fd);
+		structHilo* itemNuevo = malloc(sizeof(structHilo));
+		itemNuevo->hilo = threadNuevo;
+		itemNuevo->socket = new_fd;
+		list_add(listaHilos, itemNuevo);
+	}
+	printf("fin");
+	close(socketFD);
+	//libera los items de lista de hilos , destruye la lista y espera a que termine cada hilo.
+	list_destroy_and_destroy_elements(listaHilos, LAMBDA(void _(void* elem) { pthread_join(((structHilo*)elem)->hilo, NULL); }));
 	pthread_join(hiloConsola, NULL);
 	/*//MEMORIA CACHE, NO BORRAR
 	for (i = 0; i < MARCOS; ++i)  //liberar cache.
 			free(tablaCache[i].contenido);
 	*/
 	free(bloquePpal);
-
+	exit(3);
 	return 0;
 }
