@@ -10,6 +10,7 @@
 
 char* IP_KERNEL;
 int PUERTO_KERNEL;
+t_list* listaHilos;
 
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
@@ -54,7 +55,26 @@ void imprimirArchivoConfiguracion() {
 	}
 }
 
-void programHandler(void *programPath) {
+void sendSignalOpenFile(char* programPath, int socketFD) {
+	FILE* fileForSend = fopen(programPath, "r");
+	char * buffer = 0;
+	long length;
+
+	if (fileForSend) {
+		fseek(fileForSend, 0, SEEK_END);
+		length = ftell(fileForSend);
+		fseek(fileForSend, 0, SEEK_SET);
+		buffer = malloc(length);
+		if (buffer) {
+			fread(buffer, 1, length, fileForSend);
+		}
+		fclose(fileForSend);
+	}
+	EnviarMensaje(socketFD, buffer, CONSOLA);
+}
+
+void* programHandler(void *programPath) {
+	printf("Starting Program");
 	time_t tiempoDeInicio = time(NULL);
 	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
 	int pid;
@@ -89,44 +109,28 @@ void programHandler(void *programPath) {
 			printf("%s\n", (char*)paquete.Payload);
 		}
 	}
+	return NULL;
 }
 
 int startProgram(char* programPath) {
-	pthread_t program;
-	int r = pthread_create(&program, NULL, programHandler, programPath);
-	pthread_join(program, NULL);
-	return 0;
+	printf("Start Program");
+	pthread_t* program= malloc(sizeof(pthread_t));
+	int r = pthread_create(program, NULL, programHandler, (void*)programPath);
+	list_add(listaHilos, program);
+	return r;
 }
 
-void endProgram(int pid, int socketFD) {
+void endProgram(int pid, int* socketFD) {
 	Paquete paquete;
 	strcpy(paquete.header.emisor, CONSOLA);
 	paquete.header.tipoMensaje = KILLPROGRAM;
 	paquete.header.tamPayload = sizeof(int);
 	paquete.Payload = &pid;
-	EnviarPaquete(socketFD, &paquete);
+	EnviarPaquete(*socketFD, &paquete);
 }
 
 void clean() {
 	system("clear"); // Clear screen and home cursor
-}
-
-void sendSignalOpenFile(char* programPath, int socketFD) {
-	FILE* fileForSend = fopen(programPath, "r");
-	char * buffer = 0;
-	long length;
-
-	if (fileForSend) {
-		fseek(fileForSend, 0, SEEK_END);
-		length = ftell(fileForSend);
-		fseek(fileForSend, 0, SEEK_SET);
-		buffer = malloc(length);
-		if (buffer) {
-			fread(buffer, 1, length, fileForSend);
-		}
-		fclose(fileForSend);
-	}
-	EnviarMensaje(socketFD, buffer, CONSOLA);
 }
 
 void userInterfaceHandler(void* socketFD) {
@@ -134,20 +138,19 @@ void userInterfaceHandler(void* socketFD) {
 	while (end) {
 		char command[100];
 		char parametro[100];
-		printf("\n\nIngrese SOLO el comando: \n");
+		printf("\nIngrese SOLO el comando: \n");
 		scanf("%s", command);
 		/*char* command = getWord(str, 0);
 		char* parameter = getWord(str, 1);*/
-		if (strcmp(command, "start_program") == 0) {
-			printf("\n\nIngrese parametro: \n");
+		if (!strcmp(command, "start_program")) {
+			printf("\nIngrese parametro: \n");
 			scanf("%s", parametro);
 			startProgram(parametro);
-		}
-		if (strcmp(command, "end_program") == 0) {
-			printf("\n\nIngrese parametro: \n");
+		} else if (!strcmp(command, "end_program")) {
+			printf("\nIngrese parametro: \n");
 			scanf("%s", parametro);
 			int pid = atoi(parametro);
-			endProgram(pid, (int) socketFD);
+			endProgram(pid, (int*) socketFD);
 		} else if (strcmp(command, "disconnect") == 0) {
 			end = 0;
 		} else if (strcmp(command, "clean") == 0) {
@@ -162,8 +165,11 @@ int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
-	pthread_t userInterface;
+	/*pthread_t userInterface;
 	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler, &socketFD);
-	pthread_join(userInterface, NULL);
+	pthread_join(userInterface, NULL);*/ //creo que no se necesita un hilo si ya tenes el principal
+	userInterfaceHandler(&socketFD);
+	printf("fin");
+	list_destroy_and_destroy_elements(listaHilos, LAMBDA(void _(void* elem) { pthread_join(*(pthread_t*)elem, NULL); }));
 	return 0;
 }
