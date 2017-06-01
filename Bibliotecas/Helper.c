@@ -5,6 +5,9 @@ char* getWord(char* string, int pos) {
 	char delimiter[] = " ";
 	char *word, *context;
 	int inputLength = strlen(string);
+	if (inputLength == 0) {
+		return NULL;
+	}
 	char *inputCopy = (char*) calloc(inputLength + 1, sizeof(char));
 	strncpy(inputCopy, string, inputLength);
 	if (pos == 0) {
