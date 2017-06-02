@@ -41,7 +41,6 @@ typedef struct {
 	BloqueControlProceso pcb;
 } PeticionTamanioStack;
 
-
 uint32_t PidAComparar;
 t_list* Nuevos;
 t_list* Finalizados;
@@ -105,19 +104,66 @@ void CrearListasEstados(){
 	list_add_all(Estados,EstadosConProgramasFinalizables);
 	list_add(Estados,Bloqueados);
 	list_add(Estados,Finalizados);
-
 }
-BloqueControlProceso CrearNuevoProceso(){
+void CrearNuevoProceso(BloqueControlProceso* pcb){
 	//Creo el pcb y lo guardo en la lista de nuevos
-	BloqueControlProceso pcb;
-	pcb.PID = ultimoPID+1;
-	pcb.IndiceStack = 0;
-	pcb.PaginasDeCodigo=0;
-	pcb.ProgramCounter = 0;
+
+	pcb->PID = ultimoPID+1;
+	pcb->IndiceStack = 0;
+	pcb->PaginasDeCodigo=0;
+	pcb->ProgramCounter = 0;
 	ultimoPID++;
-	list_add(Nuevos,&pcb);
-	return pcb;
+	list_add(Nuevos,pcb);
 }
+
+void* obtenerError(int exitCode){
+	switch(exitCode){
+		case 0:
+			printf("El programa finalizó correctamente\n");
+		break;
+
+		case -1:
+			printf("No se pudieron reservar recursos para ejecutar el programa\n");
+		break;
+
+		case -2:
+			printf("El programa intentó acceder a un archivo que no existe\n");
+		break;
+
+		case -3:
+			printf("El programa intentó leer un archivo sin permisos\n");
+		break;
+
+		case -4:
+			printf("El programa intentó escribir un archivo sin permisos\n");
+		break;
+
+		case -5:
+			printf("Excepción de memoria\n");
+		break;
+
+		case -6:
+			printf("Finalizado a través de desconexión de consola\n");
+		break;
+
+		case -7:
+			printf("Finalizado a través del comando Finalizar Programa de la consola\n");
+		break;
+
+		case -8:
+			printf("Se intentó reservar más memoria que el tamaño de una página\n");
+		break;
+
+		case -9:
+			printf("No se pueden asignar más páginas al proceso\n");
+		break;
+
+		case -20:
+			printf("Error sin definición\n");
+		break;
+	}
+}
+
 void obtenerValoresArchivoConfiguracion()
 {
 	int contadorDeVariables = 0;
@@ -293,7 +339,11 @@ void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator){
 	int index=0;
 	for (index = 0; index < list_size(lista); index++) {
 		BloqueControlProceso* proceso = (BloqueControlProceso*)list_get(lista,index);
-		printf("Proceso N°: %d  -(Paginas de Codigo: %d \n",proceso->PID,proceso->PaginasDeCodigo);
+		printf("Proceso N°: %d\n",proceso->PID);
+
+		if (strcmp(discriminator, FINALIZADOS) == 0) {
+			obtenerError(proceso->ExitCode);
+		}
 	}
 }
 void ConsultarEstado(int pidAConsultar){
@@ -302,7 +352,7 @@ void ConsultarEstado(int pidAConsultar){
 	//Busco el proceso en todas las listas
 	while(i<list_size(Estados) && result==NULL){
 		t_list* lista = (t_list* )list_get(Estados,i);
-		result = list_find(lista,LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != pidAConsultar; }));
+		result = list_find(lista,LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pidAConsultar; }));
 		i++;
 	}
 	if(result==NULL)
@@ -326,11 +376,11 @@ void MostrarTodosLosProcesos(){
 
 bool KillProgram(int pidAFinalizar,int tipoFinalizacion){
 	int i =0;
-	void* result;
+	void* result = NULL;
 	//Busco el proceso en todas las listas
 	while(i<list_size(EstadosConProgramasFinalizables) && result==NULL){
 		t_list* lista = list_get(EstadosConProgramasFinalizables,i);
-		result = list_find(lista,LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != pidAFinalizar; }));
+		result = list_find(lista,LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID == pidAFinalizar; }));
 	}
 	if(result==NULL){
 		printf("No se encuentro el programa finalizar");
@@ -338,7 +388,8 @@ bool KillProgram(int pidAFinalizar,int tipoFinalizacion){
 	}
 	else
 	{
-		list_remove_by_condition(Listos, LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != pidAFinalizar; }));
+		//TODO: Remover el proceso de la lista ejecutando
+		list_remove_by_condition(Listos, LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID == pidAFinalizar; }));
 		BloqueControlProceso* pcb = (BloqueControlProceso*)result;
 		//Le asigno el codigo de finalización de programa y lo pongo en la lista de Exit
 		pcb->ExitCode = tipoFinalizacion;
@@ -357,8 +408,9 @@ void accion(Paquete* paquete, int socketConectado){
 				{
 					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
 					double tamanioTotalPaginas = ceil(tamanioArchivo)+STACK_SIZE;
+					BloqueControlProceso pcb;
+					CrearNuevoProceso(&pcb);
 
-					BloqueControlProceso pcb = CrearNuevoProceso();
 					//Manejo la multiprogramacion
 					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
 						//Pregunta a la memoria si me puede guardar estas paginas
@@ -371,19 +423,18 @@ void accion(Paquete* paquete, int socketConectado){
 							printf("Cant paginas asignadas: %d \n",pcb.PaginasDeCodigo);
 
 							//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
-							PidAComparar = pcb.PID;
-
-							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID != PidAComparar; }));
+							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb.PID; }));
 							printf("Tamanio de la lista de nuevos programas: %d \n",list_size(Nuevos));
-							list_add(Listos,&pcb);
+							list_add(Listos, &pcb);
 							printf("El programa %d se cargo en memoria \n",pcb.PID);
 
 							//Solicito a la memoria que me guarde el codigo del programa
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
-							EnviarDatos(socketConectado,KERNEL,&pcb.PID,sizeof(uint32_t));
+							EnviarDatos(socketConectado,KERNEL,&(pcb.PID),sizeof(uint32_t));
 						}
 						else
 						{
+							//TODO: Sacar programa de la lista de nuevos y meterlo en la lista de finalizado con su respectivo codigo de error
 							EnviarMensaje(socketConectado,"No se pudo guardar el programa porque no hay espacio suficiente",KERNEL);
 						}
 
@@ -401,8 +452,6 @@ void accion(Paquete* paquete, int socketConectado){
 				}
 				else
 					EnviarMensaje(socketConectado,"Error al finalizar programa",KERNEL);
-
-
 			}
 		break;
 	}
@@ -455,18 +504,23 @@ void userInterfaceHandler(void* socketFD) {
 				MostrarProcesosDeUnaLista(Bloqueados,BLOQUEADOS);
 			else if(strcmp(lista,FINALIZADOS)==0)
 				MostrarProcesosDeUnaLista(Finalizados,FINALIZADOS);
+
 			else if(strcmp(lista,"TODAS")==0)
 				MostrarTodosLosProcesos();
 			else
 				printf("No se reconoce la lista ingresada");
-
 			}
 
 		else if (strcmp(command, "ConsultarPrograma") == 0) {
 			printf("\n\nIngrese numero de programa: \n");
-			scanf("%d", &pidAFinalizar);
+			scanf("%d", &pidConsulta);
 			ConsultarEstado(pidConsulta);
-		}  else {
+		}  else if (strcmp(command, "kill_program") == 0){
+			printf("\n\nIngrese numero de programa: \n");
+			scanf("%d", &pidConsulta);
+			KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA);
+		}
+			else {
 			printf("No se conoce el mensaje %s\n", orden);
 		}
 	}
