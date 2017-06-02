@@ -134,6 +134,15 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
 
 }
 
+void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
+/*
+ * Ante un pedido de liberación de página por parte del kernel, el proceso memoria deberá liberar
+  la página que corresponde con el número solicitado. En caso de que dicha página no exista
+  o no pueda ser liberada, se deberá informar de la imposibilidad de realizar dicha operación
+  como una excepcion de memoria.
+ */
+}
+
 void FinalizarPrograma(uint32_t pid) {
 	//join de hilo correspondiente
 	list_remove_and_destroy_by_condition(procesosActivos, LAMBDA(bool _(void* pidAEliminar) { return *(uint32_t*)pidAEliminar != pid;}), free);
@@ -327,6 +336,9 @@ void* accionHilo(void* socket){
 			break;
 			case ASIG_PAG:
 				AsignarPaginas(DATOS[0],DATOS[1],socketFD);
+			break;
+			case LIBE_PAG:
+				LiberarPaginas(DATOS[0],DATOS[1],socketFD);
 			break;
 			case FIN_PROG:
 				FinalizarPrograma(DATOS[0]);

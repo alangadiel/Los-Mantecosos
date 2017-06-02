@@ -33,7 +33,8 @@
 #define SOL_BYTES 1
 #define ALM_BYTES 2
 #define ASIG_PAG 3
-#define FIN_PROG 4
+#define LIBE_PAG 4
+#define FIN_PROG 5
 
 typedef struct {
 	int8_t tipoMensaje;
