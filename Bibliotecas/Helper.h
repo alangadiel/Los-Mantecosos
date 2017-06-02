@@ -38,6 +38,6 @@ char* getWord(char* string, int pos);
 char* integer_to_string(int x);
 char* obtenerTiempoString(time_t t);
 int GetTamanioArchivo(FILE * f);
-int list_contains(t_list list, void* item);
+bool list_contains(t_list* list, void* item);
 
 #endif /* HELPER_*/
