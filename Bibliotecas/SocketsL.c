@@ -264,8 +264,7 @@ void* IM_LeerDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0) {
-	}
+	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0) {}
 	void* r = paquete->Payload;
 	free(paquete);
 	return r;
@@ -294,13 +293,28 @@ uint32_t IM_AsignarPaginas(int socketFD, char emisor[11], uint32_t ID_Prog,
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0) {
-	}
+	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);
 	return r;
 }
+uint32_t IM_LiberarPagina(int socketFD, char emisor[11], uint32_t ID_Prog, uint32_t NumPag) {//Agregado en el Fe de Erratas, responde 0 si hubo error y 1 si libero la pag.
+	int tamDatos = sizeof(uint32_t) * 3;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = LIBE_PAG;
+	((uint32_t*) datos)[1] = ID_Prog;
+	((uint32_t*) datos)[2] = NumPag;
+	EnviarDatos(socketFD, emisor, datos, tamDatos);
+	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete->Payload);
+	free(paquete->Payload);
+	free(paquete);
+	return r;
+}
+
 void IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog) { //Borra las paginas de ese programa.
 	int tamDatos = sizeof(uint32_t) * 2;
 	void* datos = malloc(tamDatos);
