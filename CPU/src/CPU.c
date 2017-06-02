@@ -5,6 +5,8 @@ char* IP_KERNEL;
 int PUERTO_KERNEL;
 char* IP_MEMORIA;
 int PUERTO_MEMORIA;
+int socketKernel;
+int socketMemoria;
 static const char* PROGRAMA =
 		"begin\n"
 		"variables a, b\n"
@@ -95,8 +97,8 @@ void imprimirArchivoConfiguracion() {
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	int socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake);
-	int socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake);
+	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake);
+	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake);
 
 	Paquete* paquete = malloc(sizeof(Paquete));
 	uint32_t datosRecibidos = RecibirPaqueteCliente(socketKernel, CPU, paquete);
