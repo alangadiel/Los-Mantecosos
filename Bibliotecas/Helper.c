@@ -41,3 +41,14 @@ int GetTamanioArchivo(FILE * f) {
 	int size = ftell(f);
 	return size;
 }
+
+bool list_contains(t_list list, void* item) {
+	return list_any_satisfy(list, LAMBDA(bool _(void* itemCompare) {
+		if (itemCompare == item) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}));
+}

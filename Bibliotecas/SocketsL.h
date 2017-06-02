@@ -28,6 +28,7 @@
 #define ESINT 3
 #define ESPCB 4
 #define KILLPROGRAM 5
+#define ESERROR 6
 //API Memoria:
 #define INIC_PROG 0
 #define SOL_BYTES 1

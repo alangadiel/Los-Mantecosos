@@ -100,20 +100,13 @@ void imprimirArchivoConfiguracion() {
 
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 	//TODO
-	//Sacar hardcodeo y programarlo bien
-	uint32_t cantPaginasAsignadas = 0;
-	if (list_size(TablaPaginacion) < 1) { //El checkpoint 2 dice que por ahora hay solo una unica pagina
-		uint32_t* PID = malloc(sizeof(uint32_t));
-		*PID=pid;
-		list_add(procesosActivos, PID);
-		RegistroTablaPaginacion* nuevoRegistros = malloc(sizeof(RegistroTablaPaginacion));
-		nuevoRegistros->Frame = 3;
-		nuevoRegistros->PID = pid;
-		nuevoRegistros->Pag = 2;
-		list_add(TablaPaginacion, nuevoRegistros);
-		cantPaginasAsignadas = cantPag;
+	if (!list_contains(procesosActivos, pid)){
+		list_add(procesosActivos, pid);
+		AsignarPaginas(pid, cantPag, socketFD);
 	}
-	EnviarDatos(socketFD, MEMORIA, &cantPaginasAsignadas, sizeof(uint32_t));
+	else {
+		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t));
+	}
 }
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,
@@ -131,11 +124,27 @@ void AlmacenarBytes(Paquete paquete) {
 }
 
 void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
-
+	if (cantidadPaginas + cantPag < MARCOS) {
+		cantidadPaginas++;
+		int i;
+		for (i = 0; i < cantPag; i++) {
+			RegistroTablaPaginacion* nuevoRegistros;
+			nuevoRegistros->Frame = cantidadPaginas;
+			nuevoRegistros->PID = pid;
+			nuevoRegistros->Pag = i;
+			cantidadPaginas++;
+			list_add(TablaPaginacion, nuevoRegistros);
+		}
+		EnviarDatos(socketFD, MEMORIA, 1, sizeof(uint32_t));
+	}
+	else {
+		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t));
+	}
 }
 
 void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
-/*
+	cantidadPaginas -= numPag;
+	/*
  * Ante un pedido de liberación de página por parte del kernel, el proceso memoria deberá liberar
   la página que corresponde con el número solicitado. En caso de que dicha página no exista
   o no pueda ser liberada, se deberá informar de la imposibilidad de realizar dicha operación
