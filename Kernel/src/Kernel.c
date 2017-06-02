@@ -111,6 +111,8 @@ BloqueControlProceso CrearNuevoProceso(){
 	//Creo el pcb y lo guardo en la lista de nuevos
 	BloqueControlProceso pcb;
 	pcb.PID = ultimoPID+1;
+	pcb.IndiceStack = 0;
+	pcb.PaginasDeCodigo=0;
 	pcb.ProgramCounter = 0;
 	ultimoPID++;
 	list_add(Nuevos,&pcb);
@@ -291,25 +293,25 @@ void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator){
 	int index=0;
 	for (index = 0; index < list_size(lista); index++) {
 		BloqueControlProceso* proceso = (BloqueControlProceso*)list_get(lista,index);
-		printf("Proceso N°: %d \n",proceso->PID);
+		printf("Proceso N°: %d  -(Paginas de Codigo: %d \n",proceso->PID,proceso->PaginasDeCodigo);
 	}
 }
 void ConsultarEstado(int pidAConsultar){
 	int i =0;
-	void* result;
+	void* result=NULL;
 	//Busco el proceso en todas las listas
 	while(i<list_size(Estados) && result==NULL){
-		t_list* lista = list_get(Estados,i);
+		t_list* lista = (t_list* )list_get(Estados,i);
 		result = list_find(lista,LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != pidAConsultar; }));
 		i++;
 	}
 	if(result==NULL)
 		printf("No se encontro el proceso a consultar. Intente nuevamente");
 	else{
-		BloqueControlProceso* proceso = (BloqueControlProceso*)proceso;
+		BloqueControlProceso* proceso = (BloqueControlProceso*)result;
 		printf("Proceso N°: %d \n",proceso->PID);
 		//printf("Indice de codigo: %d \n",proceso->IndiceDeCodigo);
-		printf("Tamaño del stack: %d \n",proceso->TamanioStack);
+		printf("Tamaño del stack: %d \n",proceso->IndiceStack);
 		printf("Paginas de codigo: %d \n",proceso->PaginasDeCodigo);
 		printf("Contador de programa: %d \n",proceso->ProgramCounter);
 	}
@@ -363,13 +365,15 @@ void accion(Paquete* paquete, int socketConectado){
 						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
 						if(paginasConfirmadas == tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
 						{
-							printf("Cant paginas asignadas: %d \n",paginasConfirmadas);
+							printf("Cant paginas asignadas: %f \n",tamanioTotalPaginas);
 
-							pcb.PaginasDeCodigo = tamanioTotalPaginas;
-							//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
+							pcb.PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
+							printf("Cant paginas asignadas: %d \n",pcb.PaginasDeCodigo);
+
+							//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
 							PidAComparar = pcb.PID;
 
-							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != PidAComparar; }));
+							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID != PidAComparar; }));
 							printf("Tamanio de la lista de nuevos programas: %d \n",list_size(Nuevos));
 							list_add(Listos,&pcb);
 							printf("El programa %d se cargo en memoria \n",pcb.PID);
