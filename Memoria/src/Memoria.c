@@ -140,7 +140,7 @@ void FinalizarPrograma(uint32_t pid) {
 }
 
 void dumpMemoryContent() {
-
+	printf("Imprimiendo todo el contenido de la memoria");
 	printf("%*s", tamanioTotalBytesMemoria, (char*)bloquePpal);
 	char* nombreDelArchivo = malloc(64+27+1);//tam de la hora + tam de "Contenido de la memoria en " + \0
 	nombreDelArchivo = "Contenido de la memoria en ";
@@ -152,10 +152,12 @@ void dumpMemoryContent() {
 }
 
 void dumpMemoryContentOfPID(uint32_t pid) {
+	printf("Imprimiendo el contenido en memoria del proceso %d", pid);
 	//TODO
 }
 
 void dumpMemoryStruct() { //TODO
+	printf("Imprimiendo las estructuras de la memoria");
 	char* archivoParaGuardar;
 	int i;
 	for (i = 0; i < list_size(TablaPaginacion); i++) {
@@ -191,63 +193,93 @@ void dumpMemoryStruct() { //TODO
 	fclose(file);
 }
 
+void printMemorySize() {
+	//TODO
+
+	printf("Imprimiendo el tamaño total de la memoria");
+}
+void printProcessSize(uint32_t pid) {
+	//TODO
+
+	printf("Imprimiendo el tamaño en memoria del proceso %d", pid);
+}
+
 void userInterfaceHandler(void* socketFD) {
-//TODO: usar diferentes scanf para el ingreso de las palabras
+	char* command = malloc(20);
 	while (!end) {
-		char orden[100];
-		printf("\n\nIngrese una orden: \n");
-		scanf("%s", orden);
-		char* command = getWord(orden, 0);
-		char* secondWord = getWord(orden, 1);
-		char* thirdWord = getWord(orden, 2);
-		if (!strcmp(command, "retardo​")) { // !int es lo mismo que int!=0
-			if (secondWord != NULL) {
-				if (!strtol(secondWord, NULL, 10) && strtol(secondWord, NULL, 10) <= UINT_MAX) //que sea un numero y que no se pase del max del uint
-					RETARDO_MEMORIA = strtol(secondWord, NULL, 10);
-				else
-					printf("Comando invalido");
-			}
-			else {
-				printf("El retardo es: %d", RETARDO_MEMORIA);
-			}
-		}
-		else if (!strcmp(command, "dump") && secondWord != NULL) {
-			if (!strcmp(secondWord, "cache")) {
+		printf("\n\nIngrese un comando: \n");
+		scanf("%s", command);
+		//string_trim(&command);
+		//int c = strcmp(command, "retardo​");
+		if (!strcmp(command, "retardo")) { // !int es lo mismo que int!=0
+			command[0] = '\0'; //lo vacio
+			scanf("%s", command);
+			if (strtol(command, NULL, 10) != 0) {
+				RETARDO_MEMORIA = strtol(command, NULL, 10);
+				printf("el retardo de la memoria ahora es %u", RETARDO_MEMORIA);
+			} else printf("Numero invalido");
+
+		} else if (!strcmp(command, "dump")) {
+			command[0] = '\0'; //lo vacio
+			scanf("%s", command);
+
+			if (!strcmp(command, "cache")) {
 				//TODO mostrar cache
-			}
-			else if (!strcmp(secondWord, "struct")){
+
+			} else if (!strcmp(command, "struct")){
 				dumpMemoryStruct();
-			}
-			else if (!strcmp(secondWord, "content")) {
-				if (thirdWord != NULL) {
-					if (!strtol(thirdWord, NULL, 10) && strtol(thirdWord, NULL, 10) <= (2^32)) //que sea un numero y que no se pase del max del uint32
-						dumpMemoryContentOfPID(strtol(thirdWord, NULL, 10));
-					else
-						printf("Comando invalido");
-				}
-				else {
-					dumpMemoryContent();
-				}
-			}
+
+			} else if (!strcmp(command, "all")){
+				dumpMemoryContent();
+
+			} else if (!strcmp(command, "pid")) {
+				command[0] = '\0'; //lo vacio
+				scanf("%s", command);
+
+				if (strtol(command, NULL, 10) != 0 && strtol(command, NULL, 10) <= (2^32))
+					//que sea un numero y que no se pase del max del uint32
+					dumpMemoryContentOfPID(strtol(command, NULL, 10));
+
+				else printf("Numero invalido");
+
+			} else
+				printf("No se conoce el comando %s\n", command);
+
 		} else if (!strcmp(command, "disconnect")) {
 			end = 0;
-		}
-		else if (!strcmp(command, "flush")  && secondWord != NULL && !strcmp(secondWord, "cache")) {
+
+		} else if (!strcmp(command, "flush")) {
+			command[0] = '\0'; //lo vacio
+			scanf("%s", command);
+
+			if (!strcmp(command, "cache")) {
 			//TODO limpiar cache
+
+			} else printf("No se conoce el comando %s\n", command);
+
 		} else if (!strcmp(command, "size")) {
-			if (!strcmp(secondWord, "memory")) {
+			command[0] = '\0'; //lo vacio
+			scanf("%s", command);
 
-			}
-			else if (secondWord != NULL) {
+			if (!strcmp(command, "memory")) {
+				printMemorySize();
 
-			}
-			else {
-				printf("No se conoce el mensaje %s\n", orden);
-			}
-		} else {
-			printf("No se conoce el mensaje %s\n", orden);
-		}
+			} else if (!strcmp(command, "pid")) {
+				command[0] = '\0'; //lo vacio
+				scanf("%s", command);
+
+				if (strtol(command, NULL, 10) != 0 && strtol(command, NULL, 10) <= (2^32)) {
+					//que sea un numero y que no se pase del max del uint32
+					printProcessSize(strtol(command, NULL, 10));
+				} else printf("Numero invalido");
+
+			} else
+				printf("No se conoce el comando %s\n", command);
+
+		} else
+			printf("No se conoce el comando %s\n", command);
 	}
+	free(command);
 }
 
 int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
