@@ -9,6 +9,7 @@
 
 #define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
 #define DESCONECTADODESDECOMANDOCONSOLA -7
+#define NOSEPUDIERONRESERVARRECURSOS -1
 //Variables archivo de configuracion
 int PUERTO_PROG;
 int PUERTO_CPU;
@@ -48,24 +49,10 @@ t_list* Bloqueados;
 t_list* Ejecutando;
 t_list* Listos;
 t_list* Estados;
+t_list* ListaPCB;
 t_list* EstadosConProgramasFinalizables;
 
-/*
-//replicar aca!!
-int j;
-for (j = 0; j <= fdmax; j++) {
-		// ¡enviar a todo el mundo!
-		if (FD_ISSET(j, &master)) {
-			// excepto al listener y a nosotros mismos
-			if (j != SocketEscucha && j != i) {
-				EnviarMensaje(j,(char*)paquete->Payload,KERNEL, ESSTRING);
-				//if (send(j, paquete, result, 0) == -1) {
-					//perror("send");
-				//}
-			}
-		}
-	}
-*/
+
 char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
 {
 	char buffer[10000];
@@ -98,11 +85,11 @@ void CrearListasEstados(){
 	//Creo una lista de listas
 	Estados = list_create();
 	EstadosConProgramasFinalizables = list_create();
-	list_add(Estados,Nuevos);
+	list_add(EstadosConProgramasFinalizables,Nuevos);
 	list_add(EstadosConProgramasFinalizables,Listos);
 	list_add(EstadosConProgramasFinalizables,Ejecutando);
+	list_add(EstadosConProgramasFinalizables,Bloqueados);
 	list_add_all(Estados,EstadosConProgramasFinalizables);
-	list_add(Estados,Bloqueados);
 	list_add(Estados,Finalizados);
 }
 void CrearNuevoProceso(BloqueControlProceso* pcb){
@@ -114,9 +101,10 @@ void CrearNuevoProceso(BloqueControlProceso* pcb){
 	pcb->ProgramCounter = 0;
 	ultimoPID++;
 	list_add(Nuevos,pcb);
+	//list_add(ListaPCB,pcb);
 }
 
-void* obtenerError(int exitCode){
+void obtenerError(int exitCode){
 	switch(exitCode){
 		case 0:
 			printf(" (El programa finalizó correctamente)\n");
@@ -369,6 +357,30 @@ void ConsultarEstado(int pidAConsultar){
 		printf("Contador de programa: %d \n",proceso->ProgramCounter);
 	}
 }
+void syscallWrite(int socketFD) {
+	if(socketFD == 1) {
+		char orden[100];
+		char texto[100];
+
+		printf("\n\nIngrese una orden privilegiada: \n");
+		scanf("%s", orden);
+		char* command = getWord(orden, 0);
+
+		if(strcmp(command,"write") == 0) {
+			printf("\n\nIngrese texto a imprimir: \n");
+			scanf("%s", texto);
+			printf("%s", texto);
+			char* imprimir;
+			strcpy(imprimir,"imprimir ");
+			string_append(&imprimir,texto);
+			EnviarMensaje(socketFD,imprimir,KERNEL);
+			free(imprimir);
+		}
+		else{
+			printf("System Call no definida\n");
+		}
+	}
+}
 void MostrarTodosLosProcesos(){
 	MostrarProcesosDeUnaLista(Nuevos,NUEVOS);
 	MostrarProcesosDeUnaLista(Listos,LISTOS);
@@ -376,35 +388,39 @@ void MostrarTodosLosProcesos(){
 	MostrarProcesosDeUnaLista(Bloqueados,BLOQUEADOS);
 	MostrarProcesosDeUnaLista(Finalizados,FINALIZADOS);
 }
-
+BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizacion ){
+	BloqueControlProceso* pcbRemovido = NULL;
+	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid; }));
+	if(pcbRemovido!=NULL){
+		pcbRemovido->ExitCode=tipoFinalizacion;
+		list_add(Finalizados,pcbRemovido);
+	}
+	return pcbRemovido;
+}
+void KillProgramDeUnaLista(t_list* lista,BloqueControlProceso* pcb,int tipoFinalizacion ){
+	FinalizarPrograma(lista,pcb->PID,tipoFinalizacion);
+}
 bool KillProgram(int pidAFinalizar,int tipoFinalizacion){
 	int i =0;
 	void* result = NULL;
-	//Busco el proceso en todas las listas
 	while(i<list_size(EstadosConProgramasFinalizables) && result==NULL){
 		t_list* lista = list_get(EstadosConProgramasFinalizables,i);
-		result = list_find(lista,LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID == pidAFinalizar; }));
+		//TODO: Ver como eliminar un programa en estado ejecutando
+		if(i!=2)  //2 == EJECUTANDO
+			result = FinalizarPrograma(lista,pidAFinalizar,tipoFinalizacion);
 		i++;
 	}
 	if(result==NULL){
 		printf("No se encontro el programa finalizar");
 		return false;
 	}
-	else
-	{
-		//TODO: Remover el proceso de la lista ejecutando
-		list_remove_by_condition(Listos, LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID == pidAFinalizar; }));
-		BloqueControlProceso* pcb = (BloqueControlProceso*)result;
-		//Le asigno el codigo de finalización de programa y lo pongo en la lista de Exit
-		pcb->ExitCode = tipoFinalizacion;
-		list_add(Finalizados,pcb);
-		printf("Programa N° %d finalizado\n", pcb->PID);
-		// TODO: Liberar las paginas de memoria asignadas a ese proceso
-		return true;
-	}
+	return true;
+
 }
 
 void accion(Paquete* paquete, int socketConectado){
+	/*pthread_t hiloSyscallWrite;
+	pthread_create(&hiloSyscallWrite,NULL, (void*)syscallWrite, &socketConectado);*/
 	switch(paquete->header.tipoMensaje) {
 
 		case ESSTRING:
@@ -413,33 +429,41 @@ void accion(Paquete* paquete, int socketConectado){
 				{
 					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
 					double tamanioTotalPaginas = ceil(tamanioArchivo)+STACK_SIZE;
-					BloqueControlProceso pcb;
-					CrearNuevoProceso(&pcb);
+					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
+					CrearNuevoProceso(pcb);
 
 					//Manejo la multiprogramacion
 					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
 						//Pregunta a la memoria si me puede guardar estas paginas
-						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
+						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb->PID,tamanioTotalPaginas);
 						if(paginasConfirmadas == tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
 						{
-							pcb.PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
-							printf("Cant paginas asignadas: %d \n",pcb.PaginasDeCodigo);
+							pcb->PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
+							printf("Cant paginas asignadas: %d \n",pcb->PaginasDeCodigo);
 
 							//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
-							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb.PID; }));
+							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
 							printf("Tamanio de la lista de nuevos programas: %d \n",list_size(Nuevos));
-							list_add(Listos, &pcb);
-							printf("El programa %d se cargo en memoria \n",pcb.PID);
+							list_add(Listos, pcb);
+							printf("El programa %d se cargo en memoria \n",pcb->PID);
 
 							//Solicito a la memoria que me guarde el codigo del programa
-							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
-							EnviarDatos(socketConectado,KERNEL,&(pcb.PID),sizeof(uint32_t));
+							IM_GuardarDatos(socketConMemoria, KERNEL, pcb->PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
+							EnviarDatos(socketConectado,KERNEL,&(pcb->PID),sizeof(uint32_t));
 						}
 						else
 						{
-							//TODO: Sacar programa de la lista de nuevos y meterlo en la lista de finalizado con su respectivo codigo de error
+							//Sacar programa de la lista de nuevos y meterlo en la lista de finalizado con su respectivo codigo de error
+							KillProgramDeUnaLista(Nuevos,pcb,NOSEPUDIERONRESERVARRECURSOS);
 							EnviarMensaje(socketConectado,"No se pudo guardar el programa porque no hay espacio suficiente",KERNEL);
 						}
+
+					}
+					else
+					{
+						//El grado de multiprogramacion no te deja agregar otro proceso
+						KillProgramDeUnaLista(Nuevos,pcb,NOSEPUDIERONRESERVARRECURSOS);
+						EnviarMensaje(socketConectado,"No se pudo guardar el programa porque se alcanzo el grado de multiprogramacion",KERNEL);
 
 					}
 
@@ -458,6 +482,8 @@ void accion(Paquete* paquete, int socketConectado){
 			}
 		break;
 	}
+//	pthread_join(hiloSyscallWrite, NULL);
+
 }
 
 void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
@@ -530,25 +556,7 @@ void userInterfaceHandler(void* socketFD) {
 	}
 }
 
-void syscallWrite(int socketFD) {
-	if(socketFD == 1) {
-		char orden[100];
-		char texto[100];
 
-		printf("\n\nIngrese una orden privilegiada: \n");
-		scanf("%s", orden);
-		char* command = getWord(orden, 0);
-
-		if(strcmp(command,"write") == 0) {
-			printf("\n\nIngrese texto a imprimir: \n");
-			scanf("%s", texto);
-			printf("%s", texto);
-		}
-		else{
-			printf("System Call no definida\n");
-		}
-	}
-}
 
 int main(void)
 {
@@ -556,10 +564,11 @@ int main(void)
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
-	pthread_t hiloSyscallWrite;
+
 	pthread_t hiloConsola;
-	pthread_create(&hiloSyscallWrite, NULL, (void*)syscallWrite, 2); //socket 2 hardcodeado
-	pthread_join(hiloSyscallWrite, NULL);
+	//pthread_t hiloSyscallWrite;
+	//pthread_create(&hiloSyscallWrite, NULL, (void*)syscallWrite, 2); //socket 2 hardcodeado
+	//pthread_join(hiloSyscallWrite, NULL);
 	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, NULL);
 	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidor);
 	pthread_join(hiloConsola, NULL);

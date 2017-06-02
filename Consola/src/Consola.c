@@ -90,11 +90,14 @@ void programHandler(void *programPath) {
 		case ESDATOS:
 			if(strcmp(paquete.header.emisor,KERNEL)==0){
 				pid = *((uint32_t*) paquete.Payload);
-				SocketProceso sp;
-				sp.pid = pid;
-				sp.socket = socketFD;
-				list_add(SocketsProcesos,&sp);
-				printf("El pid del nuevo programa es %d \n",pid);
+				if(pid >= 1){
+					SocketProceso sp;
+					sp.pid = pid;
+					sp.socket = socketFD;
+					list_add(SocketsProcesos,&sp);
+					printf("El pid del nuevo programa es %d \n",pid);
+				}
+
 			}
 		break;
 		case ESSTRING:
@@ -107,9 +110,14 @@ void programHandler(void *programPath) {
 					double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
 					printf("La duracion del programa en segundos es de %f\n",
 							diferencia);
-				} else if (strcmp(paquete.Payload, "imprimir") == 0) {
+				}
+				else if (strcmp(string_substring_until(paquete.Payload,8),"imprimir") == 0) {
 					printf("%s\n", (char*)paquete.Payload);
 				}
+				else {
+					  printf("%s\n", (char*)paquete.Payload);
+				}
+
 			}
 		break;
 
