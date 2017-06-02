@@ -6,7 +6,12 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/sendfile.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <sys/wait.h>
+#include <signal.h>
 
+#define BACKLOG 10 // Cuántas conexiones pendientes se mantienen en cola del server
 #define TAMANIOHEADER sizeof(Header)
 #define STRHANDSHAKE "10"
 //Emisores:

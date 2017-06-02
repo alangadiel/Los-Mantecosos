@@ -99,7 +99,7 @@ int StartServidor(char* MyIP, int MyPort) // obtener socket a la escucha
 	}
 
 	// escuchar
-	if (listen(SocketEscucha, 10) == -1) {
+	if (listen(SocketEscucha, BACKLOG) == -1) {
 		perror("listen");
 		exit(1);
 	}
