@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <limits.h>
 
 typedef struct {
 	uint32_t PID;

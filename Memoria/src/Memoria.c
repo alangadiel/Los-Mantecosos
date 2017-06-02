@@ -1,16 +1,15 @@
 #include "SocketsL.h"
 
-
 #define IP_MEMORIA 127.0.0.1
 #define DATOS ((uint32_t*)paquete.Payload)
 
 int PUERTO;
-int MARCOS;
+uint32_t MARCOS;
 uint32_t MARCO_SIZE;
-int ENTRADAS_CACHE;
-int CACHE_X_PROC;
+uint32_t ENTRADAS_CACHE;
+uint32_t CACHE_X_PROC;
 char* REEMPLAZO_CACHE;
-int RETARDO_MEMORIA;
+unsigned int RETARDO_MEMORIA;
 char* IP;
 t_list* listaHilos;
 char end;
@@ -20,24 +19,24 @@ typedef struct {
 	int socket;
 } structHilo;
 
-
 typedef struct {
 	uint32_t Frame;
 	uint32_t PID;
 	uint32_t Pag;
-} RegistroTablaPaginacion ;
+} RegistroTablaPaginacion;
 
 typedef struct {
 	uint32_t PID;
 	uint32_t Pag;
 	void* contenido;
-} tabla_Cache ;
+} tabla_Cache;
 
 void* bloquePpal;
-uint32_t tamanioTotalBytesMemoria;
-uint32_t cantidadPaginas=0;
+int tamanioTotalBytesMemoria;
+int cantidadPaginas = 0;
 t_list* TablaPaginacion;
 int socketABuscar;
+t_list* procesosActivos;
 
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
@@ -46,8 +45,7 @@ void obtenerValoresArchivoConfiguracion() {
 	file = fopen("ArchivoConfiguracion.txt", "r");
 	if (file) {
 		while ((c = getc(file)) != EOF)
-			if (c == '=')
-			{
+			if (c == '=') {
 				char buffer[10000];
 				switch (contadorDeVariables) {
 				case 7:
@@ -55,7 +53,7 @@ void obtenerValoresArchivoConfiguracion() {
 					strtok(IP, "\n");
 					break;
 				case 6:
-					fscanf(file, "%i", &RETARDO_MEMORIA);
+					fscanf(file, "%u", &RETARDO_MEMORIA);
 					contadorDeVariables++;
 					break;
 				case 5:
@@ -64,19 +62,19 @@ void obtenerValoresArchivoConfiguracion() {
 					contadorDeVariables++;
 					break;
 				case 4:
-					fscanf(file, "%i", &CACHE_X_PROC);
+					fscanf(file, "%u", &CACHE_X_PROC);
 					contadorDeVariables++;
 					break;
 				case 3:
-					fscanf(file, "%i", &ENTRADAS_CACHE);
+					fscanf(file, "%u", &ENTRADAS_CACHE);
 					contadorDeVariables++;
 					break;
 				case 2:
-					fscanf(file, "%i", &MARCO_SIZE);
+					fscanf(file, "%u", &MARCO_SIZE);
 					contadorDeVariables++;
 					break;
 				case 1:
-					fscanf(file, "%i", &MARCOS);
+					fscanf(file, "%u", &MARCOS);
 					contadorDeVariables++;
 					break;
 				case 0:
@@ -104,20 +102,22 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 	//TODO
 	//Sacar hardcodeo y programarlo bien
 	uint32_t cantPaginasAsignadas = 0;
-	if(list_size(TablaPaginacion)<1)
-	{
-		//El checkpoint 2 dice que por ahora hay solo una unica pagina
-		RegistroTablaPaginacion nuevoRegistros;
-		nuevoRegistros.Frame = 3;
-		nuevoRegistros.PID = pid;
-		nuevoRegistros.Pag = 2;
-		list_add(TablaPaginacion,&nuevoRegistros);
+	if (list_size(TablaPaginacion) < 1) { //El checkpoint 2 dice que por ahora hay solo una unica pagina
+		uint32_t* PID = malloc(sizeof(uint32_t));
+		*PID=pid;
+		list_add(procesosActivos, PID);
+		RegistroTablaPaginacion* nuevoRegistros = malloc(sizeof(RegistroTablaPaginacion));
+		nuevoRegistros->Frame = 3;
+		nuevoRegistros->PID = pid;
+		nuevoRegistros->Pag = 2;
+		list_add(TablaPaginacion, nuevoRegistros);
 		cantPaginasAsignadas = cantPag;
 	}
-	EnviarDatos(socketFD,MEMORIA,&cantPaginasAsignadas,sizeof(uint32_t));
+	EnviarDatos(socketFD, MEMORIA, &cantPaginasAsignadas, sizeof(uint32_t));
 }
 
-void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset, uint32_t tam, int socketFD) {
+void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,
+		uint32_t tam, int socketFD) {
 
 }
 void AlmacenarBytes(Paquete paquete) {
@@ -127,7 +127,6 @@ void AlmacenarBytes(Paquete paquete) {
 	//printf("%s\n", DATOS[4]);
 	printf("Datos Almacenados correctamente! \n");
 	printf("El contenido de la memoria es: %s",(char*)bloquePpal);
-
 	//actualizar cache
 }
 
@@ -137,21 +136,115 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
 
 void FinalizarPrograma(uint32_t pid) {
 	//join de hilo correspondiente
+	list_remove_and_destroy_by_condition(procesosActivos, LAMBDA(bool _(void* pidAEliminar) { return *(uint32_t*)pidAEliminar != pid;}), free);
 }
-void userInterfaceHandler(void* socketFD) {
 
+void dumpMemoryContent() {
+
+	printf("%*s", tamanioTotalBytesMemoria, (char*)bloquePpal);
+	char* nombreDelArchivo = malloc(64+27+1);//tam de la hora + tam de "Contenido de la memoria en " + \0
+	nombreDelArchivo = "Contenido de la memoria en ";
+	string_append(&nombreDelArchivo, obtenerTiempoString(time(0)));
+	FILE* file = fopen(nombreDelArchivo, "w");
+	fprintf(file, "%*s", tamanioTotalBytesMemoria, (char*)bloquePpal);
+	fclose(file);
+	free(nombreDelArchivo);
+}
+
+void dumpMemoryContentOfPID(uint32_t pid) {
+	//TODO
+}
+
+void dumpMemoryStruct() { //TODO
+	char* archivoParaGuardar;
+	int i;
+	for (i = 0; i < list_size(TablaPaginacion); i++) {
+		RegistroTablaPaginacion* reg;
+		reg = list_get(TablaPaginacion, i);
+		char* frame = string_itoa(reg->Frame);
+		char* PID = string_itoa(reg->PID);
+		char* pag = string_itoa(reg->Pag);
+		char* strAgregar = "frame: ";
+		string_append(strAgregar, frame);
+		string_append(strAgregar, "pid: ");
+		string_append(strAgregar, PID);
+		string_append(strAgregar, "pag: ");
+		string_append(strAgregar, pag);
+		string_append(strAgregar, "\n");
+		string_append(archivoParaGuardar, strAgregar);
+	}
+	char* procesosActivosParaMostrar = "procesos activos: ";
+	for(i = 0; i < list_size(procesosActivos); i++)
+	{
+		int pid = list_get(procesosActivos, i);
+		char* strPid = string_itoa(pid) ;
+		string_append(archivoParaGuardar, ", ");
+		string_append(procesosActivosParaMostrar, strPid);
+	}
+	string_append(archivoParaGuardar, procesosActivosParaMostrar);
+	string_append(archivoParaGuardar, "\n");
+	printf("%s", archivoParaGuardar);
+	char* nombreDelArchivo = "reporte estructuras de memoria ";
+	string_append(nombreDelArchivo, obtenerTiempoString(time(0)));
+	FILE* file = fopen(nombreDelArchivo, "w");
+	fputs(archivoParaGuardar, file);
+	fclose(file);
+}
+
+void userInterfaceHandler(void* socketFD) {
+//TODO: usar diferentes scanf para el ingreso de las palabras
 	while (!end) {
 		char orden[100];
 		printf("\n\nIngrese una orden: \n");
 		scanf("%s", orden);
 		char* command = getWord(orden, 0);
-		if(strcmp(command,"exit")==0){
-			end=1;
-			pthread_exit(3);
+		char* secondWord = getWord(orden, 1);
+		char* thirdWord = getWord(orden, 2);
+		if (!strcmp(command, "retardo​")) { // !int es lo mismo que int!=0
+			if (secondWord != NULL) {
+				if (!strtol(secondWord, NULL, 10) && strtol(secondWord, NULL, 10) <= UINT_MAX) //que sea un numero y que no se pase del max del uint
+					RETARDO_MEMORIA = strtol(secondWord, NULL, 10);
+				else
+					printf("Comando invalido");
+			}
+			else {
+				printf("El retardo es: %d", RETARDO_MEMORIA);
+			}
 		}
-		else if (strcmp(command, "dump") == 0) {
-			printf("El contenido de la memoria es: %s",(char*)bloquePpal);
-		}  else {
+		else if (!strcmp(command, "dump") && secondWord != NULL) {
+			if (!strcmp(secondWord, "cache")) {
+				//TODO mostrar cache
+			}
+			else if (!strcmp(secondWord, "struct")){
+				dumpMemoryStruct();
+			}
+			else if (!strcmp(secondWord, "content")) {
+				if (thirdWord != NULL) {
+					if (!strtol(thirdWord, NULL, 10) && strtol(thirdWord, NULL, 10) <= (2^32)) //que sea un numero y que no se pase del max del uint32
+						dumpMemoryContentOfPID(strtol(thirdWord, NULL, 10));
+					else
+						printf("Comando invalido");
+				}
+				else {
+					dumpMemoryContent();
+				}
+			}
+		} else if (!strcmp(command, "disconnect")) {
+			end = 0;
+		}
+		else if (!strcmp(command, "flush")  && secondWord != NULL && !strcmp(secondWord, "cache")) {
+			//TODO limpiar cache
+		} else if (!strcmp(command, "size")) {
+			if (!strcmp(secondWord, "memory")) {
+
+			}
+			else if (secondWord != NULL) {
+
+			}
+			else {
+				printf("No se conoce el mensaje %s\n", orden);
+			}
+		} else {
 			printf("No se conoce el mensaje %s\n", orden);
 		}
 	}
@@ -222,14 +315,16 @@ void* accionHilo(void* socket){
 	free(paquete.Payload);
 	return NULL;
 }
-
+/*//no es necesaria por ahora
 pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
 	socketABuscar = socketFD;
-	structHilo* structActual = list_find(listaHilos, LAMBDA(bool _(void* shilo) { return ((structHilo*)shilo)->socket != socketABuscar; }));
-		if (structActual != 0) { //el hilo ya existe
-			return structActual->hilo;
-		}
-	else { // crear hilo y agregar a lista
+	structHilo* structActual =
+			list_find(listaHilos,
+					LAMBDA(
+							bool _(void* shilo) { return ((structHilo*)shilo)->socket != socketABuscar; }));
+	if (structActual != 0) { //el hilo ya existe
+		return structActual->hilo;
+	} else { // crear hilo y agregar a lista
 		pthread_t threadNuevo;
 		pthread_create(&threadNuevo, NULL, accionHilo, &socketFD);
 		structHilo itemNuevo;
@@ -240,30 +335,33 @@ pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
 	}
 }
 
+*/
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	listaHilos = list_create();
+
 	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE) + (sizeof(RegistroTablaPaginacion) * MARCOS);
 	bloquePpal = malloc(tamanioTotalBytesMemoria); //Reservo toda mi memoria
+	listaHilos = list_create();
 	TablaPaginacion = list_create();
+	procesosActivos = list_create();
 	end = 0;
 	//tabla_Adm tablaAdm[MARCOS]; //no, mejor accedamos casteando y recorriendo el bloquePpal
 	/*//MEMORIA CACHE, NO BORRAR
-	tabla_Cache tablaCache[ENTRADAS_CACHE]; //crear y allocar cache
-	int i;
-	for (i = 0; i < MARCOS; ++i)
-		tablaCache[i].contenido = malloc(MARCO_SIZE);
- 	 */
+	 tabla_Cache tablaCache[ENTRADAS_CACHE]; //crear y allocar cache
+	 int i;
+	 for (i = 0; i < MARCOS; ++i)
+	 tablaCache[i].contenido = malloc(MARCO_SIZE);
+	 */
 	pthread_t hiloConsola;
-	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, NULL);
+	pthread_create(&hiloConsola, NULL, (void*) userInterfaceHandler, NULL);
 
 	int socketFD = StartServidor(IP, PUERTO);
 	struct sockaddr_in their_addr; // información sobre la dirección del cliente
 	int new_fd;
 	socklen_t sin_size;
 
-	while(!end) { // main accept() loop
+	while(!end) { // Loop Principal
 		sin_size = sizeof(struct sockaddr_in);
 		if ((new_fd = accept(socketFD, (struct sockaddr *)&their_addr, &sin_size)) == -1) {
 			perror("accept");
@@ -282,12 +380,18 @@ int main(void) {
 	close(socketFD);
 	//libera los items de lista de hilos , destruye la lista y espera a que termine cada hilo.
 	list_destroy_and_destroy_elements(listaHilos, LAMBDA(void _(void* elem) { pthread_join(((structHilo*)elem)->hilo, NULL); }));
+
 	pthread_join(hiloConsola, NULL);
+
+	//liberar listas
+
+	list_destroy_and_destroy_elements(procesosActivos, free); //recibe cada elemento y lo libera.
+	list_destroy_and_destroy_elements(TablaPaginacion, free);
 	/*//MEMORIA CACHE, NO BORRAR
-	for (i = 0; i < MARCOS; ++i)  //liberar cache.
-			free(tablaCache[i].contenido);
-	*/
+	 for (i = 0; i < MARCOS; ++i)  //liberar cache.
+	 free(tablaCache[i].contenido);
+	 */
 	free(bloquePpal);
-	exit(3);
+	exit(3); //TODO: ¿Esto va? Se supone que termina todos los hilos del proceso.
 	return 0;
 }
