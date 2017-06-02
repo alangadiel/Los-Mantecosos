@@ -119,47 +119,47 @@ void CrearNuevoProceso(BloqueControlProceso* pcb){
 void* obtenerError(int exitCode){
 	switch(exitCode){
 		case 0:
-			printf("El programa finalizó correctamente\n");
+			printf(" (El programa finalizó correctamente)\n");
 		break;
 
 		case -1:
-			printf("No se pudieron reservar recursos para ejecutar el programa\n");
+			printf(" (No se pudieron reservar recursos para ejecutar el programa)\n");
 		break;
 
 		case -2:
-			printf("El programa intentó acceder a un archivo que no existe\n");
+			printf(" (El programa intentó acceder a un archivo que no existe)\n");
 		break;
 
 		case -3:
-			printf("El programa intentó leer un archivo sin permisos\n");
+			printf(" (El programa intentó leer un archivo sin permisos)\n");
 		break;
 
 		case -4:
-			printf("El programa intentó escribir un archivo sin permisos\n");
+			printf(" (El programa intentó escribir un archivo sin permisos)\n");
 		break;
 
 		case -5:
-			printf("Excepción de memoria\n");
+			printf(" (Excepción de memoria)\n");
 		break;
 
 		case -6:
-			printf("Finalizado a través de desconexión de consola\n");
+			printf(" (Finalizado a través de desconexión de consola)\n");
 		break;
 
 		case -7:
-			printf("Finalizado a través del comando Finalizar Programa de la consola\n");
+			printf(" (Finalizado a través del comando Finalizar Programa de la consola)\n");
 		break;
 
 		case -8:
-			printf("Se intentó reservar más memoria que el tamaño de una página\n");
+			printf(" (Se intentó reservar más memoria que el tamaño de una página)\n");
 		break;
 
 		case -9:
-			printf("No se pueden asignar más páginas al proceso\n");
+			printf(" (No se pueden asignar más páginas al proceso)\n");
 		break;
 
 		case -20:
-			printf("Error sin definición\n");
+			printf(" (Error sin definición)\n");
 		break;
 	}
 }
@@ -339,10 +339,13 @@ void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator){
 	int index=0;
 	for (index = 0; index < list_size(lista); index++) {
 		BloqueControlProceso* proceso = (BloqueControlProceso*)list_get(lista,index);
-		printf("Proceso N°: %d\n",proceso->PID);
 
 		if (strcmp(discriminator, FINALIZADOS) == 0) {
+			printf("Proceso N°: %d",proceso->PID);
 			obtenerError(proceso->ExitCode);
+		}
+		else {
+			printf("Proceso N°: %d\n",proceso->PID);
 		}
 	}
 }
@@ -381,9 +384,10 @@ bool KillProgram(int pidAFinalizar,int tipoFinalizacion){
 	while(i<list_size(EstadosConProgramasFinalizables) && result==NULL){
 		t_list* lista = list_get(EstadosConProgramasFinalizables,i);
 		result = list_find(lista,LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID == pidAFinalizar; }));
+		i++;
 	}
 	if(result==NULL){
-		printf("No se encuentro el programa finalizar");
+		printf("No se encontro el programa finalizar");
 		return false;
 	}
 	else
@@ -394,6 +398,7 @@ bool KillProgram(int pidAFinalizar,int tipoFinalizacion){
 		//Le asigno el codigo de finalización de programa y lo pongo en la lista de Exit
 		pcb->ExitCode = tipoFinalizacion;
 		list_add(Finalizados,pcb);
+		printf("Programa N° %d finalizado\n", pcb->PID);
 		// TODO: Liberar las paginas de memoria asignadas a ese proceso
 		return true;
 	}
@@ -417,8 +422,6 @@ void accion(Paquete* paquete, int socketConectado){
 						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
 						if(paginasConfirmadas == tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
 						{
-							printf("Cant paginas asignadas: %f \n",tamanioTotalPaginas);
-
 							pcb.PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
 							printf("Cant paginas asignadas: %d \n",pcb.PaginasDeCodigo);
 
@@ -515,13 +518,34 @@ void userInterfaceHandler(void* socketFD) {
 			printf("\n\nIngrese numero de programa: \n");
 			scanf("%d", &pidConsulta);
 			ConsultarEstado(pidConsulta);
-		}  else if (strcmp(command, "kill_program") == 0){
+		}
+		else if (strcmp(command, "kill_program") == 0){
 			printf("\n\nIngrese numero de programa: \n");
 			scanf("%d", &pidConsulta);
 			KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA);
 		}
-			else {
+		else {
 			printf("No se conoce el mensaje %s\n", orden);
+		}
+	}
+}
+
+void syscallWrite(int socketFD) {
+	if(socketFD == 1) {
+		char orden[100];
+		char texto[100];
+
+		printf("\n\nIngrese una orden privilegiada: \n");
+		scanf("%s", orden);
+		char* command = getWord(orden, 0);
+
+		if(strcmp(command,"write") == 0) {
+			printf("\n\nIngrese texto a imprimir: \n");
+			scanf("%s", texto);
+			printf("%s", texto);
+		}
+		else{
+			printf("System Call no definida\n");
 		}
 	}
 }
@@ -532,7 +556,10 @@ int main(void)
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
+	pthread_t hiloSyscallWrite;
 	pthread_t hiloConsola;
+	pthread_create(&hiloSyscallWrite, NULL, (void*)syscallWrite, 2); //socket 2 hardcodeado
+	pthread_join(hiloSyscallWrite, NULL);
 	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, NULL);
 	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidor);
 	pthread_join(hiloConsola, NULL);
