@@ -161,7 +161,7 @@ int startProgram(char* programPath) {
 	return 0;
 }
 
-void endProgram(uint32_t pid,uint32_t socketgeneral) {
+void endProgram(uint32_t pid,uint32_t* socketgeneral) {
 	Paquete paquete;
 	strcpy(paquete.header.emisor, CONSOLA);
 	paquete.header.tipoMensaje = KILLPROGRAM;
@@ -173,7 +173,19 @@ void endProgram(uint32_t pid,uint32_t socketgeneral) {
 		printf("socket: %d\n",sp->socket);
 		printf("pid: %d\n",sp->pid);
 		EnviarPaquete(sp->socket, &paquete);
-		printf("paquete enviado");
+		Paquete paquete;
+		uint32_t datosRecibidos = RecibirPaqueteCliente(sp->socket, CONSOLA, &paquete);
+		if(paquete.header.tipoMensaje==ESSTRING){
+			if(strcmp(paquete.header.emisor,KERNEL)==0){
+			char* result = (char*)paquete.Payload;
+			printf("result: %s",result);
+			if (strcmp(result, "KILLEADO") == 0) {
+				printf("Se finalizo el programa N°: %d\n",pid);
+			}
+		}
+
+	 }
+
 	}
 	else
 		printf("No se reconoce algun programa con ese PID");

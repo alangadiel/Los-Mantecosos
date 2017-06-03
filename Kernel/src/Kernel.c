@@ -97,6 +97,15 @@ void CrearListasEstados(){
 	list_add_all(Estados,EstadosConProgramasFinalizables);
 	list_add(Estados,Finalizados);
 }
+void LimpiarListar(){
+	list_destroy_and_destroy_elements(Nuevos,free);
+	list_destroy_and_destroy_elements(Listos,free);
+	list_destroy_and_destroy_elements(Ejecutando,free);
+	list_destroy_and_destroy_elements(Bloqueados,free);
+	list_destroy_and_destroy_elements(Finalizados,free);
+	list_destroy_and_destroy_elements(Estados,free);
+	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
+}
 void CrearNuevoProceso(BloqueControlProceso* pcb){
 	//Creo el pcb y lo guardo en la lista de nuevos
 
@@ -171,12 +180,6 @@ void obtenerValoresArchivoConfiguracion()
 		{
 			if (c == '=')
 			{
-				/*if (contadorDeVariables == 15)
-				{
-					fscanf(file, "%i", &TAM_PAG);
-					contadorDeVariables++;
-
-				}*/
 				if (contadorDeVariables == 14)
 				{
 					char buffer[10000];
@@ -446,7 +449,7 @@ void accion(Paquete* paquete, int socketConectado){
 					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
 						//Pregunta a la memoria si me puede guardar estas paginas
 						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb->PID,tamanioTotalPaginas);
-						if(paginasConfirmadas == tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
+						if(paginasConfirmadas>0 ) // N° negativo significa que la memoria no tiene espacio
 						{
 							pcb->PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
 							printf("Cant paginas asignadas: %d \n",pcb->PaginasDeCodigo);
@@ -584,6 +587,7 @@ int main(void)
 	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, NULL);
 	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidor);
 	pthread_join(hiloConsola, NULL);
+	LimpiarListas();
 
 	return 0;
 }
