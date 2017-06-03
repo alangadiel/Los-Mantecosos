@@ -178,7 +178,7 @@ void endProgram(uint32_t pid,uint32_t* socketgeneral) {
 		if(paquete.header.tipoMensaje==ESSTRING){
 			if(strcmp(paquete.header.emisor,KERNEL)==0){
 			char* result = (char*)paquete.Payload;
-			printf("result: %s",result);
+			printf("result: %s\n",result);
 			if (strcmp(result, "KILLEADO") == 0) {
 				printf("Se finalizo el programa N°: %d\n",pid);
 			}
@@ -201,21 +201,19 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 	int end = 1;
 	while (end) {
 		char command[100];
-		char parametro[100];
-		printf("\n\nIngrese SOLO el comando: \n");
+		//TODO: corregir que muestra mensaje incorrecto
+		printf("\n\nIngrese el comando: \n");
 		scanf("%s", command);
 		/*char* command = getWord(str, 0);
 		char* parameter = getWord(str, 1);*/
 		if (strcmp(command, "start_program") == 0) {
-			printf("\n\nIngrese nombre de archivo: \n");
-			scanf("%s", parametro);
-			char* pmtr = getWord(parametro,0);
+			scanf("%s", command);
+			char* pmtr = getWord(command,0);
 			startProgram(pmtr);
 		}
 		if (strcmp(command, "end_program") == 0) {
-			printf("\n\nIngrese numero de programa: \n");
-			scanf("%s", parametro);
-			char* pmtr = getWord(parametro,0);
+			scanf("%s", command);
+			char* pmtr = getWord(command,0);
 			uint32_t pid = atoi(pmtr);
 			endProgram(pid,socketGeneral);
 		} else if (strcmp(command, "disconnect") == 0) {

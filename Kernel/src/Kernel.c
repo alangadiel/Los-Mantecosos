@@ -536,7 +536,6 @@ void userInterfaceHandler(void* socketFD) {
 				end = 0;
 		}
 		else if (strcmp(command, "MOSTRARPROCESOS") == 0) {
-			printf("\n\nIngrese lista en la que buscar: \n");
 			scanf("%s", lista);
 			if(strcmp(lista,NUEVOS)==0)
 				MostrarProcesosDeUnaLista(Nuevos,NUEVOS);
@@ -556,12 +555,10 @@ void userInterfaceHandler(void* socketFD) {
 			}
 
 		else if (strcmp(command, "ConsultarPrograma") == 0) {
-			printf("\n\nIngrese numero de programa: \n");
 			scanf("%d", &pidConsulta);
 			ConsultarEstado(pidConsulta);
 		}
 		else if (strcmp(command, "kill_program") == 0){
-			printf("\n\nIngrese numero de programa: \n");
 			scanf("%d", &pidConsulta);
 			KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA, socketFD);
 		}
