@@ -73,8 +73,10 @@ void sendSignalOpenFile(char* programPath, int socketFD) {
 			fread(buffer, 1, length, fileForSend);
 		}
 		fclose(fileForSend);
+		EnviarMensaje(socketFD, buffer, CONSOLA);
 	}
-	EnviarMensaje(socketFD, buffer, CONSOLA);
+	else
+		printf("No se encontro el archivo");
 }
 void programHandler(void *programPath) {
 	time_t tiempoDeInicio = time(NULL);
@@ -91,10 +93,13 @@ void programHandler(void *programPath) {
 			if(strcmp(paquete.header.emisor,KERNEL)==0){
 				pid = *((uint32_t*) paquete.Payload);
 				if(pid >= 1){
-					SocketProceso sp;
-					sp.pid = pid;
-					sp.socket = socketFD;
-					list_add(SocketsProcesos,&sp);
+					SocketProceso* sp = malloc(sizeof(SocketProceso));     //TODO: Falta free
+					sp->pid = pid;
+					sp->socket = socketFD;
+					list_add(SocketsProcesos,sp);
+					SocketProceso* result = (SocketProceso*)list_get(SocketsProcesos,0);
+					printf("socket: %d\n",result->socket);
+					printf("pid: %d\n",result->pid);
 					printf("El pid del nuevo programa es %d \n",pid);
 				}
 
@@ -103,7 +108,7 @@ void programHandler(void *programPath) {
 		case ESSTRING:
 			if(strcmp(paquete.header.emisor,KERNEL)==0){
 				//printf("%s\n",(char*)paquete.Payload);
-				if (strcmp(paquete.Payload, "kill") == 0) {
+				if (strcmp((char*)paquete.Payload, "KILLEADO") == 0) {
 					time_t tiempoFinalizacion = time(NULL);
 					printf("%s\n", obtenerTiempoString(tiempoDeInicio));
 					printf("%s\n", obtenerTiempoString(tiempoFinalizacion));
@@ -112,7 +117,7 @@ void programHandler(void *programPath) {
 							diferencia);
 				}
 				else if (strcmp(string_substring_until(paquete.Payload,8),"imprimir") == 0) {
-					printf("%s\n", (char*)paquete.Payload);
+					printf("%s\n", string_substring_from((char*)paquete.Payload,8));
 				}
 				else {
 					  printf("%s\n", (char*)paquete.Payload);
@@ -155,17 +160,19 @@ int startProgram(char* programPath) {
 	return 0;
 }
 
-void endProgram(int pid) {
+void endProgram(uint32_t pid,uint32_t socketgeneral) {
 	Paquete paquete;
 	strcpy(paquete.header.emisor, CONSOLA);
 	paquete.header.tipoMensaje = KILLPROGRAM;
-	paquete.header.tamPayload = sizeof(int);
+	paquete.header.tamPayload = sizeof(uint32_t);
 	paquete.Payload = &pid;
-	printf("uri");
-	void* sp = list_find(SocketsProcesos,LAMBDA(bool _(void* item) { return ((SocketProceso*)item)->pid != pid; }));
+	printf("pid a eliminar : %d\n",pid);
+	SocketProceso* sp = (SocketProceso*)list_find(SocketsProcesos,LAMBDA(bool _(void* item) { return ((SocketProceso*)item)->pid == pid; }));
 	if(sp!=NULL){
-		printf("Pid = %d y socket = %d ",((SocketProceso*)sp)->pid,((SocketProceso*)sp)->socket);
-		EnviarPaquete(((SocketProceso*)sp)->socket, &paquete);
+		printf("socket: %d\n",sp->socket);
+		printf("pid: %d\n",sp->pid);
+		EnviarPaquete(sp->socket, &paquete);
+		printf("paquete enviado");
 	}
 	else
 		printf("No se reconoce algun programa con ese PID");
@@ -177,7 +184,7 @@ void clean() {
 
 
 
-void userInterfaceHandler() {
+void userInterfaceHandler(uint32_t* socketGeneral) {
 	int end = 1;
 	while (end) {
 		char command[100];
@@ -196,8 +203,8 @@ void userInterfaceHandler() {
 			printf("\n\nIngrese numero de programa: \n");
 			scanf("%s", parametro);
 			char* pmtr = getWord(parametro,0);
-			int pid = atoi(pmtr);
-			endProgram(pid);
+			uint32_t pid = atoi(pmtr);
+			endProgram(pid,socketGeneral);
 		} else if (strcmp(command, "disconnect") == 0) {
 			end = 0;
 		} else if (strcmp(command, "clean") == 0) {
@@ -215,7 +222,7 @@ int main(void) {
 	SocketsProcesos = list_create();
 
 	pthread_t userInterface;
-	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,NULL);
+	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,&socketFD);
 	pthread_join(userInterface, NULL);
 	//userInterfaceHandler(&socketFD);
 	return 0;

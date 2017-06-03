@@ -329,11 +329,11 @@ void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator){
 		BloqueControlProceso* proceso = (BloqueControlProceso*)list_get(lista,index);
 
 		if (strcmp(discriminator, FINALIZADOS) == 0) {
-			printf("Proceso N°: %d",proceso->PID);
+			printf("\tProceso N°: %d",proceso->PID);
 			obtenerError(proceso->ExitCode);
 		}
 		else {
-			printf("Proceso N°: %d\n",proceso->PID);
+			printf("\tProceso N°: %d\n",proceso->PID);
 		}
 	}
 }
@@ -430,6 +430,7 @@ void accion(Paquete* paquete, int socketConectado){
 					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
 					double tamanioTotalPaginas = ceil(tamanioArchivo)+STACK_SIZE;
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
+					//TODO: Falta free, pero OJO, hay que ver la forma de ponerlo y que siga andando todo
 					CrearNuevoProceso(pcb);
 
 					//Manejo la multiprogramacion
@@ -471,11 +472,11 @@ void accion(Paquete* paquete, int socketConectado){
 
 		break;
 		case KILLPROGRAM:
-			if(strcmp(paquete->header.emisor,CONSOLA)){
+			if(strcmp(paquete->header.emisor,CONSOLA)==0){
 				pidAFinalizar = *(uint32_t*)paquete->Payload;
 				bool finalizadoConExito = KillProgram(pidAFinalizar,DESCONECTADODESDECOMANDOCONSOLA);
 				if(finalizadoConExito==true){
-					EnviarMensaje(socketConectado,"kill",KERNEL);
+					EnviarMensaje(socketConectado,"KILLEADO",KERNEL);
 				}
 				else
 					EnviarMensaje(socketConectado,"Error al finalizar programa",KERNEL);
