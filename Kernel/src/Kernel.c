@@ -97,7 +97,7 @@ void CrearListasEstados(){
 	list_add_all(Estados,EstadosConProgramasFinalizables);
 	list_add(Estados,Finalizados);
 }
-void LimpiarListar(){
+void LimpiarListas(){
 	list_destroy_and_destroy_elements(Nuevos,free);
 	list_destroy_and_destroy_elements(Listos,free);
 	list_destroy_and_destroy_elements(Ejecutando,free);

@@ -168,22 +168,26 @@ void endProgram(uint32_t pid,uint32_t* socketgeneral) {
 	paquete.header.tamPayload = sizeof(uint32_t);
 	paquete.Payload = &pid;
 	printf("pid a eliminar : %d\n",pid);
-	SocketProceso* sp = (SocketProceso*)list_find(SocketsProcesos,LAMBDA(bool _(void* item) { return ((SocketProceso*)item)->pid == pid; }));
+	SocketProceso* sp = malloc(sizeof(SocketProceso));
+	sp = (SocketProceso*)list_find(SocketsProcesos,LAMBDA(bool _(void* item) { return ((SocketProceso*)item)->pid == pid; }));
 	if(sp!=NULL){
 		printf("socket: %d\n",sp->socket);
 		printf("pid: %d\n",sp->pid);
 		EnviarPaquete(sp->socket, &paquete);
-		Paquete paquete;
-		uint32_t datosRecibidos = RecibirPaqueteCliente(sp->socket, CONSOLA, &paquete);
-		if(paquete.header.tipoMensaje==ESSTRING){
-			if(strcmp(paquete.header.emisor,KERNEL)==0){
-			char* result = (char*)paquete.Payload;
+		Paquete* nuevoPaquete = malloc(sizeof(Paquete));
+		uint32_t datosRecibidos = RecibirPaqueteCliente(sp->socket, CONSOLA, nuevoPaquete);
+		free(sp);
+
+		if(nuevoPaquete->header.tipoMensaje==ESSTRING){
+			if(strcmp(nuevoPaquete->header.emisor,KERNEL)==0){
+			char* result = (char*)nuevoPaquete->Payload;
 			printf("result: %s",result);
 			if (strcmp(result, "KILLEADO") == 0) {
 				printf("Se finalizo el programa N°: %d\n",pid);
 			}
 		}
 
+		free(nuevoPaquete);
 	 }
 
 	}
