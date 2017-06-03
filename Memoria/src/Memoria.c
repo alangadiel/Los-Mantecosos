@@ -235,17 +235,14 @@ int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
 	paquete->Payload = malloc(1);
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0) { //si no hubo error
-		if (paquete->header.tipoMensaje == ESHANDSHAKE) { //vemos si es un handshake
+		if (paquete->header.tipoMensaje == ESHANDSHAKE) { //vemos si es un handshake y le respondemos con el tam de pag
 			printf("Se establecio conexion con %s\n", paquete->header.emisor);
-			if(strcmp(paquete->header.emisor, KERNEL) == 0){
-				Paquete paquete;
-				paquete.header.tipoMensaje = ESHANDSHAKE;
-				paquete.header.tamPayload = sizeof(uint32_t);
-				strcpy(paquete.header.emisor, MEMORIA);
-				paquete.Payload=&MARCO_SIZE;
-				EnviarPaquete(socketFD, &paquete);
-			} else
-			EnviarHandshake(socketFD, receptor); // paquete->header.emisor
+			Paquete paquete;
+			paquete.header.tipoMensaje = ESHANDSHAKE;
+			paquete.header.tamPayload = sizeof(uint32_t);
+			strcpy(paquete.header.emisor, MEMORIA);
+			paquete.Payload=&MARCO_SIZE;
+			EnviarPaquete(socketFD, &paquete);
 		} else { //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
 			paquete->Payload = realloc(paquete->Payload,
 					paquete->header.tamPayload);

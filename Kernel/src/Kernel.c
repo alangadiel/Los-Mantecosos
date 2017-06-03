@@ -6,8 +6,6 @@
 #define BLOQUEADOS "BLOQUEADOS"
 #define FINALIZADOS "FINALIZADOS"
 
-
-#define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
 #define DESCONECTADODESDECOMANDOCONSOLA -7
 #define NOSEPUDIERONRESERVARRECURSOS -1
 #define INDEX_NUEVOS 0
@@ -16,6 +14,7 @@
 #define INDEX_BLOQUEADOS 3
 #define INDEX_FINALIZADOS 4
 //Variables archivo de configuracion
+
 int PUERTO_PROG;
 int PUERTO_CPU;
 char* IP_MEMORIA;
