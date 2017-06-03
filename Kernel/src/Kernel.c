@@ -10,6 +10,11 @@
 #define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
 #define DESCONECTADODESDECOMANDOCONSOLA -7
 #define NOSEPUDIERONRESERVARRECURSOS -1
+#define INDEX_NUEVOS 0
+#define INDEX_LISTOS 1
+#define INDEX_EJECUTANDO 2
+#define INDEX_BLOQUEADOS 3
+#define INDEX_FINALIZADOS 4
 //Variables archivo de configuracion
 int PUERTO_PROG;
 int PUERTO_CPU;
@@ -388,26 +393,30 @@ void MostrarTodosLosProcesos(){
 	MostrarProcesosDeUnaLista(Bloqueados,BLOQUEADOS);
 	MostrarProcesosDeUnaLista(Finalizados,FINALIZADOS);
 }
-BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizacion ){
+BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizacion, int index, int socket) {
 	BloqueControlProceso* pcbRemovido = NULL;
 	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid; }));
-	if(pcbRemovido!=NULL){
+	if(pcbRemovido!=NULL) {
 		pcbRemovido->ExitCode=tipoFinalizacion;
 		list_add(Finalizados,pcbRemovido);
+
+		if(index == INDEX_LISTOS) {
+			IM_FinalizarPrograma(socket, KERNEL, pid);
+		}
 	}
 	return pcbRemovido;
 }
-void KillProgramDeUnaLista(t_list* lista,BloqueControlProceso* pcb,int tipoFinalizacion ){
-	FinalizarPrograma(lista,pcb->PID,tipoFinalizacion);
+void KillProgramDeUnaLista(t_list* lista,BloqueControlProceso* pcb,int tipoFinalizacion, int index, int socket) {
+	FinalizarPrograma(lista,pcb->PID,tipoFinalizacion, index, socket);
 }
-bool KillProgram(int pidAFinalizar,int tipoFinalizacion){
+bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket){
 	int i =0;
 	void* result = NULL;
 	while(i<list_size(EstadosConProgramasFinalizables) && result==NULL){
 		t_list* lista = list_get(EstadosConProgramasFinalizables,i);
 		//TODO: Ver como eliminar un programa en estado ejecutando
 		if(i!=2)  //2 == EJECUTANDO
-			result = FinalizarPrograma(lista,pidAFinalizar,tipoFinalizacion);
+			result = FinalizarPrograma(lista,pidAFinalizar,tipoFinalizacion, i, socket);
 		i++;
 	}
 	if(result==NULL){
@@ -455,15 +464,14 @@ void accion(Paquete* paquete, int socketConectado){
 						else
 						{
 							//Sacar programa de la lista de nuevos y meterlo en la lista de finalizado con su respectivo codigo de error
-							KillProgramDeUnaLista(Nuevos,pcb,NOSEPUDIERONRESERVARRECURSOS);
+							KillProgramDeUnaLista(Nuevos,pcb,NOSEPUDIERONRESERVARRECURSOS, INDEX_NUEVOS, socketConectado);
 							EnviarMensaje(socketConectado,"No se pudo guardar el programa porque no hay espacio suficiente",KERNEL);
 						}
-
 					}
 					else
 					{
 						//El grado de multiprogramacion no te deja agregar otro proceso
-						KillProgramDeUnaLista(Nuevos,pcb,NOSEPUDIERONRESERVARRECURSOS);
+						KillProgramDeUnaLista(Nuevos,pcb,NOSEPUDIERONRESERVARRECURSOS, INDEX_NUEVOS, socketConectado);
 						EnviarMensaje(socketConectado,"No se pudo guardar el programa porque se alcanzo el grado de multiprogramacion",KERNEL);
 
 					}
@@ -474,12 +482,15 @@ void accion(Paquete* paquete, int socketConectado){
 		case KILLPROGRAM:
 			if(strcmp(paquete->header.emisor,CONSOLA)==0){
 				pidAFinalizar = *(uint32_t*)paquete->Payload;
-				bool finalizadoConExito = KillProgram(pidAFinalizar,DESCONECTADODESDECOMANDOCONSOLA);
+				bool finalizadoConExito = KillProgram(pidAFinalizar, DESCONECTADODESDECOMANDOCONSOLA, socketConectado);
 				if(finalizadoConExito==true){
+					printf("El programa %d fue finalizado\n", pidAFinalizar);
 					EnviarMensaje(socketConectado,"KILLEADO",KERNEL);
 				}
-				else
+				else {
+					printf("Error al finalizar programa\n", pidAFinalizar);
 					EnviarMensaje(socketConectado,"Error al finalizar programa",KERNEL);
+				}
 			}
 		break;
 	}
@@ -518,10 +529,10 @@ void userInterfaceHandler(void* socketFD) {
 		char* command = getWord(orden, 0);
 		if(strcmp(command,"exit")==0)
 				exit(1);
-		 else if (strcmp(command, "disconnect") == 0) {
+		else if (strcmp(command, "disconnect") == 0) {
 				end = 0;
-			}
-		 else if (strcmp(command, "MOSTRARPROCESOS") == 0) {
+		}
+		else if (strcmp(command, "MOSTRARPROCESOS") == 0) {
 			printf("\n\nIngrese lista en la que buscar: \n");
 			scanf("%s", lista);
 			if(strcmp(lista,NUEVOS)==0)
@@ -549,7 +560,7 @@ void userInterfaceHandler(void* socketFD) {
 		else if (strcmp(command, "kill_program") == 0){
 			printf("\n\nIngrese numero de programa: \n");
 			scanf("%d", &pidConsulta);
-			KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA);
+			KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA, socketFD);
 		}
 		else {
 			printf("No se conoce el mensaje %s\n", orden);

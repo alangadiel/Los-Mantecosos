@@ -106,8 +106,9 @@ void programHandler(void *programPath) {
 			}
 		break;
 		case ESSTRING:
+			printf("%s\n",(char*)paquete.Payload);
 			if(strcmp(paquete.header.emisor,KERNEL)==0){
-				//printf("%s\n",(char*)paquete.Payload);
+
 				if (strcmp((char*)paquete.Payload, "KILLEADO") == 0) {
 					time_t tiempoFinalizacion = time(NULL);
 					printf("%s\n", obtenerTiempoString(tiempoDeInicio));
