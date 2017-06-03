@@ -6,6 +6,8 @@
 #define BLOQUEADOS "BLOQUEADOS"
 #define FINALIZADOS "FINALIZADOS"
 
+
+#define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
 #define DESCONECTADODESDECOMANDOCONSOLA -7
 #define NOSEPUDIERONRESERVARRECURSOS -1
 #define INDEX_NUEVOS 0
@@ -14,7 +16,6 @@
 #define INDEX_BLOQUEADOS 3
 #define INDEX_FINALIZADOS 4
 //Variables archivo de configuracion
-
 int PUERTO_PROG;
 int PUERTO_CPU;
 char* IP_MEMORIA;
@@ -402,9 +403,9 @@ BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizaci
 		pcbRemovido->ExitCode=tipoFinalizacion;
 		list_add(Finalizados,pcbRemovido);
 
-		if(index == INDEX_LISTOS) {
+		/*if(index == INDEX_LISTOS) {
 			IM_FinalizarPrograma(socket, KERNEL, pid);
-		}
+		}*/
 	}
 	return pcbRemovido;
 }
