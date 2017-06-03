@@ -121,8 +121,12 @@ int main(void) {
 				if (strcmp(paquete -> header.emisor, KERNEL) == 0)
 				{
 					BloqueControlProceso pcb = (BloqueControlProceso) paquete -> Payload;
-					Paquete* datos = (Paquete*) IM_LeerDatos(socketMemoria, CPU, pcb.PID, 1/*????*/, pcb.IndiceDeCodigo, 1/*????*/);
-
+					void* datos = IM_LeerDatos(socketMemoria, CPU, pcb.PID, 1/*????*/, pcb.IndiceDeCodigo, 1/*????*/);
+					if (datos == NULL){
+						//hubo error en la lectura de datos
+					} else {
+						//no hubo error.
+					}
 
 
 
