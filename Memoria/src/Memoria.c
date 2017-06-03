@@ -97,11 +97,13 @@ void imprimirArchivoConfiguracion() {
 		fclose(file);
 	}
 }
-
+void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD); //para poder usarlo
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 	//TODO
-	if (!list_contains(procesosActivos, pid)){
-		list_add(procesosActivos, pid);
+	uint32_t* PID = malloc(sizeof(uint32_t));
+	*PID=pid;
+	if (!list_contains(procesosActivos, PID)){
+		list_add(procesosActivos, PID);
 		AsignarPaginas(pid, cantPag, socketFD);
 	}
 	else {
@@ -124,22 +126,21 @@ void AlmacenarBytes(Paquete paquete) {
 }
 
 void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
+	int r = 0;
 	if (cantidadPaginas + cantPag < MARCOS) {
 		cantidadPaginas++;
 		int i;
 		for (i = 0; i < cantPag; i++) {
-			RegistroTablaPaginacion* nuevoRegistros;
+			RegistroTablaPaginacion* nuevoRegistros = malloc(sizeof(RegistroTablaPaginacion));
 			nuevoRegistros->Frame = cantidadPaginas;
 			nuevoRegistros->PID = pid;
 			nuevoRegistros->Pag = i;
 			cantidadPaginas++;
 			list_add(TablaPaginacion, nuevoRegistros);
 		}
-		EnviarDatos(socketFD, MEMORIA, 1, sizeof(uint32_t));
+		r=1;
 	}
-	else {
-		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t));
-	}
+	EnviarDatos(socketFD, MEMORIA, &r, sizeof(uint32_t));
 }
 
 void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
@@ -160,13 +161,11 @@ void FinalizarPrograma(uint32_t pid) {
 void dumpMemoryContent() {
 	printf("Imprimiendo todo el contenido de la memoria");
 	printf("%*s", tamanioTotalBytesMemoria, (char*)bloquePpal);
-	char* nombreDelArchivo = malloc(64+27+1);//tam de la hora + tam de "Contenido de la memoria en " + \0
-	nombreDelArchivo = "Contenido de la memoria en ";
-	string_append(&nombreDelArchivo, obtenerTiempoString(time(0)));
+	char nombreDelArchivo[64+27+1];//tam de la hora + tam de "Contenido de la memoria en " + \0
+	sprintf(nombreDelArchivo, "Contenido de la memoria en %s", obtenerTiempoString(time(0)));
 	FILE* file = fopen(nombreDelArchivo, "w");
 	fprintf(file, "%*s", tamanioTotalBytesMemoria, (char*)bloquePpal);
 	fclose(file);
-	free(nombreDelArchivo);
 }
 
 void dumpMemoryContentOfPID(uint32_t pid) {
@@ -176,38 +175,20 @@ void dumpMemoryContentOfPID(uint32_t pid) {
 
 void dumpMemoryStruct() { //TODO
 	printf("Imprimiendo las estructuras de la memoria");
-	char* archivoParaGuardar;
+	char nombreDelArchivo[64+29+1];//tam de la hora + tam de "Estructuras de la memoria en " + \0
+	sprintf(nombreDelArchivo, "Estructuras de la memoria en %s", obtenerTiempoString(time(0)));
+	FILE* file = fopen(nombreDelArchivo, "w");
 	int i;
 	for (i = 0; i < list_size(TablaPaginacion); i++) {
-		RegistroTablaPaginacion* reg;
-		reg = list_get(TablaPaginacion, i);
-		char* frame = string_itoa(reg->Frame);
-		char* PID = string_itoa(reg->PID);
-		char* pag = string_itoa(reg->Pag);
-		char* strAgregar = "frame: ";
-		string_append(strAgregar, frame);
-		string_append(strAgregar, "pid: ");
-		string_append(strAgregar, PID);
-		string_append(strAgregar, "pag: ");
-		string_append(strAgregar, pag);
-		string_append(strAgregar, "\n");
-		string_append(archivoParaGuardar, strAgregar);
+		RegistroTablaPaginacion* reg = list_get(TablaPaginacion, i);
+		fprintf(file, "Frame: %i, PID: %i, Pagina: %i\n", reg->Frame, reg->PID, reg->Pag);
 	}
-	char* procesosActivosParaMostrar = "procesos activos: ";
-	for(i = 0; i < list_size(procesosActivos); i++)
-	{
-		int pid = list_get(procesosActivos, i);
-		char* strPid = string_itoa(pid) ;
-		string_append(archivoParaGuardar, ", ");
-		string_append(procesosActivosParaMostrar, strPid);
-	}
-	string_append(archivoParaGuardar, procesosActivosParaMostrar);
-	string_append(archivoParaGuardar, "\n");
-	printf("%s", archivoParaGuardar);
-	char* nombreDelArchivo = "reporte estructuras de memoria ";
-	string_append(nombreDelArchivo, obtenerTiempoString(time(0)));
-	FILE* file = fopen(nombreDelArchivo, "w");
-	fputs(archivoParaGuardar, file);
+	fprintf(file, "Procesos activos: ");
+	if (list_size(procesosActivos)>0)
+		fprintf(file, "%i", *(int*)list_get(procesosActivos, 0));
+	for(i = 1; i < list_size(procesosActivos); i++)
+		fprintf(file, ", %i", *(int*)list_get(procesosActivos, i));
+
 	fclose(file);
 }
 
