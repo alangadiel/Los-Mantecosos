@@ -20,7 +20,7 @@
 
 typedef struct {
 	uint32_t PID;
-	uint32_t TamanioStack;
+	uint32_t IndiceStack;
 	uint32_t ProgramCounter;
 	uint32_t IndiceDeCodigo[2];
 	uint32_t PaginasDeCodigo;
