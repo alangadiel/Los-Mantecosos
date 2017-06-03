@@ -118,6 +118,18 @@ void EnviarDatos(int socketFD, char emisor[11], void* datos, int tamDatos) {
 
 	free(paquete);
 }
+
+void EnviarDatosTipo(int socketFD, char emisor[11], void* datos, int tamDatos, int tipoMensaje){
+	Paquete* paquete = malloc(sizeof(Paquete));
+	paquete->header.tipoMensaje = tipoMensaje;
+	paquete->header.tamPayload = tamDatos;
+	strcpy(paquete->header.emisor, emisor);
+	paquete->Payload = datos;
+
+	EnviarPaquete(socketFD, paquete);
+
+	free(paquete);
+}
 void EnviarPaquete(int socketCliente, Paquete* paquete) {
 	int cantAEnviar = sizeof(Header) + paquete->header.tamPayload;
 	void* datos = malloc(cantAEnviar);
@@ -246,7 +258,7 @@ uint32_t IM_InicializarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog,
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	uint32_t result = RecibirPaqueteCliente(socketFD, MEMORIA, paquete);
+	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);
@@ -264,13 +276,16 @@ void* IM_LeerDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0) {
-	}
-	void* r = paquete->Payload;
+	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	void* r;
+	if(paquete->header.tipoMensaje == ESERROR)
+		r = NULL;
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = paquete->Payload;
 	free(paquete);
 	return r;
 }
-void IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
+uint32_t IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 		uint32_t PagNum, uint32_t offset, uint32_t cantBytes, void* buffer) {
 	int tamDatos = sizeof(uint32_t) * 5 + cantBytes;
 	void* datos = malloc(tamDatos);
@@ -280,9 +295,14 @@ void IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 	((uint32_t*) datos)[3] = offset;
 	((uint32_t*) datos)[4] = cantBytes;
 	memcpy(datos+sizeof(uint32_t) * 5, buffer, cantBytes);
-
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete->Payload);
+	free(paquete->Payload);
+	free(paquete);
+	return r;
 }
 uint32_t IM_AsignarPaginas(int socketFD, char emisor[11], uint32_t ID_Prog,
 		uint32_t CantPag) { //Devuelve la cant de paginas que pudo asignar
@@ -294,18 +314,39 @@ uint32_t IM_AsignarPaginas(int socketFD, char emisor[11], uint32_t ID_Prog,
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0) {
-	}
+	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);
 	return r;
 }
-void IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog) { //Borra las paginas de ese programa.
+uint32_t IM_LiberarPagina(int socketFD, char emisor[11], uint32_t ID_Prog, uint32_t NumPag) {//Agregado en el Fe de Erratas, responde 0 si hubo error y 1 si libero la pag.
+	int tamDatos = sizeof(uint32_t) * 3;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = LIBE_PAG;
+	((uint32_t*) datos)[1] = ID_Prog;
+	((uint32_t*) datos)[2] = NumPag;
+	EnviarDatos(socketFD, emisor, datos, tamDatos);
+	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete->Payload);
+	free(paquete->Payload);
+	free(paquete);
+	return r;
+}
+
+uint32_t IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog) { //Borra las paginas de ese programa.
 	int tamDatos = sizeof(uint32_t) * 2;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = FIN_PROG;
 	((uint32_t*) datos)[1] = ID_Prog;
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete->Payload);
+	free(paquete->Payload);
+	free(paquete);
+	return r;
 }
