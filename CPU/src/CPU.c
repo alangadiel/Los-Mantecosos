@@ -120,8 +120,10 @@ int main(void) {
 			case ESPCB:
 				if (strcmp(paquete -> header.emisor, KERNEL) == 0)
 				{
-					//BloqueControlProceso pcb = (BloqueControlProceso) paquete -> Payload;
-					// creo que en realidad pcb debería ser global porque hay que usar los datos en primitivas.c, consultar
+					BloqueControlProceso pcb = (BloqueControlProceso) paquete -> Payload;
+					Paquete* datos = (Paquete*) IM_LeerDatos(socketMemoria, CPU, pcb.PID, 1/*????*/, pcb.IndiceDeCodigo, 1/*????*/);
+
+
 
 
 				}
