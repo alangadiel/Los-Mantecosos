@@ -191,16 +191,10 @@ void dumpMemoryStruct() { //TODO
 	sprintf(nombreDelArchivo, "Estructuras de la memoria en %s", obtenerTiempoString(time(0)));
 	FILE* file = fopen(nombreDelArchivo, "w");
 	int i;
-	for (i = 0; i < list_size(TablaPaginacion); i++) {
-		RegistroTablaPaginacion* reg = list_get(TablaPaginacion, i);
-		fprintf(file, "Frame: %i, PID: %i, Pagina: %i\n", reg->Frame, reg->PID, reg->Pag);
+	for (i = 0; i < MARCOS; i++) {
+		RegistroTablaPaginacion reg = TablaDePagina[i];
+		fprintf(file, "Frame: %i, PID: %i, Pagina: %i\n", reg.Frame, reg.PID, reg.Pag);
 	}
-	fprintf(file, "Procesos activos: ");
-	if (list_size(procesosActivos)>0)
-		fprintf(file, "%i", *(int*)list_get(procesosActivos, 0));
-	for(i = 1; i < list_size(procesosActivos); i++)
-		fprintf(file, ", %i", *(int*)list_get(procesosActivos, i));
-
 	fclose(file);
 }
 
