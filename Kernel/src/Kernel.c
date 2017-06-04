@@ -463,6 +463,7 @@ void accion(Paquete* paquete, int socketConectado){
 							//Solicito a la memoria que me guarde el codigo del programa
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb->PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
 							EnviarDatos(socketConectado,KERNEL,&(pcb->PID),sizeof(uint32_t));
+							//TODO: Ejecutar en alguna CPU
 						}
 						else
 						{
@@ -526,6 +527,8 @@ void userInterfaceHandler(void* socketFD) {
 	while (end) {
 		char orden[100];
 		int pidConsulta=0;
+		int nuevoGradoMP=0;
+
 		char lista[100];
 		printf("\n\nIngrese una orden: \n");
 		scanf("%s", orden);
@@ -535,7 +538,13 @@ void userInterfaceHandler(void* socketFD) {
 		else if (strcmp(command, "disconnect") == 0) {
 				end = 0;
 		}
-		else if (strcmp(command, "MOSTRARPROCESOS") == 0) {
+		//Para cambiar el grado de multiprogramacion
+		else if(strcmp(command,"cambiar_gradomp")==0){
+			scanf("%d", &nuevoGradoMP);
+			GRADO_MULTIPROG = nuevoGradoMP;
+			printf("El nuevo grado de multiprogramacion es: %d\n",GRADO_MULTIPROG);
+		}
+		else if (strcmp(command, "mostrar_procesos") == 0) {
 			scanf("%s", lista);
 			if(strcmp(lista,NUEVOS)==0)
 				MostrarProcesosDeUnaLista(Nuevos,NUEVOS);
@@ -554,7 +563,7 @@ void userInterfaceHandler(void* socketFD) {
 				printf("No se reconoce la lista ingresada");
 			}
 
-		else if (strcmp(command, "ConsultarPrograma") == 0) {
+		else if (strcmp(command, "consultar_programa") == 0) {
 			scanf("%d", &pidConsulta);
 			ConsultarEstado(pidConsulta);
 		}
