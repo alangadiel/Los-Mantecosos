@@ -3,9 +3,16 @@
 uint32_t Hash(uint32_t pid, uint32_t pag){
 
 }
-unsigned cuantasPagTiene(uint32_t pid){
-	unsigned c, i;
-	for(i=0; i <= cantPagAsignadas; i++){
+uint32_t FrameLookup(uint32_t pid, uint32_t pag){
+	uint32_t frame = Hash(pid, pag);
+	while(TablaDePagina[frame].PID != pid || TablaDePagina[frame].Pag != pag){
+		frame++;
+	}
+	return frame;
+}
+uint32_t cuantasPagTiene(uint32_t pid){
+	uint32_t c, i;
+	for(i=0; i < cantPagAsignadas; i++){
 		if(TablaDePagina[i].PID == pid)
 			c++;
 	}
@@ -27,7 +34,7 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 	//esperar tiempo definido por arch de config
 	sleep(RETARDO_MEMORIA);
 	//buscar pagina
-	void* pagina = ContenidoMemoria + MARCO_SIZE * Hash(DATOS[1], DATOS[2]);
+	void* pagina = ContenidoMemoria + MARCO_SIZE * FrameLookup(DATOS[1], DATOS[2]);
 	//escribir en pagina
 	memcpy(pagina + DATOS[3],(void*) DATOS[5], DATOS[4]);
 	printf("Datos Almacenados: %*s", DATOS[4],(char*) DATOS[5]);
@@ -41,8 +48,8 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 		int i;
 		for (i = cuantasPagTiene(pid); i < cantPagParaAsignar; i++) {
 			//lo agregamos a la tabla
-			TablaDePagina[Hash(pid, i)].PID = pid;
-			TablaDePagina[Hash(pid, i)].Pag = i;
+			TablaDePagina[FrameLookup(pid, i)].PID = pid;
+			TablaDePagina[FrameLookup(pid, i)].Pag = i;
 			cantPagAsignadas++;
 		}
 		r=1;
@@ -52,21 +59,21 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 
 void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
 	if(cuantasPagTiene(pid) > 0) {
-	cantPagAsignadas -= numPag;
-	//TODO
+		cantPagAsignadas--;
+		TablaDePagina[FrameLookup(pid, numPag)].PID=0;
 	} else
 		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t)); //hubo un error porque el proceso no existe
-/*Ante un pedido de liberación de página por parte del kernel, el proceso memoria deberá liberar
-  la página que corresponde con el número solicitado. En caso de que dicha página no exista
-  o no pueda ser liberada, se deberá informar de la imposibilidad de realizar dicha operación
-  como una excepcion de memoria.
- */
 }
 
 void FinalizarPrograma(uint32_t pid, int socketFD) {
-	if(cuantasPagTiene(pid) > 0) {
-	//join de hilo correspondiente TODO
-	//list_remove_and_destroy_by_condition(procesosActivos, LAMBDA(bool _(void* pidAEliminar) { return *(uint32_t*)pidAEliminar != pid;}), free);
+	uint32_t cantPag = cuantasPagTiene(pid);
+	if(cantPag > 0) {
+		//TODO: join de hilo correspondiente?
+		uint32_t i;
+		for(i=0; i < cantPag; i++){
+			TablaDePagina[FrameLookup(pid, i)].PID=0;
+			cantPagAsignadas--;
+		}
 	} else
 		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t)); //hubo un error porque el proceso no existe
 }

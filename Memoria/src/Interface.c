@@ -1,22 +1,40 @@
 #include "Interface.h"
 
 void dumpMemoryContent() {
-	printf("Imprimiendo todo el contenido de la memoria");
-	printf("%*s", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
-	char nombreDelArchivo[64+27+1];//tam de la hora + tam de "Contenido de la memoria en " + \0
-	sprintf(nombreDelArchivo, "Contenido de la memoria en %s", obtenerTiempoString(time(0)));
-	FILE* file = fopen(nombreDelArchivo, "w");
-	fprintf(file, "%*s", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
-	fclose(file);
+	if(cantPagAsignadas == 0){
+		printf("La memoria esta vacia\n");
+	} else {
+		printf("Imprimiendo todo el contenido de la memoria\n");
+		printf("%*s\n", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
+		char nombreDelArchivo[64+27+1];//tam de la hora + tam de "Contenido de la memoria en " + \0
+		sprintf(nombreDelArchivo, "Contenido de la memoria en %s", obtenerTiempoString(time(0)));
+		FILE* file = fopen(nombreDelArchivo, "w");
+		fprintf(file, "%*s", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
+		fclose(file);
+	}
 }
 
 void dumpMemoryContentOfPID(uint32_t pid) {
-	printf("Imprimiendo el contenido en memoria del proceso %d", pid);
-	//TODO
+	uint32_t cantPag = cuantasPagTiene(pid);
+	if (cantPag == 0){
+		printf("El proceso no existe\n");
+	} else {
+		printf("Imprimiendo el contenido en memoria del proceso %d\n", pid);
+		char nombreDelArchivo[200];
+		sprintf(nombreDelArchivo, "Contenido del proceso %i en %s", pid, obtenerTiempoString(time(0)));
+		FILE* file = fopen(nombreDelArchivo, "w");
+		uint32_t i;
+		for(i=0; i<cantPag; i++){
+			uint32_t frame = FrameLookup(pid, i);
+			printf("%*s", MARCO_SIZE, ContenidoMemoria + (frame * MARCO_SIZE));
+			fprintf(file, "%*s", MARCO_SIZE,  ContenidoMemoria + (frame * MARCO_SIZE));
+		}
+		fclose(file);
+	}
 }
 
-void dumpMemoryStruct() { //TODO
-	printf("Imprimiendo las estructuras de la memoria");
+void dumpMemoryStruct() {
+	printf("Imprimiendo las estructuras de la memoria\n");
 	char nombreDelArchivo[64+29+1];//tam de la hora + tam de "Estructuras de la memoria en " + \0
 	sprintf(nombreDelArchivo, "Estructuras de la memoria en %s", obtenerTiempoString(time(0)));
 	FILE* file = fopen(nombreDelArchivo, "w");
@@ -28,31 +46,23 @@ void dumpMemoryStruct() { //TODO
 	fclose(file);
 }
 
-void printMemorySize() {
-	//TODO
-
-	printf("Imprimiendo el tamaño total de la memoria");
-}
-void printProcessSize(uint32_t pid) {
-	//TODO
-
-	printf("Imprimiendo el tamaño en memoria del proceso %d", pid);
-}
-
 void userInterfaceHandler(void* socketFD) {
 	char* command = malloc(20);
 	while (!end) {
-		printf("\n\nIngrese un comando: \n");
+		printf("\nIngrese un comando: \n");
 		scanf("%s", command);
 		//string_trim(&command);
 		//int c = strcmp(command, "retardo​");
 		if (!strcmp(command, "retardo")) { // !int es lo mismo que int!=0
 			command[0] = '\0'; //lo vacio
 			scanf("%s", command);
+
 			if (strtol(command, NULL, 10) != 0 && strtol(command, NULL, 10) < UINT_MAX) {
 				RETARDO_MEMORIA = strtol(command, NULL, 10);
 				printf("el retardo de la memoria ahora es %u", RETARDO_MEMORIA);
-			} else printf("Numero invalido");
+
+			} else
+				printf("Numero invalido\n");
 
 		} else if (!strcmp(command, "dump")) {
 			command[0] = '\0'; //lo vacio
@@ -75,7 +85,8 @@ void userInterfaceHandler(void* socketFD) {
 					//que sea un numero y que no se pase del max del uint32
 					dumpMemoryContentOfPID(strtol(command, NULL, 10));
 
-				else printf("Numero invalido");
+				else
+					printf("Numero invalido\n");
 
 			} else
 				printf("No se conoce el comando %s\n", command);
@@ -90,14 +101,16 @@ void userInterfaceHandler(void* socketFD) {
 			if (!strcmp(command, "cache")) {
 			//TODO limpiar cache
 
-			} else printf("No se conoce el comando %s\n", command);
+			} else
+				printf("No se conoce el comando %s\n", command);
 
 		} else if (!strcmp(command, "size")) {
 			command[0] = '\0'; //lo vacio
 			scanf("%s", command);
 
 			if (!strcmp(command, "memory")) {
-				printMemorySize();
+				printf("La memoria tiene %u frames en total, de los cuales %i estan ocupados y %i libres.\n",
+						MARCOS, cantPagAsignadas, MARCOS-cantPagAsignadas);
 
 			} else if (!strcmp(command, "pid")) {
 				command[0] = '\0'; //lo vacio
@@ -105,8 +118,11 @@ void userInterfaceHandler(void* socketFD) {
 
 				if (strtol(command, NULL, 10) != 0 && strtol(command, NULL, 10) <= (2^32)) {
 					//que sea un numero y que no se pase del max del uint32
-					printProcessSize(strtol(command, NULL, 10));
-				} else printf("Numero invalido");
+					printf("El proceso %li tiene %u paginas asignadas\n",
+							strtol(command, NULL, 10), cuantasPagTiene(strtol(command, NULL, 10)));
+
+				} else
+					printf("Numero invalido\n");
 
 			} else
 				printf("No se conoce el comando %s\n", command);
