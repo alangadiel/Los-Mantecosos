@@ -2,6 +2,7 @@
 
 #define IP_MEMORIA 127.0.0.1
 #define DATOS ((uint32_t*)paquete.Payload)
+#define TablaDePagina ((RegistroTablaPaginacion*)BloquePrincipal)
 
 int PUERTO;
 uint32_t MARCOS;
@@ -11,8 +12,6 @@ uint32_t CACHE_X_PROC;
 char* REEMPLAZO_CACHE;
 unsigned int RETARDO_MEMORIA;
 char* IP;
-t_list* listaHilos;
-char end;
 
 typedef struct {
 	pthread_t hilo;
@@ -31,12 +30,14 @@ typedef struct {
 	void* contenido;
 } tabla_Cache;
 
-void* bloquePpal;
+void* BloquePrincipal;
+void* ContenidoMemoria;
 int tamanioTotalBytesMemoria;
-int cantidadPaginas = 0;
-t_list* TablaPaginacion;
+int tamEstructurasAdm;
+int cantPagAsignadas = 0;
 int socketABuscar;
-t_list* procesosActivos;
+t_list* listaHilos;
+char end;
 
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
@@ -97,46 +98,51 @@ void imprimirArchivoConfiguracion() {
 		fclose(file);
 	}
 }
+uint32_t Hash(uint32_t pid, uint32_t pag){
+
+}
+unsigned cuantasPagTiene(uint32_t pid){
+	unsigned c, i;
+	for(i=0; i <= cantPagAsignadas; i++){
+		if(TablaDePagina[i].PID == pid)
+			c++;
+	}
+	return c;
+}
+
 void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD); //para poder usarlo
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
-	//TODO
-	uint32_t* PID = malloc(sizeof(uint32_t));
-	*PID=pid;
-	if (!list_contains(procesosActivos, PID)){
-		list_add(procesosActivos, PID);
+	if (cuantasPagTiene(pid) == 0)//no existe el proceso
 		AsignarPaginas(pid, cantPag, socketFD);
-	}
-	else {
-		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t));
-	}
+	else
+		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t)); //hubo un error porque el proceso ya existe
 }
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,
 		uint32_t tam, int socketFD) {
 
 }
-void AlmacenarBytes(Paquete paquete) {
-	//Buscar pagina
-	sleep(RETARDO_MEMORIA);//esperar tiempo definido por arch de config
-	memcpy(bloquePpal+DATOS[3],(paquete.Payload) + sizeof(uint32_t)*5,DATOS[4]);
-	//printf("%s\n", DATOS[4]);
-	printf("Datos Almacenados correctamente! \n");
-	printf("El contenido de la memoria es: %s",(char*)bloquePpal);
-	//actualizar cache
+void AlmacenarBytes(Paquete paquete, int socketFD) {
+	//esperar tiempo definido por arch de config
+	sleep(RETARDO_MEMORIA);
+	//buscar pagina
+	void* pagina = ContenidoMemoria + MARCO_SIZE * Hash(DATOS[1], DATOS[2]);
+	//escribir en pagina
+	memcpy(pagina + DATOS[3], DATOS[5], DATOS[4]);
+	printf("Datos Almacenados: %*s", DATOS[4], DATOS[5]);
+	//TODO: actualizar cache
+
 }
 
-void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
+void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 	int r = 0;
-	if (cantidadPaginas + cantPag < MARCOS) {
-		cantidadPaginas++;
+	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cuantasPagTiene(pid) > 0) {
 		int i;
-		for (i = 0; i < cantPag; i++) {
-			RegistroTablaPaginacion* nuevoRegistros = malloc(sizeof(RegistroTablaPaginacion));
-			nuevoRegistros->Frame = cantidadPaginas;
-			nuevoRegistros->PID = pid;
-			nuevoRegistros->Pag = i;
-			cantidadPaginas++;
-			list_add(TablaPaginacion, nuevoRegistros);
+		for (i = cuantasPagTiene(pid); i < cantPagParaAsignar; i++) {
+			//lo agregamos a la tabla
+			TablaDePagina[Hash(pid, i)].PID = pid;
+			TablaDePagina[Hash(pid, i)].Pag = i;
+			cantPagAsignadas++;
 		}
 		r=1;
 	}
@@ -144,27 +150,33 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPag, int socketFD) {
 }
 
 void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
-	cantidadPaginas -= numPag;
-	/*
- * Ante un pedido de liberación de página por parte del kernel, el proceso memoria deberá liberar
+	if(cuantasPagTiene(pid) > 0) {
+	cantPagAsignadas -= numPag;
+	//TODO
+	} else
+		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t)); //hubo un error porque el proceso no existe
+/*Ante un pedido de liberación de página por parte del kernel, el proceso memoria deberá liberar
   la página que corresponde con el número solicitado. En caso de que dicha página no exista
   o no pueda ser liberada, se deberá informar de la imposibilidad de realizar dicha operación
   como una excepcion de memoria.
  */
 }
 
-void FinalizarPrograma(uint32_t pid) {
-	//join de hilo correspondiente
-	list_remove_and_destroy_by_condition(procesosActivos, LAMBDA(bool _(void* pidAEliminar) { return *(uint32_t*)pidAEliminar != pid;}), free);
+void FinalizarPrograma(uint32_t pid, int socketFD) {
+	if(cuantasPagTiene(pid) > 0) {
+	//join de hilo correspondiente TODO
+	//list_remove_and_destroy_by_condition(procesosActivos, LAMBDA(bool _(void* pidAEliminar) { return *(uint32_t*)pidAEliminar != pid;}), free);
+	} else
+		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t)); //hubo un error porque el proceso no existe
 }
 
 void dumpMemoryContent() {
 	printf("Imprimiendo todo el contenido de la memoria");
-	printf("%*s", tamanioTotalBytesMemoria, (char*)bloquePpal);
+	printf("%*s", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
 	char nombreDelArchivo[64+27+1];//tam de la hora + tam de "Contenido de la memoria en " + \0
 	sprintf(nombreDelArchivo, "Contenido de la memoria en %s", obtenerTiempoString(time(0)));
 	FILE* file = fopen(nombreDelArchivo, "w");
-	fprintf(file, "%*s", tamanioTotalBytesMemoria, (char*)bloquePpal);
+	fprintf(file, "%*s", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
 	fclose(file);
 }
 
@@ -213,7 +225,7 @@ void userInterfaceHandler(void* socketFD) {
 		if (!strcmp(command, "retardo")) { // !int es lo mismo que int!=0
 			command[0] = '\0'; //lo vacio
 			scanf("%s", command);
-			if (strtol(command, NULL, 10) != 0) {
+			if (strtol(command, NULL, 10) != 0 && strtol(command, NULL, 10) < UINT_MAX) {
 				RETARDO_MEMORIA = strtol(command, NULL, 10);
 				printf("el retardo de la memoria ahora es %u", RETARDO_MEMORIA);
 			} else printf("Numero invalido");
@@ -296,10 +308,8 @@ int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
 				EnviarPaquete(socketFD, &paquete);
 			}
 		} else { //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
-			paquete->Payload = realloc(paquete->Payload,
-					paquete->header.tamPayload);
-			resul = RecibirDatos(paquete->Payload, socketFD,
-					paquete->header.tamPayload);
+			paquete->Payload = realloc(paquete->Payload, paquete->header.tamPayload);
+			resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 		}
 	}
 
@@ -310,43 +320,31 @@ void* accionHilo(void* socket){
 	int socketFD = *(int*)socket;
 	Paquete paquete;
 	while (RecibirPaqueteMemoria(socketFD, MEMORIA, &paquete) > 0) {
-		switch (paquete.header.tipoMensaje){
-		case ESDATOS:
-			//printf("\nTexto recibido: %s\n", (char*)paquete->Payload);
+		if (paquete.header.tipoMensaje == ESDATOS){
 			switch ((*(uint32_t*)paquete.Payload)){
-			(uint32_t*)paquete.Payload++; //Queda un vector de 4 (0..3) posiciones por el ++
 			case INIC_PROG:
-				IniciarPrograma(DATOS[0],DATOS[1],socketFD);
+				IniciarPrograma(DATOS[1],DATOS[2],socketFD);
 			break;
 			case SOL_BYTES:
-				SolicitarBytes(DATOS[0],DATOS[1],DATOS[2],DATOS[3],socketFD);
+				SolicitarBytes(DATOS[1],DATOS[2],DATOS[3],DATOS[4],socketFD);
 			break;
 			case ALM_BYTES:
-				AlmacenarBytes(paquete);
+				AlmacenarBytes(paquete,socketFD);
 			break;
 			case ASIG_PAG:
-				AsignarPaginas(DATOS[0],DATOS[1],socketFD);
+				AsignarPaginas(DATOS[1],DATOS[2],socketFD);
 			break;
 			case LIBE_PAG:
-				LiberarPaginas(DATOS[0],DATOS[1],socketFD);
+				LiberarPaginas(DATOS[1],DATOS[2],socketFD);
 			break;
 			case FIN_PROG:
-				FinalizarPrograma(DATOS[0]);
+				FinalizarPrograma(DATOS[1],socketFD);
 			break;
 			}
-		break;
-		case ESARCHIVO:
-		break;
-
-		case ESINT:
-			if(strcmp(paquete.header.emisor,KERNEL)==0){
-				EnviarDatos(socketFD,MEMORIA,&MARCO_SIZE,sizeof(MARCO_SIZE));
-			}
-		break;
 		}
+		free(paquete.Payload);
 	}
 	close(socketFD);
-	free(paquete.Payload);
 	return NULL;
 }
 /*//no es necesaria por ahora
@@ -373,12 +371,11 @@ pthread_t agregarAListaHiloSiNoEsta(t_list* listaHilos, int socketFD) {
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-
-	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE) + (sizeof(RegistroTablaPaginacion) * MARCOS);
-	bloquePpal = malloc(tamanioTotalBytesMemoria); //Reservo toda mi memoria
+	tamEstructurasAdm = sizeof(RegistroTablaPaginacion) * MARCOS;
+	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE) + tamEstructurasAdm;
+	BloquePrincipal = malloc(tamanioTotalBytesMemoria); //Reservo toda mi memoria
+	ContenidoMemoria = BloquePrincipal + tamEstructurasAdm; //guardo el puntero donde empieza el contenido
 	listaHilos = list_create();
-	TablaPaginacion = list_create();
-	procesosActivos = list_create();
 	end = 0;
 	//tabla_Adm tablaAdm[MARCOS]; //no, mejor accedamos casteando y recorriendo el bloquePpal
 	/*//MEMORIA CACHE, NO BORRAR
@@ -414,18 +411,14 @@ int main(void) {
 	close(socketFD);
 	//libera los items de lista de hilos , destruye la lista y espera a que termine cada hilo.
 	list_destroy_and_destroy_elements(listaHilos, LAMBDA(void _(void* elem) { pthread_join(((structHilo*)elem)->hilo, NULL); }));
-
 	pthread_join(hiloConsola, NULL);
-
 	//liberar listas
-
-	list_destroy_and_destroy_elements(procesosActivos, free); //recibe cada elemento y lo libera.
-	list_destroy_and_destroy_elements(TablaPaginacion, free);
+	//list_destroy_and_destroy_elements(lista, free); //recibe cada elemento y lo libera.
 	/*//MEMORIA CACHE, NO BORRAR
 	 for (i = 0; i < MARCOS; ++i)  //liberar cache.
 	 free(tablaCache[i].contenido);
 	 */
-	free(bloquePpal);
+	free(BloquePrincipal);
 	exit(3); //TODO: ¿Esto va? Se supone que termina todos los hilos del proceso.
 	return 0;
 }
