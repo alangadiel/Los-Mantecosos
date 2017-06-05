@@ -8,8 +8,13 @@
 
 
 #define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
-#define DESCONECTADODESDECOMANDOCONSOLA -7
+//Tipos de ExitCode
 #define NOSEPUDIERONRESERVARRECURSOS -1
+#define DESCONECTADODESDECOMANDOCONSOLA -7
+#define SOLICITUDMASGRANDEQUETAMANIOPAGINA -8
+
+#define SIZEMETADATA 5
+
 #define INDEX_NUEVOS 0
 #define INDEX_LISTOS 1
 #define INDEX_EJECUTANDO 2
@@ -39,13 +44,25 @@ int socketConMemoria;
 double TamanioPagina;
 typedef struct  {
  uint32_t size;
- int isFree;
+ bool isFree;
 } HeapMetadata;
 
 typedef struct {
 	FILE * file;
 	BloqueControlProceso pcb;
 } PeticionTamanioStack;
+
+typedef struct {
+	uint32_t pid;
+	uint32_t nroPagina;
+	uint32_t espacioDisponible;
+} PaginaDelProceso;
+
+typedef struct {
+	uint32_t numero;
+	t_list* HeapsMetadata;
+} Pagina;
+
 
 uint32_t PidAComparar;
 t_list* Nuevos;
@@ -56,8 +73,101 @@ t_list* Listos;
 t_list* Estados;
 t_list* ListaPCB;
 t_list* EstadosConProgramasFinalizables;
+t_list* PaginasPorProceso;
+t_list* Paginas;
+
+BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizacion, int index, int socket) {
+	BloqueControlProceso* pcbRemovido = NULL;
+	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid; }));
+	if(pcbRemovido!=NULL) {
+		pcbRemovido->ExitCode=tipoFinalizacion;
+		list_add(Finalizados,pcbRemovido);
+
+		/*if(index == INDEX_LISTOS) {
+			IM_FinalizarPrograma(socket, KERNEL, pid);
+		}*/
+	}
+	return pcbRemovido;
+}
+void ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReservar,uint32_t socketFD){
+	void* datosPagina = IM_LeerDatos(socket,KERNEL,PID,nroPagina,0,TamanioPagina);
+	void* metadataOcupado = malloc(sizeof(uint32_t)+sizeof(bool));
+	void* metadataLibre = malloc(sizeof(uint32_t)+sizeof(bool));
+	uint32_t offset = 0;
+	uint32_t sizeBloque;
+	bool frenar = false;
+	while(offset<TamanioPagina-SIZEMETADATA){
+		//Recorro el buffer obtenido
+		void* size= malloc(sizeof(uint32_t));
+		void* estado= malloc(sizeof(bool));
+		memcpy(size,datosPagina,sizeof(uint32_t));
+		memcpy(estado,datosPagina+4,sizeof(bool));
+		bool isFree = *(bool*)estado;
+		sizeBloque = *(uint32_t*)size;
+		//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
+		offset+=(sizeBloque+sizeof(bool));
+	}
+
+	//Actualizo el metadata de acuerdo a la cantidad de bytes a reservar
+	memcpy(metadataOcupado,cantAReservar,sizeof(uint32_t));
+	memcpy(metadataOcupado+sizeof(uint32_t),true,sizeof(bool));
+	IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offset,sizeof(uint32_t)+sizeof(bool),metadataOcupado);
+
+	uint32_t offsetAGuardarMetadataLibre = offset+sizeof(uint32_t)+sizeof(bool)+cantAReservar;
+	//Creo el metadata para lo restante FREE
+	memcpy(metadataLibre,sizeBloque-cantAReservar,sizeof(uint32_t));
+	memcpy(metadataLibre+sizeof(uint32_t),false,sizeof(bool));
+	IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offsetAGuardarMetadataLibre,sizeof(uint32_t)+sizeof(bool),metadataLibre);
 
 
+}
+
+void SolicitarHeap(uint32_t PID,uint32_t cantAReservar,uint32_t socket){
+	uint32_t cantTotal = cantAReservar+SIZEMETADATA;
+	//Como maximo, podes solicitar reservar: TamañoPagina -10(correspondiente a los metedatas iniciales)
+	if(cantTotal <= TamanioPagina-SIZEMETADATA*2){
+		void* result = NULL;
+		//Busco en las paginas asignadas a ese proceso, a ver si hay alguna con tamaño suficiente
+		result = list_find(PaginasPorProceso,
+				LAMBDA(bool _(void* item) {
+			return ((PaginaDelProceso*)item)->pid == PID && ((PaginaDelProceso*)item)->espacioDisponible >= cantTotal;
+		}));
+		if(result!=NULL){ 		//Se encontro la pagina con tamaño disponible
+			//Actualizar el tamaño disponible
+			PaginaDelProceso* paginaObtenida = (PaginaDelProceso*)result;
+			paginaObtenida->espacioDisponible -= cantTotal;
+			//Obtengo la pagina en cuestion y actualizo el metadata
+			ActualizarMetadata(PID,paginaObtenida->nroPagina,cantTotal,socket);
+
+		}
+		else  		//No hay una pagina del proceso utilizable
+		{
+			//Obtengo el ultimo numero de pagina, de ese PID
+			t_list* lista= list_filter(PaginasPorProceso,
+					LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}));
+			int i=0;
+			int maximoNroPag=0;
+			for (i = 0; i < list_size(lista); i++) {
+				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso,i);
+				if(maximoNroPag< elem->nroPagina)	maximoNroPag = elem->nroPagina;
+			}
+			PaginaDelProceso nuevaPPP;
+			nuevaPPP.nroPagina = maximoNroPag+1;
+			nuevaPPP.espacioDisponible = TamanioPagina;
+			nuevaPPP.pid = PID;
+			IM_AsignarPaginas(socket,KERNEL,PID,1);
+			ActualizarMetadata(PID,nuevaPPP.nroPagina,cantTotal,socket);
+
+		}
+	}
+	else{ //Debe finalizar el programa
+
+		FinalizarPrograma(Ejecutando,PID,SOLICITUDMASGRANDEQUETAMANIOPAGINA,INDEX_EJECUTANDO,socket);
+		//TODO: Avisar a la CPU del programa finalizado
+	}
+
+
+}
 char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
 {
 	char buffer[10000];
@@ -396,19 +506,7 @@ void MostrarTodosLosProcesos(){
 	MostrarProcesosDeUnaLista(Bloqueados,BLOQUEADOS);
 	MostrarProcesosDeUnaLista(Finalizados,FINALIZADOS);
 }
-BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizacion, int index, int socket) {
-	BloqueControlProceso* pcbRemovido = NULL;
-	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid; }));
-	if(pcbRemovido!=NULL) {
-		pcbRemovido->ExitCode=tipoFinalizacion;
-		list_add(Finalizados,pcbRemovido);
 
-		/*if(index == INDEX_LISTOS) {
-			IM_FinalizarPrograma(socket, KERNEL, pid);
-		}*/
-	}
-	return pcbRemovido;
-}
 void KillProgramDeUnaLista(t_list* lista,BloqueControlProceso* pcb,int tipoFinalizacion, int index, int socket) {
 	FinalizarPrograma(lista,pcb->PID,tipoFinalizacion, index, socket);
 }
@@ -456,7 +554,6 @@ void accion(Paquete* paquete, int socketConectado){
 
 							//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
 							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
-							printf("Tamanio de la lista de nuevos programas: %d \n",list_size(Nuevos));
 							list_add(Listos, pcb);
 							printf("El programa %d se cargo en memoria \n",pcb->PID);
 
@@ -464,6 +561,8 @@ void accion(Paquete* paquete, int socketConectado){
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb->PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
 							EnviarDatos(socketConectado,KERNEL,&(pcb->PID),sizeof(uint32_t));
 							//TODO: Ejecutar en alguna CPU
+
+							//TODO: Realizar acciones en caso de solicitud de reserva de memoria dinamica
 						}
 						else
 						{
@@ -522,7 +621,7 @@ void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
 
 	free(paquete);
 }
-void userInterfaceHandler(void* socketFD) {
+void userInterfaceHandler(uint32_t* socketFD) {
 	int end = 1;
 	while (end) {
 		char orden[100];
@@ -569,7 +668,7 @@ void userInterfaceHandler(void* socketFD) {
 		}
 		else if (strcmp(command, "kill_program") == 0){
 			scanf("%d", &pidConsulta);
-			KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA, socketFD);
+			KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA, *socketFD);
 		}
 		else {
 			printf("No se conoce el mensaje %s\n", orden);
@@ -590,7 +689,7 @@ int main(void)
 	//pthread_t hiloSyscallWrite;
 	//pthread_create(&hiloSyscallWrite, NULL, (void*)syscallWrite, 2); //socket 2 hardcodeado
 	//pthread_join(hiloSyscallWrite, NULL);
-	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, NULL);
+	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, socketConMemoria);
 	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidor);
 	pthread_join(hiloConsola, NULL);
 	LimpiarListas();
