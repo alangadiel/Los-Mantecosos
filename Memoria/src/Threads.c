@@ -1,13 +1,15 @@
 #include "Threads.h"
 
 uint32_t Hash(uint32_t pid, uint32_t pag){
-
+	uint32_t r = pag % pid;
+	while(r >= MARCOS)
+		r /= pid;
+	return r;
 }
 uint32_t FrameLookup(uint32_t pid, uint32_t pag){
 	uint32_t frame = Hash(pid, pag);
-	while(TablaDePagina[frame].PID != pid || TablaDePagina[frame].Pag != pag){
+	while(TablaDePagina[frame].PID != pid || TablaDePagina[frame].Pag != pag)
 		frame++;
-	}
 	return frame;
 }
 uint32_t cuantasPagTiene(uint32_t pid){
@@ -20,10 +22,11 @@ uint32_t cuantasPagTiene(uint32_t pid){
 }
 
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
-	if (cuantasPagTiene(pid) == 0)//no existe el proceso
+	if (pid != 0 && cuantasPagTiene(pid) == 0)//no existe el proceso
 		AsignarPaginas(pid, cantPag, socketFD);
 	else
-		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t)); //hubo un error porque el proceso ya existe
+		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t));
+	//hubo un error porque el proceso ya existe o el PID es 0
 }
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,
@@ -48,8 +51,10 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 		int i;
 		for (i = cuantasPagTiene(pid); i < cantPagParaAsignar; i++) {
 			//lo agregamos a la tabla
-			TablaDePagina[FrameLookup(pid, i)].PID = pid;
-			TablaDePagina[FrameLookup(pid, i)].Pag = i;
+			uint32_t frame = Hash(pid, i);
+			while(TablaDePagina[frame].PID != 0) frame++;
+			TablaDePagina[frame].PID = pid;
+			TablaDePagina[frame].Pag = i;
 			cantPagAsignadas++;
 		}
 		r=1;

@@ -25,9 +25,9 @@ void dumpMemoryContentOfPID(uint32_t pid) {
 		FILE* file = fopen(nombreDelArchivo, "w");
 		uint32_t i;
 		for(i=0; i<cantPag; i++){
-			uint32_t frame = FrameLookup(pid, i);
-			printf("%*s", MARCO_SIZE, ContenidoMemoria + (frame * MARCO_SIZE));
-			fprintf(file, "%*s", MARCO_SIZE,  ContenidoMemoria + (frame * MARCO_SIZE));
+			char* contenido = ContenidoMemoria + (FrameLookup(pid, i) * MARCO_SIZE);
+			printf("%*s", MARCO_SIZE, contenido);
+			fprintf(file, "%*s", MARCO_SIZE, contenido);
 		}
 		fclose(file);
 	}

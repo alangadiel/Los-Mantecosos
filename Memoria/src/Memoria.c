@@ -105,6 +105,7 @@ int main(void) {
 	struct sockaddr_in their_addr; // información sobre la dirección del cliente
 	int new_fd;
 	socklen_t sin_size;
+	uint32_t j = Hash(3, 5);
 
 	while(!end) { // Loop Principal
 		sin_size = sizeof(struct sockaddr_in);
