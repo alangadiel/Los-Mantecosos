@@ -1,13 +1,19 @@
 #include "SocketsL.h"
+//correr esto en una consola antes de ejecutar sudo chmod -R 755 /mnt
 
 int PUERTO;
 char* PUNTO_MONTAJE;
 char* IP;
-char* METADATAPATHFOLDER;
+char* METADATAPATH;
+char* METADATAFILE;
+char* BITMAPFILE;
+char* ARCHIVOSPATH;
+char* BLOQUESPATH;
 int TAMANIO_BLOQUES;
 int CANTIDAD_BLOQUES;
 char* MAGIC_NUMBER;
-
+int *bitmapArray;
+int YA_ESTA_CREADO;
 
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
@@ -54,18 +60,85 @@ void imprimirArchivoConfiguracion() {
 }
 
 
-void validarArchivo(char* path, int socketFD) {
+int validarArchivo(char* path, int socketFD) {
 	/*Cuando el Proceso Kernel reciba la operación de abrir un archivo deberá validar que el
 	archivo exista.*/
 }
 
+int encontrarPrimerBloqueLibreYOcuparlo() {
+	int i = 0;
+	int seEncontro;
+	while (bitmapArray[i] < CANTIDAD_BLOQUES && seEncontro == 0) {
+		if (bitmapArray[i] == 0) {
+			bitmapArray[i] = 1;
+			ocuparPosicionEnArchivoBitmap(i);
+			seEncontro = 1;
+		}
+	}
+	if (seEncontro == 1) {
+		return i;
+	}
+	else {
+		return -1;
+	}
+}
+
+int* obtenerBloques(int bytes) {
+	int bloques[];
+	int i;
+	double cantidadDeBloques = ceil(bytes/TAMANIO_BLOQUES);
+	if (cantidadDeBloques == 0) cantidadDeBloques = 1;
+	for (i = 0; i<cantidadDeBloques;i++) {
+		int posicion = encontrarPrimerBloqueLibreYOcuparlo();
+		if (posicion < 0) {
+			return NULL;
+		}
+		bloques[i] = posicion;
+	}
+	i++;
+	bloques[i] = NULL;
+	return bloques;
+}
+
+void modificarValoresDeArchivo(int tamanio, int bloques[], char* path) {
+	FILE* newFile = fopen(path, "a");
+	char* strTamanio = "TAMANIO=";
+	string_append(strTamanio, string_itoa(tamanio));
+	string_append(strTamanio, "\n");
+	fputs(strTamanio, newFile);
+	char* strBloque = "BLOQUES[";
+	int i = 0;
+	while (bloques[i] != NULL) {
+		string_append(strBloque, string_itoa(bloques[i]));
+	}
+	string_append(strBloque, "]");
+	fputs(strBloque, newFile);
+	fclose(newFile);
+}
+
 void crearArchivo(char* path,int socketFD) {
-	/*Cuando el Proceso Kernel reciba la operación de abrir un archivo deberá, en caso que el
-archivo no exista y este sea abierto en modo de creación (“c”), llamar a esta operación que
-creará el archivo dentro del path solicitado. Por default todo archivo creado se le debe
-asignar al menos 1 bloque de datos.
-	 *
-	 */
+	if (validarPath(path) && !validarArchivo(path, 0)) {
+		char** pathArray = string_split(path, "/");
+		int i = 0;
+		char* nuevoPath = string_duplicate(ARCHIVOSPATH);
+		while (!string_ends_with(pathArray[i], ".bin")) {
+			string_append(nuevoPath, pathArray[i]);
+			if (stat(nuevoPath, &st) == -1) {
+				mkdir(nuevoPath, 0777);
+			}
+			i++;
+		}
+		string_append(nuevoPath, pathArray[i]);
+		int bloques[] = obtenerBloques(0);
+		if (bloques != NULL) {
+			modificarValoresDeArchivo(0, bloques, nuevoPath);
+			EnviarDatos(socketFD,FS,1,sizeof(uint32_t));
+		}
+		else {
+			EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+		}
+	}
+
 }
 
 void borrarArchivo(char* path, int socketFD) {
@@ -151,21 +224,21 @@ void accion(Paquete* paquete, int socketFD){
 }
 
 void archivoMetadata() {
-	char* METADATAPATHFILE;
-	string_append(METADATAPATHFOLDER, PUNTO_MONTAJE);
-	string_append(METADATAPATHFOLDER, "/Metadata/");
-	METADATAPATHFILE = string_duplicate(METADATAPATHFOLDER);
-	string_append(METADATAPATHFILE, "Metadata.bin");
-	if( access( METADATAPATHFILE , F_OK ) != -1 ) {
+	if( access( METADATAFILE , F_OK ) != -1 ) {
 	    // file exists
 		int contadorDeVariables = 0;
 			int c;
 			FILE *file;
-			file = fopen(METADATA, "r");
+			file = fopen(METADATAFILE, "r");
 			if (file) {
 				while ((c = getc(file)) != EOF)
 					if (c == '=')
 					{
+						if (contadorDeVariables == 1)
+						{
+							fscanf(file, "%i", &YA_ESTA_CREADO);
+							contadorDeVariables++;
+						}
 						if (contadorDeVariables == 2)
 						{
 							char buffer[10000];
@@ -187,11 +260,7 @@ void archivoMetadata() {
 			}
 	} else {
 
-		if (stat(METADATAPATHFOLDER, &st) == -1) {
-		    mkdir(METADATAPATHFOLDER, 0700);
-		}
-
-	    FILE* metadata = fopen(METADATAPATHFILE, "a");
+	    FILE* metadata = fopen(METADATAFILE, "a");
 	    fputs("TAMANIO_BLOQUES=", metadata);
 	    printf("Ingrese tamanio de bloques: \n");
 	    char* strTamanioBloques;
@@ -209,14 +278,125 @@ void archivoMetadata() {
 	    printf("Ingrese magic number: \n");
 	    scanf("%s", MAGIC_NUMBER);
 	    fputs(MAGIC_NUMBER, metadata);
+	    fclose(metadata);
+	}
+}
+
+char* leerTodoElArchivo(FILE* file) {
+	fseek(file, 0, SEEK_END);
+	long size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+	char* fcontent = malloc(size);
+	fread(fcontent, 1, size, file);
+	return fcontent;
+}
+
+void archivoBitmap() {
+	int i;
+	bitmapArray = malloc (CANTIDAD_BLOQUES * sizeof (bitmapArray[0]));
+	if( access( BITMAPFILE , F_OK ) != -1 ) {
+		// file exists
+		FILE* bitmap = fopen(BITMAPFILE, "a");
+		char* stringBitmap = leerTodoElArchivo(bitmap);
+		int i;
+		for (i = 0; i < CANTIDAD_BLOQUES; i++) {
+			bitmapArray[i] = strtol(stringBitmap[i]);
+		}
+		fclose(bitmap);
+	}
+	else {
+		FILE* bitmap = fopen(BITMAPFILE, "a");
+		for(i = 0; i < CANTIDAD_BLOQUES; i++) {
+			fputc(0, BITMAPFILE);
+			bitmapArray[i] = 0;
+		}
+		fclose(bitmap);
+	}
+}
+
+void crearEstructurasDeCarpetas() {
+	string_append(METADATAPATH, PUNTO_MONTAJE);
+	string_append(METADATAPATH, "Metadata/");
+	if (stat(METADATAPATH, &st) == -1) {
+		mkdir(METADATAPATH, 0777);
+	}
+
+	string_append(ARCHIVOSPATH, PUNTO_MONTAJE);
+	string_append(ARCHIVOSPATH, "Archivos/");
+	if (stat(ARCHIVOSPATH, &st) == -1) {
+		mkdir(ARCHIVOSPATH, 0777);
+	}
+
+	string_append(BLOQUESPATH, PUNTO_MONTAJE);
+	string_append(BLOQUESPATH, "Bloques/");
+	if (stat(BLOQUESPATH, &st) == -1) {
+		mkdir(BLOQUESPATH, 0777);
+	}
+
+	string_append(METADATAFILE, METADATAPATH);
+	string_append(METADATAFILE, "Metadata.bin");
+
+	string_append(BITMAPFILE, METADATAPATH);
+	string_append(BITMAPFILE, "Bitmap.bin");
+}
+
+int contarArchivosEnDirectorio() {
+	int file_count = 0;
+	DIR * dirp;
+	struct dirent * entry;
+
+	dirp = opendir("path"); /* There should be error handling after this */
+	while ((entry = readdir(dirp)) != NULL) {
+	    if (entry->d_type == DT_REG) { /* If the entry is a regular file */
+	         file_count++;
+	    }
+	}
+	closedir(dirp);
+	return file_count;
+}
+
+void crearArchivosVacios() {
+	int i;
+	if (YA_ESTA_CREADO == 0) {
+		cambiarYaEstaCreado();
+		for (i = 0; i < CANTIDAD_BLOQUES; i++){
+			char* nombre = string_duplicate(ARCHIVOSPATH);
+			string_append(nombre, string_itoa(i));
+			string_append(nombre, ".bin");
+			FILE* archivo = fopen(nombre, "a");
+			fclose(archivo);
+		}
+	}
+	else {
+		int cantidadDeArchivos = contarArchivosEnDirectorio(ARCHIVOSPATH);
+		int faltante = CANTIDAD_BLOQUES - cantidadDeArchivos;
+		if (faltante < 0) {
+			for(i=cantidadDeArchivos-1;i>=CANTIDAD_BLOQUES;i--){
+				char* archivoAEliminar = string_duplicate(ARCHIVOSPATH);
+				string_append(archivoAEliminar, string_itoa(i));
+				string_append(archivoAEliminar, ".bin");
+				remove(archivoAEliminar);
+			}
+		}
+		else if (faltante > 0) {
+			for(i=cantidadDeArchivos;i<CANTIDAD_BLOQUES;i++){
+				char* nombre = string_duplicate(ARCHIVOSPATH);
+				string_append(nombre, string_itoa(i));
+				string_append(nombre, ".bin");
+				FILE* archivo = fopen(nombre, "a");
+				fclose(archivo);
+			}
+		}
 	}
 }
 
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-
+	crearEstructurasDeCarpetas();
 	archivoMetadata();
+	archivoBitmap();
+	crearArchivosVacios();
 	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);
 	return 0;
 }
