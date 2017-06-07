@@ -1,9 +1,10 @@
 #include "Threads.h"
 
-uint32_t Hash(uint32_t pid, uint32_t pag){
-	uint32_t r = pag % pid;
-	while(r >= MARCOS)
-		r /= pid;
+uint32_t Hash(uint32_t x, uint32_t y){
+	x--;
+	int r = ((x + y) * (x + y + 1)) / 2 + y;
+	while(r>MARCOS)
+		r -= MARCOS;
 	return r;
 }
 uint32_t FrameLookup(uint32_t pid, uint32_t pag){
