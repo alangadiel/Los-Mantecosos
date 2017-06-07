@@ -69,7 +69,7 @@ void imprimirArchivoConfiguracion() {
 
 int validarArchivo(char* path, int socketFD) {
 	char fileToValidate = string_duplicate(PUNTO_MONTAJE);
-	string_append(fileToValidate, path);
+	strcat(fileToValidate, path);
 	if( access( fileToValidate, F_OK ) != -1 ) {
 	    if (socketFD != 0) {
 	    	EnviarDatos(socketFD,FS,1,sizeof(uint32_t));
@@ -107,58 +107,58 @@ int encontrarPrimerBloqueLibreYOcuparlo() {
 
 int* obtenerBloques(int bytes) {
 	int cantidadDeBloques = (int) ceil(bytes/TAMANIO_BLOQUES);
-	int bloques[cantidadDeBloques];
+	int* bloques;
 	int i;
 	if (cantidadDeBloques == 0) cantidadDeBloques = 1;
 	for (i = 0; i<cantidadDeBloques;i++) {
 		int posicion = encontrarPrimerBloqueLibreYOcuparlo();
 		if (posicion < 0) {
-			return NULL;
+			return -1;
 		}
 		char* newFile = string_duplicate(ARCHIVOSPATH);
-		string_append(newFile, string_itoa(posicion));
-		string_append(newFile, ".bin");
+		strcat(newFile, string_itoa(posicion));
+		strcat(newFile, ".bin");
 		FILE* file = fopen(newFile, "a");
 		bloques[i] = posicion;
 	}
 	i++;
-	bloques[i] = NULL;
+	bloques[i] = -1;
 	return bloques;
 }
 
 void modificarValoresDeArchivo(int tamanio, int bloques[], char* path) {
 	FILE* newFile = fopen(path, "a");
 	char* strTamanio = "TAMANIO=";
-	string_append(strTamanio, string_itoa(tamanio));
-	string_append(strTamanio, "\n");
+	strcat(strTamanio, string_itoa(tamanio));
+	strcat(strTamanio, "\n");
 	fputs(strTamanio, newFile);
 	char* strBloque = "BLOQUES[";
 	int i = 0;
-	while (bloques[i] != NULL) {
-		string_append(strBloque, string_itoa(bloques[i]));
+	while (bloques[i] >= 0) {
+		strcat(strBloque, string_itoa(bloques[i]));
 	}
-	string_append(strBloque, "]");
+	strcat(strBloque, "]");
 	fputs(strBloque, newFile);
 	fclose(newFile);
 }
 
 void crearArchivo(char* path,int socketFD) {
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
-	string_append(pathForValidation, path);
+	strcat(pathForValidation, path);
 	if (S_ISDIR(pathForValidation) && !validarArchivo(pathForValidation, 0)) {
 		char** pathArray = string_split(path, "/");
 		int i = 0;
 		char* nuevoPath = string_duplicate(ARCHIVOSPATH);
 		while (!string_ends_with(pathArray[i], ".bin")) {
-			string_append(nuevoPath, pathArray[i]);
+			strcat(nuevoPath, pathArray[i]);
 			if (stat(nuevoPath, &st) == -1) {
 				mkdir(nuevoPath, 0777);
 			}
 			i++;
 		}
-		string_append(nuevoPath, pathArray[i]);
+		strcat(nuevoPath, pathArray[i]);
 		int* bloques = obtenerBloques(0);
-		if (bloques != NULL) {
+		if (bloques >= 0) {
 			modificarValoresDeArchivo(0, bloques, nuevoPath);
 			EnviarDatos(socketFD,FS,1,sizeof(uint32_t));
 		}
@@ -172,8 +172,8 @@ void eliminarBloques(int bloques[]) {
 	int i;
 	for (i = 0; i < length(bloques); i++) {
 		char* pathToRemove = string_duplicate(BLOQUESPATH);
-		string_append(pathToRemove, string_itoa(bloques[i]));
-		string_append(pathToRemove, ".bin");
+		strcat(pathToRemove, string_itoa(bloques[i]));
+		strcat(pathToRemove, ".bin");
 		remove(pathToRemove);
 	}
 }
@@ -192,7 +192,7 @@ ValoresArchivo obtenerValoresDeArchivo(pathArchivo) {
 
 void borrarArchivo(char* path, int socketFD) {
 	char* pathArchivo = string_duplicate(ARCHIVOSPATH);
-	string_append(pathArchivo, path);
+	strcat(pathArchivo, path);
 	if (validarArchivo(pathArchivo, 0)) {
 		ValoresArchivo valores = obtenerValoresDeArchivo(pathArchivo);
 		eliminarBloques(valores.Bloques);
@@ -211,7 +211,7 @@ void borrarArchivo(char* path, int socketFD) {
 	}
 }
 
-void obtenerDatos(char* Path, char* Offset, char* Size, int socketFD) {
+void obtenerDatos(char* Path, uint32_t Offset, uint32_t Size, int socketFD) {
 	/*Ante un pedido de datos el File System devolverá del path enviado por parámetro, la
 cantidad de bytes definidos por el Size a partir del offset solicitado. Requiere que el archivo
 se encuentre abierto en modo lectura (“r”).
@@ -222,7 +222,7 @@ deberá retornar un error de Archivo no encontrado.
 	 */
 }
 
-void guardarDatos(char* Path, char* Offset, char* Size, char* Buffer, int socketFD){
+void guardarDatos(char* Path, uint32_t Offset, uint32_t Size, uint32_t Buffer, int socketFD){
 	/*Ante un pedido de escritura el File System almacenará en el path enviado por parámetro, los
 bytes del buffer, definidos por el valor del Size y a partir del offset solicitado. Requiere que el
 archivo se encuentre abierto en modo escritura (“w”).
@@ -238,7 +238,7 @@ int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete)
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0) { //si no hubo error
 		if (paquete->header.tipoMensaje == ESHANDSHAKE) {
-			if (paquete->header.emisor == KERNEL){
+			if (strcmp(paquete->header.emisor,KERNEL) == 0) {
 				printf("Se establecio conexion con %s\n", paquete->header.emisor);
 				Paquete paquete;
 				paquete.header.tipoMensaje = ESHANDSHAKE;
@@ -255,8 +255,8 @@ int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete)
 				paquete.Payload=0;
 				EnviarPaquete(socketFD, &paquete);
 			}
-		} else { //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
-			if (paquete->header.emisor == KERNEL) {
+		} else {
+			if (strcmp(paquete->header.emisor, KERNEL) == 0) {
 				paquete->Payload = realloc(paquete->Payload,
 						paquete->header.tamPayload);
 				resul = RecibirDatos(paquete->Payload, socketFD,
@@ -271,19 +271,19 @@ void accion(Paquete* paquete, int socketFD){
 	switch ((*(uint32_t*)paquete->Payload)){
 		(uint32_t*)paquete->Payload++;
 		case VALIDAR_ARCHIVO:
-			validarArchivo(((uint32_t*)paquete->Payload)[0], socketFD);
+			validarArchivo(((char**)paquete->Payload)[0], socketFD);
 		break;
 		case CREAR_ARCHIVO:
-			crearArchivo(((uint32_t*)paquete->Payload)[0], socketFD);
+			crearArchivo(((char**)paquete->Payload)[0], socketFD);
 		break;
 		case BORRAR_ARCHIVO:
-			borrarArchivo(((uint32_t*)paquete->Payload)[0], socketFD);
+			borrarArchivo(((char**)paquete->Payload)[0], socketFD);
 		break;
 		case OBTENER_DATOS:
-			obtenerDatos(((uint32_t*)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], socketFD);
+			obtenerDatos(((char**)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], socketFD);
 		break;
 		case GUARDAR_DATOS:
-			guardarDatos(((uint32_t*)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], ((uint32_t*)paquete->Payload)[3], socketFD);
+			guardarDatos(((char**)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], ((uint32_t*)paquete->Payload)[3], socketFD);
 		break;
 	}
 }
@@ -363,16 +363,17 @@ void archivoBitmap() {
 		// file exists
 		FILE* bitmap = fopen(BITMAPFILE, "a");
 		char* stringBitmap = leerTodoElArchivo(bitmap);
+		char** fileArrayBitmap = string_get_string_as_array(stringBitmap);
 		int i;
 		for (i = 0; i < CANTIDAD_BLOQUES; i++) {
-			bitmapArray[i] = atoi(stringBitmap[i]);
+			bitmapArray[i] = (int) strtol(fileArrayBitmap[i], (char **)NULL, 10);
 		}
 		fclose(bitmap);
 	}
 	else {
 		FILE* bitmap = fopen(BITMAPFILE, "a");
 		for(i = 0; i < CANTIDAD_BLOQUES; i++) {
-			fputc(0, BITMAPFILE);
+			fputc(0, bitmap);
 			bitmapArray[i] = 0;
 		}
 		fclose(bitmap);
@@ -380,29 +381,29 @@ void archivoBitmap() {
 }
 
 void crearEstructurasDeCarpetas() {
-	string_append(METADATAPATH, PUNTO_MONTAJE);
-	string_append(METADATAPATH, "Metadata/");
+	strcat(METADATAPATH, PUNTO_MONTAJE);
+	strcat(METADATAPATH, "Metadata/");
 	if (stat(METADATAPATH, &st) == -1) {
 		mkdir(METADATAPATH, 0777);
 	}
 
-	string_append(ARCHIVOSPATH, PUNTO_MONTAJE);
-	string_append(ARCHIVOSPATH, "Archivos/");
+	strcat(ARCHIVOSPATH, PUNTO_MONTAJE);
+	strcat(ARCHIVOSPATH, "Archivos/");
 	if (stat(ARCHIVOSPATH, &st) == -1) {
 		mkdir(ARCHIVOSPATH, 0777);
 	}
 
-	string_append(BLOQUESPATH, PUNTO_MONTAJE);
-	string_append(BLOQUESPATH, "Bloques/");
+	strcat(BLOQUESPATH, PUNTO_MONTAJE);
+	strcat(BLOQUESPATH, "Bloques/");
 	if (stat(BLOQUESPATH, &st) == -1) {
 		mkdir(BLOQUESPATH, 0777);
 	}
 
-	string_append(METADATAFILE, METADATAPATH);
-	string_append(METADATAFILE, "Metadata.bin");
+	strcat(METADATAFILE, METADATAPATH);
+	strcat(METADATAFILE, "Metadata.bin");
 
-	string_append(BITMAPFILE, METADATAPATH);
-	string_append(BITMAPFILE, "Bitmap.bin");
+	strcat(BITMAPFILE, METADATAPATH);
+	strcat(BITMAPFILE, "Bitmap.bin");
 }
 
 int contarArchivosEnDirectorio() {
@@ -422,35 +423,23 @@ int contarArchivosEnDirectorio() {
 
 void crearArchivosVacios() {
 	int i;
-	if (YA_ESTA_CREADO == 0) {
-		cambiarYaEstaCreado();
-		for (i = 0; i < CANTIDAD_BLOQUES; i++){
-			char* nombre = string_duplicate(ARCHIVOSPATH);
-			string_append(nombre, string_itoa(i));
-			string_append(nombre, ".bin");
-			FILE* archivo = fopen(nombre, "a");
-			fclose(archivo);
+	int cantidadDeArchivos = contarArchivosEnDirectorio(ARCHIVOSPATH);
+	int faltante = CANTIDAD_BLOQUES - cantidadDeArchivos;
+	if (faltante < 0) {
+		for(i=cantidadDeArchivos-1;i>=CANTIDAD_BLOQUES;i--){
+			char* archivoAEliminar = string_duplicate(ARCHIVOSPATH);
+			strcat(archivoAEliminar, string_itoa(i));
+			strcat(archivoAEliminar, ".bin");
+			remove(archivoAEliminar);
 		}
 	}
-	else {
-		int cantidadDeArchivos = contarArchivosEnDirectorio(ARCHIVOSPATH);
-		int faltante = CANTIDAD_BLOQUES - cantidadDeArchivos;
-		if (faltante < 0) {
-			for(i=cantidadDeArchivos-1;i>=CANTIDAD_BLOQUES;i--){
-				char* archivoAEliminar = string_duplicate(ARCHIVOSPATH);
-				string_append(archivoAEliminar, string_itoa(i));
-				string_append(archivoAEliminar, ".bin");
-				remove(archivoAEliminar);
-			}
-		}
-		else if (faltante > 0) {
-			for(i=cantidadDeArchivos;i<CANTIDAD_BLOQUES;i++){
-				char* nombre = string_duplicate(ARCHIVOSPATH);
-				string_append(nombre, string_itoa(i));
-				string_append(nombre, ".bin");
-				FILE* archivo = fopen(nombre, "a");
-				fclose(archivo);
-			}
+	else if (faltante > 0) {
+		for(i=cantidadDeArchivos;i<CANTIDAD_BLOQUES;i++){
+			char* nombre = string_duplicate(ARCHIVOSPATH);
+			strcat(nombre, string_itoa(i));
+			strcat(nombre, ".bin");
+			FILE* archivo = fopen(nombre, "a");
+			fclose(archivo);
 		}
 	}
 }

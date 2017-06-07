@@ -387,7 +387,7 @@ uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path) {
 	int tamDatos = sizeof(uint32_t) + sizeof(char) * string_length(path);
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = BORRAR_ARCHIVO;
-	((uint32_t*) datos)[1] = path;
+	((char*) datos)[1] = path;
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
