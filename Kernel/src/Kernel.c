@@ -89,35 +89,38 @@ BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizaci
 	}
 	return pcbRemovido;
 }
-void ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReservar,uint32_t socketFD){
-	void* datosPagina = IM_LeerDatos(socket,KERNEL,PID,nroPagina,0,TamanioPagina);
+void ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantTotalAReservar,uint32_t socketFD){
+	void* datosPagina = IM_LeerDatos(socketFD,KERNEL,PID,nroPagina,0,TamanioPagina);
 	void* metadataOcupado = malloc(sizeof(uint32_t)+sizeof(bool));
 	void* metadataLibre = malloc(sizeof(uint32_t)+sizeof(bool));
 	uint32_t offset = 0;
 	uint32_t sizeBloque;
 	bool frenar = false;
-	while(offset<TamanioPagina-SIZEMETADATA){
+	while(offset<TamanioPagina-SIZEMETADATA && frenar == false){
 		//Recorro el buffer obtenido
 		void* size= malloc(sizeof(uint32_t));
 		void* estado= malloc(sizeof(bool));
-		memcpy(size,datosPagina,sizeof(uint32_t));
-		memcpy(estado,datosPagina+4,sizeof(bool));
-		bool isFree = *(bool*)estado;
+		memcpy(size,datosPagina+offset,sizeof(uint32_t));
+		memcpy(estado,datosPagina+offset+4,sizeof(bool));
+		if(*(bool*)estado==true){
+			frenar = true;
+		}
 		sizeBloque = *(uint32_t*)size;
 		//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
-		offset+=(sizeBloque+sizeof(bool));
+		offset+=(SIZEMETADATA+ sizeBloque);
 	}
-
+	uint32_t diferencia= sizeBloque-cantTotalAReservar;
+	bool isFreeMetadataLibre = false;
 	//Actualizo el metadata de acuerdo a la cantidad de bytes a reservar
-	memcpy(metadataOcupado,cantAReservar,sizeof(uint32_t));
-	memcpy(metadataOcupado+sizeof(uint32_t),true,sizeof(bool));
-	IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offset,sizeof(uint32_t)+sizeof(bool),metadataOcupado);
+	memcpy(metadataOcupado,&cantTotalAReservar,sizeof(uint32_t));
+	memcpy(metadataOcupado+sizeof(uint32_t),&frenar,sizeof(bool));
+	IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offset,SIZEMETADATA,metadataOcupado);
 
-	uint32_t offsetAGuardarMetadataLibre = offset+sizeof(uint32_t)+sizeof(bool)+cantAReservar;
-	//Creo el metadata para lo restante FREE
-	memcpy(metadataLibre,sizeBloque-cantAReservar,sizeof(uint32_t));
-	memcpy(metadataLibre+sizeof(uint32_t),false,sizeof(bool));
-	IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offsetAGuardarMetadataLibre,sizeof(uint32_t)+sizeof(bool),metadataLibre);
+	uint32_t offsetAGuardarMetadataLibre = offset+SIZEMETADATA+cantTotalAReservar;
+	//Creo el metadata para lo que queda libre del espacio que use
+	memcpy(metadataLibre,&diferencia,sizeof(uint32_t));
+	memcpy(metadataLibre+sizeof(uint32_t),&isFreeMetadataLibre,sizeof(bool));
+	IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offsetAGuardarMetadataLibre,SIZEMETADATA,metadataLibre);
 
 
 }
@@ -689,7 +692,7 @@ int main(void)
 	//pthread_t hiloSyscallWrite;
 	//pthread_create(&hiloSyscallWrite, NULL, (void*)syscallWrite, 2); //socket 2 hardcodeado
 	//pthread_join(hiloSyscallWrite, NULL);
-	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, socketConMemoria);
+	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, &socketConMemoria);
 	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidor);
 	pthread_join(hiloConsola, NULL);
 	LimpiarListas();
