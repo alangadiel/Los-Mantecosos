@@ -1,6 +1,8 @@
 #include "SocketsL.h"
 //correr esto en una consola antes de ejecutar sudo chmod -R 755 /mnt
 
+#define length(x)  (sizeof(x) / sizeof((x)[0]))
+
 int PUERTO;
 char* PUNTO_MONTAJE;
 char* IP;
@@ -81,13 +83,17 @@ int validarArchivo(char* path, int socketFD) {
 	}
 }
 
+void cambiarValorBitmap(int posicion, int valor) {
+	bitmapArray[posicion] = valor;
+	//cambiarlo en el archivo
+}
+
 int encontrarPrimerBloqueLibreYOcuparlo() {
 	int i = 0;
 	int seEncontro;
 	while (bitmapArray[i] < CANTIDAD_BLOQUES && seEncontro == 0) {
 		if (bitmapArray[i] == 0) {
-			bitmapArray[i] = 1;
-			ocuparPosicionEnArchivoBitmap(i);
+			cambiarValorBitmap(i, 1);
 			seEncontro = 1;
 		}
 	}
@@ -100,15 +106,19 @@ int encontrarPrimerBloqueLibreYOcuparlo() {
 }
 
 int* obtenerBloques(int bytes) {
-	int bloques[];
+	int cantidadDeBloques = (int) ceil(bytes/TAMANIO_BLOQUES);
+	int bloques[cantidadDeBloques];
 	int i;
-	double cantidadDeBloques = ceil(bytes/TAMANIO_BLOQUES);
 	if (cantidadDeBloques == 0) cantidadDeBloques = 1;
 	for (i = 0; i<cantidadDeBloques;i++) {
 		int posicion = encontrarPrimerBloqueLibreYOcuparlo();
 		if (posicion < 0) {
 			return NULL;
 		}
+		char* newFile = string_duplicate(ARCHIVOSPATH);
+		string_append(newFile, string_itoa(posicion));
+		string_append(newFile, ".bin");
+		FILE* file = fopen(newFile, "a");
 		bloques[i] = posicion;
 	}
 	i++;
@@ -147,7 +157,7 @@ void crearArchivo(char* path,int socketFD) {
 			i++;
 		}
 		string_append(nuevoPath, pathArray[i]);
-		int bloques[] = obtenerBloques(0);
+		int* bloques = obtenerBloques(0);
 		if (bloques != NULL) {
 			modificarValoresDeArchivo(0, bloques, nuevoPath);
 			EnviarDatos(socketFD,FS,1,sizeof(uint32_t));
@@ -156,6 +166,28 @@ void crearArchivo(char* path,int socketFD) {
 			EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
 		}
 	}
+}
+
+void eliminarBloques(int bloques[]) {
+	int i;
+	for (i = 0; i < length(bloques); i++) {
+		char* pathToRemove = string_duplicate(BLOQUESPATH);
+		string_append(pathToRemove, string_itoa(bloques[i]));
+		string_append(pathToRemove, ".bin");
+		remove(pathToRemove);
+	}
+}
+
+void liberarBloquesBitmap(int bloques[]) {
+	int i;
+	for (i = 0; i < length(bloques); i++) {
+		cambiarValorBitmap(bloques[i], 0);
+	}
+}
+
+ValoresArchivo obtenerValoresDeArchivo(pathArchivo) {
+	ValoresArchivo valores;
+	return valores;
 }
 
 void borrarArchivo(char* path, int socketFD) {
@@ -239,19 +271,19 @@ void accion(Paquete* paquete, int socketFD){
 	switch ((*(uint32_t*)paquete->Payload)){
 		(uint32_t*)paquete->Payload++;
 		case VALIDAR_ARCHIVO:
-			validarArchivo((uint32_t*)paquete->Payload[0], socketFD);
+			validarArchivo(((uint32_t*)paquete->Payload)[0], socketFD);
 		break;
 		case CREAR_ARCHIVO:
-			crearArchivo((uint32_t*)paquete->Payload[0],socketFD);
+			crearArchivo(((uint32_t*)paquete->Payload)[0], socketFD);
 		break;
 		case BORRAR_ARCHIVO:
-			borrarArchivo((uint32_t*)paquete->Payload[0],socketFD);
+			borrarArchivo(((uint32_t*)paquete->Payload)[0], socketFD);
 		break;
 		case OBTENER_DATOS:
-			obtenerDatos((uint32_t*)paquete->Payload[0],(uint32_t*)paquete->Payload[1],(uint32_t*)paquete->Payload[2], socketFD);
+			obtenerDatos(((uint32_t*)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], socketFD);
 		break;
 		case GUARDAR_DATOS:
-			guardarDatos((uint32_t*)paquete->Payload[0],(uint32_t*)paquete->Payload[1],(uint32_t*)paquete->Payload[2], (uint32_t*)paquete->Payload[3], socketFD);
+			guardarDatos(((uint32_t*)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], ((uint32_t*)paquete->Payload)[3], socketFD);
 		break;
 	}
 }
@@ -333,7 +365,7 @@ void archivoBitmap() {
 		char* stringBitmap = leerTodoElArchivo(bitmap);
 		int i;
 		for (i = 0; i < CANTIDAD_BLOQUES; i++) {
-			bitmapArray[i] = strtol(stringBitmap[i]);
+			bitmapArray[i] = atoi(stringBitmap[i]);
 		}
 		fclose(bitmap);
 	}

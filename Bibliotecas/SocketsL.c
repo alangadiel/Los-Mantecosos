@@ -362,7 +362,7 @@ uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path) {
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	while (RecibirPaqueteCliente(socketFD, emisor, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);
@@ -376,7 +376,7 @@ void* FS_CrearPrograma(int socketFD, char emisor[11], char* path) {
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	while (RecibirPaqueteCliente(socketFD, emisor, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);
@@ -391,7 +391,7 @@ uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path) {
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	while (RecibirPaqueteCliente(socketFD, emisor, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);
@@ -407,7 +407,7 @@ uint32_t FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t off
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	while (RecibirPaqueteCliente(socketFD, emisor, paquete) <= 0);
 	void* r;
 	if(paquete->header.tipoMensaje == ESERROR)
 		r = NULL;
@@ -427,7 +427,7 @@ uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, 
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	while (RecibirPaqueteCliente(socketFD, emisor, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);
