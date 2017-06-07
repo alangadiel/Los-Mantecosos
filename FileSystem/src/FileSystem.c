@@ -15,6 +15,11 @@ char* MAGIC_NUMBER;
 int *bitmapArray;
 int YA_ESTA_CREADO;
 
+typedef struct {
+	int Tamanio;
+	int Bloques[];
+}__attribute__((packed)) ValoresArchivo;
+
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
 	int c;
@@ -61,8 +66,19 @@ void imprimirArchivoConfiguracion() {
 
 
 int validarArchivo(char* path, int socketFD) {
-	/*Cuando el Proceso Kernel reciba la operación de abrir un archivo deberá validar que el
-	archivo exista.*/
+	char fileToValidate = string_duplicate(PUNTO_MONTAJE);
+	string_append(fileToValidate, path);
+	if( access( fileToValidate, F_OK ) != -1 ) {
+	    if (socketFD != 0) {
+	    	EnviarDatos(socketFD,FS,1,sizeof(uint32_t));
+	    }
+	    return 1;
+	} else {
+		if (socketFD != 0) {
+			EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+		}
+		return 0;
+	}
 }
 
 int encontrarPrimerBloqueLibreYOcuparlo() {
@@ -117,7 +133,9 @@ void modificarValoresDeArchivo(int tamanio, int bloques[], char* path) {
 }
 
 void crearArchivo(char* path,int socketFD) {
-	if (validarPath(path) && !validarArchivo(path, 0)) {
+	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
+	string_append(pathForValidation, path);
+	if (S_ISDIR(pathForValidation) && !validarArchivo(pathForValidation, 0)) {
 		char** pathArray = string_split(path, "/");
 		int i = 0;
 		char* nuevoPath = string_duplicate(ARCHIVOSPATH);
@@ -138,12 +156,27 @@ void crearArchivo(char* path,int socketFD) {
 			EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
 		}
 	}
-
 }
 
 void borrarArchivo(char* path, int socketFD) {
-	/*Borrará el archivo en el path indicado, eliminando su archivo de metadata y marcando los
-	bloques como libres dentro del bitmap*/
+	char* pathArchivo = string_duplicate(ARCHIVOSPATH);
+	string_append(pathArchivo, path);
+	if (validarArchivo(pathArchivo, 0)) {
+		ValoresArchivo valores = obtenerValoresDeArchivo(pathArchivo);
+		eliminarBloques(valores.Bloques);
+		liberarBloquesBitmap(valores.Bloques);
+		int removeFile = remove(pathArchivo);
+		if (removeFile) {
+			EnviarDatos(socketFD,FS,1,sizeof(uint32_t));
+		}
+		else {
+			EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+		}
+	}
+	else
+	{
+		EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+	}
 }
 
 void obtenerDatos(char* Path, char* Offset, char* Size, int socketFD) {
