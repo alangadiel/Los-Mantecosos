@@ -1,8 +1,6 @@
 #include "SocketsL.h"
 //correr esto en una consola antes de ejecutar sudo chmod -R 755 /mnt
 
-#define length(x)  (sizeof(x) / sizeof((x)[0]))
-
 int PUERTO;
 char* PUNTO_MONTAJE;
 char* IP;
@@ -20,6 +18,8 @@ typedef struct {
 	int Tamanio;
 	int Bloques[];
 }__attribute__((packed)) ValoresArchivo;
+
+
 
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
@@ -54,6 +54,10 @@ void obtenerValoresArchivoConfiguracion() {
 	}
 }
 
+int length(void* x) {
+	return sizeof(x) / sizeof((x)[0]);
+}
+
 void imprimirArchivoConfiguracion() {
 	int c;
 	FILE *file;
@@ -69,7 +73,7 @@ void imprimirArchivoConfiguracion() {
 int validarArchivo(char* path, int socketFD) {
 	char* fileToValidate = string_duplicate(PUNTO_MONTAJE);
 	strcat(fileToValidate, path);
-	if (S_ISDIR(fileToValidate)) {
+	//if (S_ISDIR(fileToValidate)) {
 		if( access( fileToValidate, F_OK ) != -1 ) {
 			if (socketFD != 0) {
 				EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
@@ -80,7 +84,7 @@ int validarArchivo(char* path, int socketFD) {
 				EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
 			}
 		}
-	}
+	//}
 	return 0;
 }
 
@@ -145,7 +149,7 @@ void modificarValoresDeArchivo(int tamanio, int* bloques, char* path) {
 }
 
 int reservarBloques(int cantidadDeBloques, char* path, int size) {
-	int* bloques;
+	int* bloques = malloc(sizeof(int) * cantidadDeBloques);
 	int i;
 	for (i = 0; i < cantidadDeBloques; i++) {
 		int posicion = encontrarPrimerBloqueLibre();
@@ -158,6 +162,7 @@ int reservarBloques(int cantidadDeBloques, char* path, int size) {
 	bloques[i] = -1;
 	crearBloques(bloques);
 	modificarValoresDeArchivo(size, bloques, path);
+	free(bloques);
 	return 1;
 }
 
@@ -212,12 +217,14 @@ void borrarArchivo(char* path, int socketFD) {
 	}
 }
 
-char* leerTodoElArchivo(FILE* file) {
+char* leerTodoElArchivo(char* fileToScan) {
+	FILE* file = fopen(fileToScan, "a");
 	fseek(file, 0, SEEK_END);
 	long size = ftell(file);
 	fseek(file, 0, SEEK_SET);
 	char* fcontent = malloc(size);
 	fread(fcontent, 1, size, file);
+	fclose(file);
 	return fcontent;
 }
 
@@ -256,33 +263,48 @@ int obtenerTamanioDeArchivo(char* path) {
 	return tamanio;
 }
 
-int obtenerSobranteDelUltimoBloque(int bloque) {
-	char* pathUltimoBloque = string_duplicate(BLOQUESPATH);
-	strcat(pathUltimoBloque, string_itoa(bloque));
-	strcat(pathUltimoBloque, ".bin");
-	return TAMANIO_BLOQUES - obtenerTamanioDeArchivo(pathUltimoBloque);
-}
-
-void guardarDatos(char* path, uint32_t offset, uint32_t size, uint32_t buffer, int socketFD){
+void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int socketFD){
 	char* pathAEscribir = string_duplicate(ARCHIVOSPATH);
 	strcat(pathAEscribir, path);
 	if (!validarArchivo(pathAEscribir, 0)) {
 		ValoresArchivo valores = obtenerValoresDeArchivo(pathAEscribir);
-		int nuevoTamanioDeArchivoQueSeNecesita = valores.Tamanio + size;
+		int nuevoTamanioDeArchivoQueSeNecesita;
+		if (valores.Tamanio > offset) {
+			nuevoTamanioDeArchivoQueSeNecesita = valores.Tamanio + size;
+		}
+		else {
+			nuevoTamanioDeArchivoQueSeNecesita = offset + size;
+		}
 		int cantidadDeBloquesTotales = (int) ceil(nuevoTamanioDeArchivoQueSeNecesita/TAMANIO_BLOQUES);
 		int cantidadDeBloquesNecesitados = cantidadDeBloquesTotales - length(valores.Bloques);
 		reservarBloques(cantidadDeBloquesNecesitados, pathAEscribir, nuevoTamanioDeArchivoQueSeNecesita);
-		int restanteDelUltimoBloque = obtenerSobranteDelUltimoBloque(valores.Bloques[lenght(valores.Bloques) - 1]);
-
+		ValoresArchivo nuevosValores = obtenerValoresDeArchivo(pathAEscribir);
+		char** datosArray = string_get_string_as_array(obtenerTodosLosDatosDeBloques(nuevosValores.Bloques));
+		char** datosAGuardar = string_get_string_as_array(buffer);
+		int i;
+		int j = 0;
+		for (i = offset; i < nuevoTamanioDeArchivoQueSeNecesita; i++) {
+			datosArray[i] = datosAGuardar[j];
+			j++;
+		}
+		FILE* file = fopen(pathAEscribir, "w");
+		for (i = 0; i < length(valores.Bloques); i++) {
+			for (j = 0; j < TAMANIO_BLOQUES; j++) {
+				j += TAMANIO_BLOQUES*i;
+				if (string_length(buffer) >= j) {
+					char* pathAEscribir = string_duplicate(BLOQUESPATH);
+					strcat(pathAEscribir, string_itoa(i));
+					strcat(pathAEscribir, ".bin");
+					fputc((int)datosArray[j], file);
+				}
+			}
+		}
+		fclose(file);
+		EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
 	}
-	/*Ante un pedido de escritura el File System almacenará en el path enviado por parámetro, los
-bytes del buffer, definidos por el valor del Size y a partir del offset solicitado. Requiere que el
-archivo se encuentre abierto en modo escritura (“w”).
-En caso de que se soliciten datos o se intenten guardar datos en un archivo inexistente el File System
-deberá retornar un error de Archivo no encontrado.
-
-	 *
-	 */
+	else {
+		EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+	}
 }
 
 int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete) {
@@ -335,7 +357,7 @@ void accion(Paquete* paquete, int socketFD){
 			obtenerDatos(((char**)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], socketFD);
 		break;
 		case GUARDAR_DATOS:
-			guardarDatos(((char**)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], ((uint32_t*)paquete->Payload)[3], socketFD);
+			guardarDatos(((char**)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], ((char**)paquete->Payload)[3], socketFD);
 		break;
 	}
 }
@@ -375,13 +397,13 @@ void archivoMetadata() {
 	    FILE* metadata = fopen(METADATAFILE, "a");
 	    fputs("TAMANIO_BLOQUES=", metadata);
 	    printf("Ingrese tamanio de bloques: \n");
-	    char* strTamanioBloques;
+	    char* strTamanioBloques = string_new();
 	    scanf("%s", strTamanioBloques);
 	    TAMANIO_BLOQUES = atoi(strTamanioBloques);
 
 	    fputs("CANTIDAD_BLOQUES", metadata);
 	    printf("Ingrese cantidad de bloques: \n");
-	    char* strCantidadBloques;
+	    char* strCantidadBloques = string_new();
 	    scanf("%s", strCantidadBloques);
 	    fputs(strCantidadBloques, metadata);
 	    CANTIDAD_BLOQUES = atoi(strCantidadBloques);
@@ -402,7 +424,7 @@ void archivoBitmap() {
 	if( access( BITMAPFILE , F_OK ) != -1 ) {
 		// file exists
 		FILE* bitmap = fopen(BITMAPFILE, "a");
-		char* stringBitmap = leerTodoElArchivo(bitmap);
+		char* stringBitmap = leerTodoElArchivo(BITMAPFILE);
 		char** fileArrayBitmap = string_get_string_as_array(stringBitmap);
 		int i;
 		for (i = 0; i < CANTIDAD_BLOQUES; i++) {
