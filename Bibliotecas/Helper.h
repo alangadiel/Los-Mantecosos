@@ -20,7 +20,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-struct stat st = {0};
+
 
 typedef struct {
 	uint32_t PID;

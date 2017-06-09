@@ -3,7 +3,7 @@
 
 int PUERTO;
 char* PUNTO_MONTAJE;
-char* IP;
+char* IP = "127.0.0.1";
 char* METADATAPATH;
 char* METADATAFILE;
 char* BITMAPFILE;
@@ -13,6 +13,8 @@ int TAMANIO_BLOQUES;
 int CANTIDAD_BLOQUES;
 char* MAGIC_NUMBER;
 int *bitmapArray;
+
+struct stat st = {0};
 
 typedef struct {
 	int Tamanio;
@@ -30,13 +32,6 @@ void obtenerValoresArchivoConfiguracion() {
 		while ((c = getc(file)) != EOF)
 			if (c == '=')
 			{
-				if (contadorDeVariables == 2)
-				{
-				char buffer[10000];
-				IP = fgets(buffer, sizeof buffer, file);
-				strtok(IP, "\n");
-				contadorDeVariables++;
-				}
 				if (contadorDeVariables == 1)
 				{
 					char buffer[10000];
@@ -175,6 +170,7 @@ void crearArchivo(char* path,int socketFD) {
 		char* nuevoPath = string_duplicate(ARCHIVOSPATH);
 		while (!string_ends_with(pathArray[i], ".bin")) {
 			strcat(nuevoPath, pathArray[i]);
+
 			if (stat(nuevoPath, &st) == -1) {
 				mkdir(nuevoPath, 0777);
 			}
@@ -443,27 +439,31 @@ void archivoBitmap() {
 }
 
 void crearEstructurasDeCarpetas() {
-	strcat(METADATAPATH, PUNTO_MONTAJE);
-	strcat(METADATAPATH, "Metadata/");
+	if (stat(PUNTO_MONTAJE, &st) == -1) {
+		mkdir(PUNTO_MONTAJE, 0777);
+	}
+	METADATAPATH = string_duplicate(PUNTO_MONTAJE);
+	string_append(&METADATAPATH, "Metadata/");
 	if (stat(METADATAPATH, &st) == -1) {
 		mkdir(METADATAPATH, 0777);
 	}
 
-	strcat(ARCHIVOSPATH, PUNTO_MONTAJE);
-	strcat(ARCHIVOSPATH, "Archivos/");
+	ARCHIVOSPATH = string_duplicate(PUNTO_MONTAJE);
+	string_append(&ARCHIVOSPATH, "Archivos/");
 	if (stat(ARCHIVOSPATH, &st) == -1) {
 		mkdir(ARCHIVOSPATH, 0777);
 	}
 
-	strcat(BLOQUESPATH, PUNTO_MONTAJE);
+	BLOQUESPATH = string_duplicate(PUNTO_MONTAJE);
 	strcat(BLOQUESPATH, "Bloques/");
 	if (stat(BLOQUESPATH, &st) == -1) {
 		mkdir(BLOQUESPATH, 0777);
 	}
 
-	strcat(METADATAFILE, METADATAPATH);
+	METADATAFILE = string_duplicate(METADATAPATH);
 	strcat(METADATAFILE, "Metadata.bin");
 
+	BITMAPFILE = string_duplicate(METADATAPATH);;
 	strcat(BITMAPFILE, METADATAPATH);
 	strcat(BITMAPFILE, "Bitmap.bin");
 }
@@ -489,6 +489,36 @@ int main(void) {
 	crearEstructurasDeCarpetas();
 	archivoMetadata();
 	archivoBitmap();
-	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);
+	/*char* scan = string_new();
+	char* scan1 = string_new();
+	char* scan2 = string_new();
+	char* scan3 = string_new();
+	char* scan4 = string_new();
+	char* scan5 = string_new();
+	while (true) {
+		printf("validarArchivo 2, crearArchivo 2, borrarArchivo 2, obtenerDatos 4, guardarDatos 5\n");
+		scanf("%s\n", scan);
+		scanf("%s\n", scan1);
+		scanf("%s\n", scan2);
+		scanf("%s\n", scan3);
+		scanf("%s\n", scan4);
+		scanf("%s\n", scan5);
+		if (strcmp(scan, "validarArchivo") == 0) {
+			validarArchivo(scan1, atoi(scan2));
+		}
+		if (strcmp(scan, "crearArchivo") == 0) {
+			crearArchivo(scan1, atoi(scan2));
+				}
+		if (strcmp(scan, "borrarArchivo") == 0) {
+			borrarArchivo(scan1, atoi(scan2));
+		}
+		if (strcmp(scan, "obtenerDatos") == 0) {
+			obtenerDatos(scan1, atoi(scan2), atoi(scan3), atoi(scan4));
+				}
+		if (strcmp(scan, "guardarDatos") == 0) {
+			guardarDatos(scan1, atoi(scan2), atoi(scan3), scan4, atoi(scan5));
+		}
+	}
+	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);*/
 	return 0;
 }
