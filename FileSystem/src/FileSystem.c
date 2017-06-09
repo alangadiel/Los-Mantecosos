@@ -214,14 +214,23 @@ void borrarArchivo(char* path, int socketFD) {
 }
 
 char* leerTodoElArchivo(char* fileToScan) {
-	FILE* file = fopen(fileToScan, "a");
-	fseek(file, 0, SEEK_END);
-	long size = ftell(file);
-	fseek(file, 0, SEEK_SET);
-	char* fcontent = malloc(size);
-	fread(fcontent, 1, size, file);
-	fclose(file);
-	return fcontent;
+	FILE *fp;
+	long lSize;
+	char *buffer;
+
+	fp = fopen ( fileToScan , "rb" );
+	if( !fp ) perror(fileToScan),exit(1);
+
+	fseek( fp , 0L , SEEK_END);
+	lSize = ftell( fp );
+	rewind( fp );
+	buffer = calloc( 1, lSize+1 );
+	if( !buffer ) fclose(fp),fputs("memory alloc fails",stderr),exit(1);
+	if( 1!=fread( buffer , lSize, 1 , fp) )
+	  fclose(fp),free(buffer),fputs("entire read fails",stderr),exit(1);
+
+	fclose(fp);
+	return buffer;
 }
 
 char* obtenerTodosLosDatosDeBloques(int bloques[]) {
@@ -373,7 +382,7 @@ void archivoMetadata() {
 						{
 							char buffer[10000];
 							MAGIC_NUMBER = fgets(buffer, sizeof buffer, file);
-							strtok(IP, "\n");
+							strtok(MAGIC_NUMBER, "\n");
 							contadorDeVariables++;
 						}
 						if (contadorDeVariables == 1)
@@ -395,18 +404,24 @@ void archivoMetadata() {
 	    printf("Ingrese tamanio de bloques: \n");
 	    char* strTamanioBloques = string_new();
 	    scanf("%s", strTamanioBloques);
+	    string_append(&strTamanioBloques, "\n");
+	    fputs(strTamanioBloques, metadata);
 	    TAMANIO_BLOQUES = atoi(strTamanioBloques);
 
-	    fputs("CANTIDAD_BLOQUES", metadata);
+	    fputs("CANTIDAD_BLOQUES=", metadata);
 	    printf("Ingrese cantidad de bloques: \n");
 	    char* strCantidadBloques = string_new();
 	    scanf("%s", strCantidadBloques);
+	    string_append(&strCantidadBloques, "\n");
 	    fputs(strCantidadBloques, metadata);
 	    CANTIDAD_BLOQUES = atoi(strCantidadBloques);
 
 	    fputs("MAGIC_NUMBER=", metadata);
 	    printf("Ingrese magic number: \n");
-	    scanf("%s", MAGIC_NUMBER);
+	    char* strMAGIC_NUMBER = string_new();
+	    scanf("%s", strMAGIC_NUMBER);
+	    MAGIC_NUMBER = string_duplicate(strMAGIC_NUMBER);
+
 	    fputs(MAGIC_NUMBER, metadata);
 	    fclose(metadata);
 	}
@@ -424,14 +439,14 @@ void archivoBitmap() {
 		char** fileArrayBitmap = string_get_string_as_array(stringBitmap);
 		int i;
 		for (i = 0; i < CANTIDAD_BLOQUES; i++) {
-			bitmapArray[i] = (int) strtol(fileArrayBitmap[i], (char **)NULL, 10);
+			bitmapArray[i] = (int) atoi(fileArrayBitmap[i]);
 		}
 		fclose(bitmap);
 	}
 	else {
 		FILE* bitmap = fopen(BITMAPFILE, "a");
 		for(i = 0; i < CANTIDAD_BLOQUES; i++) {
-			fputc(0, bitmap);
+			fputc('0', bitmap);
 			bitmapArray[i] = 0;
 		}
 		fclose(bitmap);
@@ -455,32 +470,16 @@ void crearEstructurasDeCarpetas() {
 	}
 
 	BLOQUESPATH = string_duplicate(PUNTO_MONTAJE);
-	strcat(BLOQUESPATH, "Bloques/");
+	string_append(&BLOQUESPATH, "Bloques/");
 	if (stat(BLOQUESPATH, &st) == -1) {
 		mkdir(BLOQUESPATH, 0777);
 	}
 
 	METADATAFILE = string_duplicate(METADATAPATH);
-	strcat(METADATAFILE, "Metadata.bin");
+	string_append(&METADATAFILE, "Metadata.bin");
 
-	BITMAPFILE = string_duplicate(METADATAPATH);;
-	strcat(BITMAPFILE, METADATAPATH);
-	strcat(BITMAPFILE, "Bitmap.bin");
-}
-
-int contarArchivosEnDirectorio() {
-	int file_count = 0;
-	DIR * dirp;
-	struct dirent * entry;
-
-	dirp = opendir("path"); /* There should be error handling after this */
-	while ((entry = readdir(dirp)) != NULL) {
-	    if (entry->d_type == DT_REG) { /* If the entry is a regular file */
-	         file_count++;
-	    }
-	}
-	closedir(dirp);
-	return file_count;
+	BITMAPFILE = string_duplicate(METADATAPATH);
+	string_append(&BITMAPFILE, "Bitmap.bin");
 }
 
 int main(void) {
