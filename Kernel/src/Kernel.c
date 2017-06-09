@@ -88,30 +88,48 @@ BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizaci
 	}
 	return pcbRemovido;
 }
-void ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReservar,int socketFD){
+uint32_t ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReservar,int socketFD){
 	uint32_t cantTotal =cantAReservar + sizeof(HeapMetadata);
 	//Obtengo la pagina en cuestion donde actualizar la metadata
 	void* datosPagina = IM_LeerDatos(socketFD,KERNEL,PID,nroPagina,0,TamanioPagina);
 	uint32_t offset = 0;
+	uint32_t offsetOcupado=0;
 	uint32_t primerPosicionReservada = 0;
 	bool estado;
 	uint32_t sizeBloque;
-	bool frenar = false;
-	while(offset<TamanioPagina-sizeof(HeapMetadata) && frenar == false){
+	bool encontroLibre = false;
+	bool encontroOcupado=false;
+
+	//Recorro hasta encontrar el primer bloque libre
+		while(offsetOcupado<TamanioPagina-sizeof(HeapMetadata) && encontroOcupado == false){
+			//Recorro el buffer obtenido
+			uint32_t size;
+			bool isfree;
+			size = *(uint32_t*)(datosPagina+offset);
+			isfree = *(bool*)(datosPagina+offset+sizeof(uint32_t));
+			if(*isfree==false){
+				//Si encuentra un metadata free, freno
+				encontroOcupado = true;
+			}
+			else{
+				//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
+				offsetOcupado+=(sizeof(HeapMetadata)+ size);
+			}
+		}
+	uint32_t punteroAlPrimerBloqueDispnible = offsetOcupado + sizeof(HeapMetadata);
+
+	//Recorro hasta encontrar el primer bloque libre
+	while(offset<TamanioPagina-sizeof(HeapMetadata) && encontroLibre == false){
 		//Recorro el buffer obtenido
 		sizeBloque = *(uint32_t*)(datosPagina+offset);
 		estado = *(bool*)(datosPagina+offset+sizeof(uint32_t));
-
-		if(*estado==true){			//Si encuentra un metadata free, freno
-			frenar = true;
+		if(*estado==true){
+			//Si encuentra un metadata free, freno
+			encontroLibre = true;
 		}
 		else{
-			//Obtengo, POR UNICA VEZ, el puntero al primer bloque reservado
-			/*if(primerPosicionReservada==0)
-				primerPosicionReservada = */
 			//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
 			offset+=(sizeof(HeapMetadata)+ sizeBloque);
-
 		}
 
 	}
@@ -130,11 +148,13 @@ void ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReservar,i
 	metaLibre.size = diferencia;
 	IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offsetMetadataLibre,sizeof(HeapMetadata),&metaLibre);
 
+	return punteroAlPrimerBloqueDispnible;
 
 }
 
-void SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
+uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 	uint32_t cantTotal = cantAReservar+sizeof(HeapMetadata);
+	uint32_t punteroAlPrimerDisponible=0;
 	//Como maximo, podes solicitar reservar: TamañoPagina -10(correspondiente a los metedatas iniciales)
 	if(cantTotal <= TamanioPagina-sizeof(HeapMetadata)*2){
 		void* result = NULL;
@@ -148,7 +168,7 @@ void SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 			PaginaDelProceso* paginaObtenida = (PaginaDelProceso*)result;
 			paginaObtenida->espacioDisponible -= cantTotal;
 			//Obtengo la pagina en cuestion y actualizo el metadata
-			ActualizarMetadata(PID,paginaObtenida->nroPagina,cantTotal,socket);
+			punteroAlPrimerDisponible = ActualizarMetadata(PID,paginaObtenida->nroPagina,cantTotal,socket);
 
 		}
 		else  		//No hay una pagina del proceso utilizable
@@ -169,7 +189,7 @@ void SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 			list_add(PaginasPorProceso,&nuevaPPP);
 			//Le pido al Proceso Memoria que me guarde esta pagina para el proceso en cuestion
 			IM_AsignarPaginas(socket,KERNEL,PID,1);
-			ActualizarMetadata(PID,nuevaPPP.nroPagina,cantTotal,socket);
+			punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP.nroPagina,cantTotal,socket);
 			//Destruyo la lista PagesProcess
 			list_destroy_and_destroy_elements(pagesProcess,free);
 		}
@@ -178,11 +198,9 @@ void SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 		FinalizarPrograma(Ejecutando,PID,SOLICITUDMASGRANDEQUETAMANIOPAGINA,INDEX_EJECUTANDO,socket);
 		//TODO: Avisar a la CPU del programa finalizado
 	}
-
+	return punteroAlPrimerDisponible;
 }
-void SolicitudLiberacionDeBloque(){
 
-}
 char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
 {
 	char buffer[10000];

@@ -17,15 +17,36 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-typedef struct {
-	uint32_t PID;
-	uint32_t IndiceStack;
-	uint32_t ProgramCounter;
-	uint32_t IndiceDeCodigo[2];
-	uint32_t PaginasDeCodigo;
-	int ExitCode;
-}__attribute__((packed)) BloqueControlProceso;
 
+
+typedef struct {
+ 	uint32_t NumeroDePagina;
+ 	uint32_t Offset; //Desplazamiento
+	uint32_t Tamanio;
+ }__attribute__((packed)) PosicionDeMemoria;
+
+ typedef struct {
+ 	char ID; //el nombre de la variable
+ 	PosicionDeMemoria Posicion;
+ }__attribute__((packed)) Variable; //de AnSISOP
+
+ typedef struct {
+ 	t_list* Argumentos; //lista de uInt32
+ 	t_list* Variables; //Desplazamiento, lista de uInt32
+ 	uint32_t DireccionDeRetorno;
+ 	PosicionDeMemoria PosVariableDeRetorno;
+ }__attribute__((packed)) IndiceStack;
+
+
+ typedef struct {
+   	uint32_t PID;
+   	uint32_t ProgramCounter;
+   	uint32_t PaginasDeCodigo;
+  	uint32_t* IndiceDeCodigo[2]; //matriz de 2xCantInstrucciones
+  	uint32_t* IndiceDeEtiquetas[2];//matriz de 2xCantEtiquetas
+  	t_list* IndiceDelStack; //lista de IndiceStack
+   	int ExitCode;
+   }__attribute__((packed)) BloqueControlProceso;
 
 typedef struct {
 	uint32_t* Atributos;
