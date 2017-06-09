@@ -1,8 +1,6 @@
 #include "SocketsL.h"
 #include "Helper.h"
 
-#define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
-
 int PUERTO_PROG;
 int PUERTO_CPU;
 char* IP_MEMORIA;
