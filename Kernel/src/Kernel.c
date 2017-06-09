@@ -9,6 +9,7 @@
 
 #define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
 //Tipos de ExitCode
+#define FINALIZACIONNORMAL
 #define NOSEPUDIERONRESERVARRECURSOS -1
 #define DESCONECTADODESDECOMANDOCONSOLA -7
 #define SOLICITUDMASGRANDEQUETAMANIOPAGINA -8
@@ -133,22 +134,30 @@ uint32_t ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReserv
 		}
 
 	}
-	uint32_t diferencia= sizeBloque-cantTotal;
-	//Actualizo el metadata de acuerdo a la cantidad de bytes a reservar
-	HeapMetadata metaOcupado;
-	metaOcupado.isFree = false;
-	metaOcupado.size = cantAReservar;
-	IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offset,sizeof(HeapMetadata),&metaOcupado);
+	if(encontroLibre ==true) {
+		// Se encontro un bloque libre
+		uint32_t diferencia= sizeBloque-cantTotal;
+		//Actualizo el metadata de acuerdo a la cantidad de bytes a reservar
+		HeapMetadata metaOcupado;
+		metaOcupado.isFree = false;
+		metaOcupado.size = cantAReservar;
+		IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offset,sizeof(HeapMetadata),&metaOcupado);
 
 
-	//Creo el metadata para lo que queda libre del espacio que use
-	uint32_t offsetMetadataLibre = offset+sizeof(HeapMetadata)+cantAReservar;
-	HeapMetadata metaLibre;
-	metaLibre.isFree=true;
-	metaLibre.size = diferencia;
-	IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offsetMetadataLibre,sizeof(HeapMetadata),&metaLibre);
+		//Creo el metadata para lo que queda libre del espacio que use
+		uint32_t offsetMetadataLibre = offset+sizeof(HeapMetadata)+cantAReservar;
+		HeapMetadata metaLibre;
+		metaLibre.isFree=true;
+		metaLibre.size = diferencia;
+		IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offsetMetadataLibre,sizeof(HeapMetadata),&metaLibre);
 
-	return punteroAlPrimerBloqueDispnible;
+		return punteroAlPrimerBloqueDispnible;
+	}
+	else {
+		//No se encontro ningun bloque donde reservar memoria dinamica
+		return -1;
+	}
+
 
 }
 
@@ -199,6 +208,33 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 		//TODO: Avisar a la CPU del programa finalizado
 	}
 	return punteroAlPrimerDisponible;
+}
+void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos){
+	void* datosPagina = IM_LeerDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,0,TamanioPagina);
+	uint32_t offSetMetadataAActualizar = pos.Offset- sizeof(HeapMetadata);
+	uint32_t sizeBloqueALiberar = *(uint32_t*)(datosPagina+offSetMetadataAActualizar);
+	HeapMetadata heapMetaAActualizar;
+	heapMetaAActualizar.isFree = true;
+	heapMetaAActualizar.size = sizeBloqueALiberar;
+	//Pongo el bloque como liberado
+	//Me fijo el estado del siguiente Metadata(si esta Free o Used)
+	uint32_t offsetMetadataSiguiente = pos.Offset+sizeBloqueALiberar;
+	uint32_t sizeDelMetadataSiguiente = *(uint32_t*)(datosPagina+offsetMetadataSiguiente);
+	bool estadoDelMetadataSiguiente = *(uint32_t*)(datosPagina+offsetMetadataSiguiente+sizeof(uint32_t));
+	//TODO: Algoritmo para solucionar la fragmentacion externa
+	if(estadoDelMetadataSiguiente==false) {
+		//Esta ocupado: solo actualizo el metadata del bloque que me liberaron
+		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
+	}
+	else {
+		//Esta libre: puedo compactarlos como un metadata solo
+		heapMetaAActualizar.size += sizeDelMetadataSiguiente;
+		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
+		char* datosBasura;
+		strncpy(datosBasura,"basur",5);  //4 caracteres + /0
+		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offsetMetadataSiguiente,sizeof(heapMetaAActualizar),datosBasura);
+	}
+
 }
 
 char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
@@ -253,7 +289,7 @@ void CrearNuevoProceso(BloqueControlProceso* pcb){
 	//Creo el pcb y lo guardo en la lista de nuevos
 
 	pcb->PID = ultimoPID+1;
-	pcb->IndiceStack = 0;
+	//pcb->IndiceStack = 0;
 	pcb->PaginasDeCodigo=0;
 	pcb->ProgramCounter = 0;
 	ultimoPID++;
@@ -503,7 +539,7 @@ void ConsultarEstado(int pidAConsultar){
 		BloqueControlProceso* proceso = (BloqueControlProceso*)result;
 		printf("Proceso N°: %d \n",proceso->PID);
 		//printf("Indice de codigo: %d \n",proceso->IndiceDeCodigo);
-		printf("Tamaño del stack: %d \n",proceso->IndiceStack);
+		//printf("Tamaño del stack: %d \n",proceso->IndiceStack);
 		printf("Paginas de codigo: %d \n",proceso->PaginasDeCodigo);
 		printf("Contador de programa: %d \n",proceso->ProgramCounter);
 	}
