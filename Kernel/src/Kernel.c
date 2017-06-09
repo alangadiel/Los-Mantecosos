@@ -7,7 +7,6 @@
 #define FINALIZADOS "FINALIZADOS"
 
 
-#define BACKLOG 6 //Backlog es el maximo de peticiones pendientes
 //Tipos de ExitCode
 #define FINALIZACIONNORMAL
 #define NOSEPUDIERONRESERVARRECURSOS -1
@@ -77,19 +76,8 @@ t_list* EstadosConProgramasFinalizables;
 t_list* PaginasPorProceso;
 t_list* Paginas;
 
-BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizacion, int index, int socket) {
-	BloqueControlProceso* pcbRemovido = NULL;
-	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid; }));
-	if(pcbRemovido!=NULL) {
-		pcbRemovido->ExitCode=tipoFinalizacion;
-		list_add(Finalizados,pcbRemovido);
-		if(index == INDEX_LISTOS) {
-			IM_FinalizarPrograma(socket, KERNEL, pid);
-		}
-	}
-	return pcbRemovido;
-}
-uint32_t RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina){
+
+int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina){
 	bool encontroOcupado=false;
 	uint32_t offsetOcupado=0;
 	//Recorro hasta encontrar el primer bloque ocupado
@@ -113,18 +101,52 @@ uint32_t RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina){
 		else
 			return -1;
 }
+BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizacion, int index, int socketFD) {
+	BloqueControlProceso* pcbRemovido = NULL;
+	bool hayEstructurasNoLiberadas=false;
+	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid; }));
+	if(pcbRemovido!=NULL) {
+		pcbRemovido->ExitCode=tipoFinalizacion;
+		list_add(Finalizados,pcbRemovido);
+		//Analizo si el proceso tiene Memory Leaks o no
+		t_list* pagesProcess= list_filter(PaginasPorProceso,
+							LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == pid;}));
+		if(list_size(pagesProcess)>0){
+			int i=0;
+			while(i < list_size(pagesProcess) && hayEstructurasNoLiberadas==false){
+				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso,i);
+				//Me fijo si hay metadatas en estado "used" en cada pagina
+				void* datosPagina = IM_LeerDatos(socketFD,KERNEL,elem->pid,elem->nroPagina,0,TamanioPagina);
+				int result = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
+				if(result>=0){
+					//Hay algun metadata que no se libero
+					hayEstructurasNoLiberadas=true;
+				}
+			}
+			if(hayEstructurasNoLiberadas==true)
+				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó",pid);
+			else
+				printf("El proceso %d liberó todas las estructuras de memoria dinamica",pid);
+		}
+
+		if(index == INDEX_LISTOS) {
+			IM_FinalizarPrograma(socketFD, KERNEL, pid);
+		}
+	}
+	return pcbRemovido;
+}
+
 uint32_t ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReservar,int socketFD){
 	uint32_t cantTotal =cantAReservar + sizeof(HeapMetadata);
 	//Obtengo la pagina en cuestion donde actualizar la metadata
 	void* datosPagina = IM_LeerDatos(socketFD,KERNEL,PID,nroPagina,0,TamanioPagina);
 	uint32_t offset = 0;
-	uint32_t primerPosicionReservada = 0;
 	bool estado;
 	uint32_t sizeBloque;
 	bool encontroLibre = false;
 	uint32_t punteroAlPrimerBloqueDisponible;
 
-	uint32_t offsetOcupado = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
+	int offsetOcupado = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
 	if(offsetOcupado<0) //HUBO ERROR
 		punteroAlPrimerBloqueDisponible = -1;
 	else
@@ -214,7 +236,7 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 			list_destroy_and_destroy_elements(pagesProcess,free);
 		}
 	}
-	else{ //Debe finalizar el programa
+	else{ //Debe finalizar el programa pq quiere reservar mas de lo permitido
 		FinalizarPrograma(Ejecutando,PID,SOLICITUDMASGRANDEQUETAMANIOPAGINA,INDEX_EJECUTANDO,socket);
 		//TODO: Avisar a la CPU del programa finalizado
 	}
@@ -232,7 +254,6 @@ void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos
 	uint32_t offsetMetadataSiguiente = pos.Offset+sizeBloqueALiberar;
 	uint32_t sizeDelMetadataSiguiente = *(uint32_t*)(datosPagina+offsetMetadataSiguiente);
 	bool estadoDelMetadataSiguiente = *(uint32_t*)(datosPagina+offsetMetadataSiguiente+sizeof(uint32_t));
-	//TODO: Algoritmo para solucionar la fragmentacion externa
 	if(estadoDelMetadataSiguiente==false) {
 		//Esta ocupado: solo actualizo el metadata del bloque que me liberaron
 		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
@@ -241,15 +262,16 @@ void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos
 		//Esta libre: puedo compactarlos como un metadata solo
 		heapMetaAActualizar.size += sizeDelMetadataSiguiente;
 		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
-		char* datosBasura;
+		char* datosBasura= malloc(5);
 		strncpy(datosBasura,"basur",5);
 		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offsetMetadataSiguiente,sizeof(heapMetaAActualizar),datosBasura);
+		free(datosBasura);
 	}
 	//Si estan todos los bloques de la pagina libres, hay que liberar la pagina entera
 	uint32_t offSet= RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
 	if(offSet< 0){
 		//No se encontro algun bloque ocupado: Hay que liberar la pagina
-
+		IM_LiberarPagina(socketFD,KERNEL,pid,pos.NumeroDePagina);
 	}
 
 
@@ -614,7 +636,16 @@ bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket){
 	return true;
 
 }
+void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int socketFD,double tamanioTotalPaginas){
 
+		pcb->PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
+		printf("Cant paginas asignadas: %d \n",pcb->PaginasDeCodigo);
+		//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
+		list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
+		list_add(Listos, pcb);
+		printf("El programa %d se cargo en memoria \n",pcb->PID);
+
+}
 void accion(Paquete* paquete, int socketConectado){
 	/*pthread_t hiloSyscallWrite;
 	pthread_create(&hiloSyscallWrite,NULL, (void*)syscallWrite, &socketConectado);*/
@@ -636,14 +667,7 @@ void accion(Paquete* paquete, int socketConectado){
 						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb->PID,tamanioTotalPaginas);
 						if(paginasConfirmadas>0 ) // N° negativo significa que la memoria no tiene espacio
 						{
-							pcb->PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
-							printf("Cant paginas asignadas: %d \n",pcb->PaginasDeCodigo);
-
-							//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
-							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
-							list_add(Listos, pcb);
-							printf("El programa %d se cargo en memoria \n",pcb->PID);
-
+							PonerElProgramaComoListo(pcb,paquete,socketConectado,tamanioTotalPaginas);
 							//Solicito a la memoria que me guarde el codigo del programa
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb->PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
 							EnviarDatos(socketConectado,KERNEL,&(pcb->PID),sizeof(uint32_t));
