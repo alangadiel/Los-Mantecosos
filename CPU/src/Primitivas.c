@@ -3,8 +3,8 @@
 //agregar lista de variables?
 
 t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
-	Instruccion* ins = (Instruccion*) list_get(indiceDeCodigo,pcb.ProgramCounter);
-	void* datos = IM_LeerDatos(socketMemoria,CPU, pcb.PID, numeroDePagina, ins->byteComienzo, ins->longitud);
+	t_intructions* ins = (t_intructions*) list_get(indiceDeCodigo,pcb.ProgramCounter);
+	void* datos = IM_LeerDatos(socketMemoria,CPU, pcb.PID, numeroDePagina, ins->start, ins->offset);
 	return datos;
 }
 

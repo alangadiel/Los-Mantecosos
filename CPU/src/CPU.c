@@ -9,6 +9,7 @@ int socketKernel;
 int socketMemoria;
 uint32_t numeroDePagina;
 BloqueControlProceso pcb;
+
 typedef struct {
 	uint32_t byteComienzo;
 	uint32_t longitud;
@@ -87,6 +88,10 @@ void obtenerValoresArchivoConfiguracion()
 	}
 }
 
+
+void EjecutarPrograma(BloqueControlProceso codigoAnsisop){
+	char* instruccion = (char*)IM_LeerDatos()
+}
 void imprimirArchivoConfiguracion() {
 	int c;
 	FILE *file;
@@ -132,7 +137,10 @@ int main(void) {
 			case ESPCB:
 				if (strcmp(paquete -> header.emisor, KERNEL) == 0)
 				{
-					pcb = (BloqueControlProceso) paquete -> Payload;
+					//Me mandan un programa a ejecutar
+					pcb = *(BloqueControlProceso*) paquete -> Payload;
+
+					IM_LeerDatos(socketMemoria,CPU,pcb.PID,0,pcb.)
 
 				}
 			break;
