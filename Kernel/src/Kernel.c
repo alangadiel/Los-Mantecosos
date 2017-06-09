@@ -1,10 +1,6 @@
 #include "SocketsL.h"
 #include "Helper.h"
-#define NUEVOS "NUEVOS"
-#define LISTOS "LISTOS"
-#define EJECUTANDO "EJECUTANDO"
-#define BLOQUEADOS "BLOQUEADOS"
-#define FINALIZADOS "FINALIZADOS"
+#include "Service.h"
 
 
 //Tipos de ExitCode
@@ -14,28 +10,6 @@
 #define SOLICITUDMASGRANDEQUETAMANIOPAGINA -8
 
 #define SIZEMETADATA 5
-
-#define INDEX_NUEVOS 0
-#define INDEX_LISTOS 1
-#define INDEX_EJECUTANDO 2
-#define INDEX_BLOQUEADOS 3
-#define INDEX_FINALIZADOS 4
-//Variables archivo de configuracion
-int PUERTO_PROG;
-int PUERTO_CPU;
-char* IP_MEMORIA;
-int PUERTO_MEMORIA;
-char* IP_FS;
-int PUERTO_FS;
-int QUANTUM;
-int QUANTUM_SLEEP;
-char* ALGORITMO;
-int GRADO_MULTIPROG;
-char* SEM_IDS[4];
-int SEM_INIT[100];
-char* SHARED_VARS[100];
-int STACK_SIZE;
-char* IP_PROG;
 
 
 int pidAFinalizar;
@@ -63,7 +37,22 @@ typedef struct {
 	t_list* HeapsMetadata;
 } Pagina;
 
-
+//Variables archivo de configuracion
+int PUERTO_PROG;
+int PUERTO_CPU;
+char* IP_MEMORIA;
+int PUERTO_MEMORIA;
+char* IP_FS;
+int PUERTO_FS;
+int QUANTUM;
+int QUANTUM_SLEEP;
+char* ALGORITMO;
+int GRADO_MULTIPROG;
+char* SEM_IDS[4];
+int SEM_INIT[100];
+char* SHARED_VARS[100];
+int STACK_SIZE;
+char* IP_PROG;
 uint32_t PidAComparar;
 t_list* Nuevos;
 t_list* Finalizados;
@@ -300,88 +289,20 @@ void ObtenerTamanioPagina(int socketFD){
 	free(datosInicialesMemoria);
 
 }
-void CrearListasEstados(){
-	Nuevos = list_create();
-	Finalizados= list_create();
-	Bloqueados= list_create();
-	Ejecutando= list_create();
-	Listos= list_create();
-	//Creo una lista de listas
-	Estados = list_create();
-	EstadosConProgramasFinalizables = list_create();
-	list_add(EstadosConProgramasFinalizables,Nuevos);
-	list_add(EstadosConProgramasFinalizables,Listos);
-	list_add(EstadosConProgramasFinalizables,Ejecutando);
-	list_add(EstadosConProgramasFinalizables,Bloqueados);
-	list_add_all(Estados,EstadosConProgramasFinalizables);
-	list_add(Estados,Finalizados);
-}
-void LimpiarListas(){
-	list_destroy_and_destroy_elements(Nuevos,free);
-	list_destroy_and_destroy_elements(Listos,free);
-	list_destroy_and_destroy_elements(Ejecutando,free);
-	list_destroy_and_destroy_elements(Bloqueados,free);
-	list_destroy_and_destroy_elements(Finalizados,free);
-	list_destroy_and_destroy_elements(Estados,free);
-	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
-}
-void CrearNuevoProceso(BloqueControlProceso* pcb){
-	//Creo el pcb y lo guardo en la lista de nuevos
 
-	pcb->PID = ultimoPID+1;
-	//pcb->IndiceStack = 0;
-	pcb->PaginasDeCodigo=0;
-	pcb->ProgramCounter = 0;
-	ultimoPID++;
-	list_add(Nuevos,pcb);
-	//list_add(ListaPCB,pcb);
-}
+void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator){
+	printf("Procesos de la lista: %s \n",discriminator);
+	int index=0;
+	for (index = 0; index < list_size(lista); index++) {
+		BloqueControlProceso* proceso = (BloqueControlProceso*)list_get(lista,index);
 
-void obtenerError(int exitCode){
-	switch(exitCode){
-		case 0:
-			printf(" (El programa finalizó correctamente)\n");
-		break;
-
-		case -1:
-			printf(" (No se pudieron reservar recursos para ejecutar el programa)\n");
-		break;
-
-		case -2:
-			printf(" (El programa intentó acceder a un archivo que no existe)\n");
-		break;
-
-		case -3:
-			printf(" (El programa intentó leer un archivo sin permisos)\n");
-		break;
-
-		case -4:
-			printf(" (El programa intentó escribir un archivo sin permisos)\n");
-		break;
-
-		case -5:
-			printf(" (Excepción de memoria)\n");
-		break;
-
-		case -6:
-			printf(" (Finalizado a través de desconexión de consola)\n");
-		break;
-
-		case -7:
-			printf(" (Finalizado a través del comando Finalizar Programa de la consola)\n");
-		break;
-
-		case -8:
-			printf(" (Se intentó reservar más memoria que el tamaño de una página)\n");
-		break;
-
-		case -9:
-			printf(" (No se pueden asignar más páginas al proceso)\n");
-		break;
-
-		case -20:
-			printf(" (Error sin definición)\n");
-		break;
+		if (strcmp(discriminator, FINALIZADOS) == 0) {
+			printf("\tProceso N°: %d",proceso->PID);
+			obtenerError(proceso->ExitCode);
+		}
+		else {
+			printf("\tProceso N°: %d\n",proceso->PID);
+		}
 	}
 }
 
@@ -549,20 +470,30 @@ void imprimirArchivoConfiguracion()
 		fclose(file);
 	}
 }
-void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator){
-	printf("Procesos de la lista: %s \n",discriminator);
-	int index=0;
-	for (index = 0; index < list_size(lista); index++) {
-		BloqueControlProceso* proceso = (BloqueControlProceso*)list_get(lista,index);
-
-		if (strcmp(discriminator, FINALIZADOS) == 0) {
-			printf("\tProceso N°: %d",proceso->PID);
-			obtenerError(proceso->ExitCode);
-		}
-		else {
-			printf("\tProceso N°: %d\n",proceso->PID);
-		}
-	}
+void CrearListasEstados(){
+	Nuevos = list_create();
+	Finalizados= list_create();
+	Bloqueados= list_create();
+	Ejecutando= list_create();
+	Listos= list_create();
+	//Creo una lista de listas
+	Estados = list_create();
+	EstadosConProgramasFinalizables = list_create();
+	list_add(EstadosConProgramasFinalizables,Nuevos);
+	list_add(EstadosConProgramasFinalizables,Listos);
+	list_add(EstadosConProgramasFinalizables,Ejecutando);
+	list_add(EstadosConProgramasFinalizables,Bloqueados);
+	list_add_all(Estados,EstadosConProgramasFinalizables);
+	list_add(Estados,Finalizados);
+}
+void LimpiarListas(){
+	list_destroy_and_destroy_elements(Nuevos,free);
+	list_destroy_and_destroy_elements(Listos,free);
+	list_destroy_and_destroy_elements(Ejecutando,free);
+	list_destroy_and_destroy_elements(Bloqueados,free);
+	list_destroy_and_destroy_elements(Finalizados,free);
+	list_destroy_and_destroy_elements(Estados,free);
+	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
 }
 void ConsultarEstado(int pidAConsultar){
 	int i =0;
@@ -584,6 +515,7 @@ void ConsultarEstado(int pidAConsultar){
 		printf("Contador de programa: %d \n",proceso->ProgramCounter);
 	}
 }
+
 void syscallWrite(int socketFD) {
 	if(socketFD == 1) {
 		char orden[100];
@@ -658,8 +590,8 @@ void accion(Paquete* paquete, int socketConectado){
 					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
 					double tamanioTotalPaginas = ceil(tamanioArchivo)+STACK_SIZE;
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
-					//TODO: Falta free, pero OJO, hay que ver la forma de ponerlo y que siga andando todo
-					CrearNuevoProceso(pcb);
+					//TODO: Falta free, pero OJO, hay que ver la forma de ponerlo y que siga andando
+					CrearNuevoProceso(pcb,&ultimoPID,Nuevos);
 
 					//Manejo la multiprogramacion
 					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
