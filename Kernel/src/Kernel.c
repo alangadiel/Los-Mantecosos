@@ -89,26 +89,17 @@ BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizaci
 	}
 	return pcbRemovido;
 }
-uint32_t ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReservar,int socketFD){
-	uint32_t cantTotal =cantAReservar + sizeof(HeapMetadata);
-	//Obtengo la pagina en cuestion donde actualizar la metadata
-	void* datosPagina = IM_LeerDatos(socketFD,KERNEL,PID,nroPagina,0,TamanioPagina);
-	uint32_t offset = 0;
-	uint32_t offsetOcupado=0;
-	uint32_t primerPosicionReservada = 0;
-	bool estado;
-	uint32_t sizeBloque;
-	bool encontroLibre = false;
+uint32_t RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina){
 	bool encontroOcupado=false;
-
-	//Recorro hasta encontrar el primer bloque libre
+	uint32_t offsetOcupado=0;
+	//Recorro hasta encontrar el primer bloque ocupado
 		while(offsetOcupado<TamanioPagina-sizeof(HeapMetadata) && encontroOcupado == false){
 			//Recorro el buffer obtenido
 			uint32_t size;
 			bool isfree;
-			size = *(uint32_t*)(datosPagina+offset);
-			isfree = *(bool*)(datosPagina+offset+sizeof(uint32_t));
-			if(*isfree==false){
+			size = *(uint32_t*)(datosPagina+offsetOcupado);
+			isfree = *(bool*)(datosPagina+offsetOcupado+sizeof(uint32_t));
+			if(isfree==false){
 				//Si encuentra un metadata free, freno
 				encontroOcupado = true;
 			}
@@ -117,14 +108,34 @@ uint32_t ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReserv
 				offsetOcupado+=(sizeof(HeapMetadata)+ size);
 			}
 		}
-	uint32_t punteroAlPrimerBloqueDispnible = offsetOcupado + sizeof(HeapMetadata);
+		if(encontroOcupado==true)
+			return offsetOcupado;
+		else
+			return -1;
+}
+uint32_t ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReservar,int socketFD){
+	uint32_t cantTotal =cantAReservar + sizeof(HeapMetadata);
+	//Obtengo la pagina en cuestion donde actualizar la metadata
+	void* datosPagina = IM_LeerDatos(socketFD,KERNEL,PID,nroPagina,0,TamanioPagina);
+	uint32_t offset = 0;
+	uint32_t primerPosicionReservada = 0;
+	bool estado;
+	uint32_t sizeBloque;
+	bool encontroLibre = false;
+	uint32_t punteroAlPrimerBloqueDisponible;
+
+	uint32_t offsetOcupado = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
+	if(offsetOcupado<0) //HUBO ERROR
+		punteroAlPrimerBloqueDisponible = -1;
+	else
+		punteroAlPrimerBloqueDisponible= offsetOcupado + sizeof(HeapMetadata);
 
 	//Recorro hasta encontrar el primer bloque libre
 	while(offset<TamanioPagina-sizeof(HeapMetadata) && encontroLibre == false){
 		//Recorro el buffer obtenido
 		sizeBloque = *(uint32_t*)(datosPagina+offset);
 		estado = *(bool*)(datosPagina+offset+sizeof(uint32_t));
-		if(*estado==true){
+		if(estado==true){
 			//Si encuentra un metadata free, freno
 			encontroLibre = true;
 		}
@@ -151,7 +162,7 @@ uint32_t ActualizarMetadata(uint32_t PID,uint32_t nroPagina,uint32_t cantAReserv
 		metaLibre.size = diferencia;
 		IM_GuardarDatos(socketFD,KERNEL,PID,nroPagina,offsetMetadataLibre,sizeof(HeapMetadata),&metaLibre);
 
-		return punteroAlPrimerBloqueDispnible;
+		return punteroAlPrimerBloqueDisponible;
 	}
 	else {
 		//No se encontro ningun bloque donde reservar memoria dinamica
@@ -231,9 +242,16 @@ void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos
 		heapMetaAActualizar.size += sizeDelMetadataSiguiente;
 		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
 		char* datosBasura;
-		strncpy(datosBasura,"basur",5);  //4 caracteres + /0
+		strncpy(datosBasura,"basur",5);
 		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offsetMetadataSiguiente,sizeof(heapMetaAActualizar),datosBasura);
 	}
+	//Si estan todos los bloques de la pagina libres, hay que liberar la pagina entera
+	uint32_t offSet= RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
+	if(offSet< 0){
+		//No se encontro algun bloque ocupado: Hay que liberar la pagina
+
+	}
+
 
 }
 
