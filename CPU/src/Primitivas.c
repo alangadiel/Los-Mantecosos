@@ -1,11 +1,11 @@
 #include "Primitivas.h"
+#include "CPU.c"
 //agregar lista de variables?
 
 t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
-	// acá debería usar alguna de las funciones de IM para hacer una especie de malloc con la memoria
-	// es decir solicitar el espacio en memoria (tiene que estar cargado con basura igual q hace malloc)
-	// Asignar paginas? Leer Datos? Inicializar programa?
-	return 1;
+	Instruccion* ins = (Instruccion*) list_get(indiceDeCodigo,pcb.ProgramCounter);
+	void* datos = IM_LeerDatos(socketMemoria,CPU, pcb.PID, numeroDePagina, ins->byteComienzo, ins->longitud);
+	return datos;
 }
 
 /*

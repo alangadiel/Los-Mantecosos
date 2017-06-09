@@ -7,6 +7,14 @@ char* IP_MEMORIA;
 int PUERTO_MEMORIA;
 int socketKernel;
 int socketMemoria;
+uint32_t numeroDePagina;
+BloqueControlProceso pcb;
+typedef struct {
+	uint32_t byteComienzo;
+	uint32_t longitud;
+} Instruccion;
+t_list* indiceDeCodigo;
+
 static const char* PROGRAMA =
 		"begin\n"
 		"variables a, b\n"
@@ -95,6 +103,7 @@ void imprimirArchivoConfiguracion() {
 
 
 int main(void) {
+	indiceDeCodigo = list_create();
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake);
@@ -113,22 +122,17 @@ int main(void) {
 				if (strcmp(paquete -> header.emisor, MEMORIA) == 0)
 				{
 					printf("Texto recibido: %s", (char*)paquete -> Payload);
+
 					analizadorLinea(PROGRAMA, &functions, &kernel_functions);
+					//IM_GuardarDatos()
+					pcb.ProgramCounter++;
 				}
 			break;
 
 			case ESPCB:
 				if (strcmp(paquete -> header.emisor, KERNEL) == 0)
 				{
-					BloqueControlProceso pcb = (BloqueControlProceso) paquete -> Payload;
-					void* datos = IM_LeerDatos(socketMemoria, CPU, pcb.PID, 1/*????*/, pcb.IndiceDeCodigo, 1/*????*/);
-					if (datos == NULL){
-						//hubo error en la lectura de datos
-					} else {
-						//no hubo error.
-					}
-
-
+					pcb = (BloqueControlProceso) paquete -> Payload;
 
 				}
 			break;
