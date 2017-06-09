@@ -15,6 +15,7 @@
 int pidAFinalizar;
 int ultimoPID=0;
 int socketConMemoria;
+int socketConFS;
 double TamanioPagina;
 typedef struct  {
  uint32_t size;
@@ -36,6 +37,16 @@ typedef struct {
 	uint32_t numero;
 	t_list* HeapsMetadata;
 } Pagina;
+
+typedef struct {
+	uint32_t flag;
+	char globalFD[3];
+} archivoProceso;
+
+typedef struct {
+	char* pathArchivo;
+	int cantAperturas;
+} archivoGlobal;
 
 //Variables archivo de configuracion
 int PUERTO_PROG;
@@ -64,6 +75,7 @@ t_list* ListaPCB;
 t_list* EstadosConProgramasFinalizables;
 t_list* PaginasPorProceso;
 t_list* Paginas;
+t_list* ArchivosGlobales;
 
 
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina){
@@ -470,7 +482,7 @@ void imprimirArchivoConfiguracion()
 		fclose(file);
 	}
 }
-void CrearListasEstados(){
+void CrearListas(){
 	Nuevos = list_create();
 	Finalizados= list_create();
 	Bloqueados= list_create();
@@ -479,6 +491,7 @@ void CrearListasEstados(){
 	//Creo una lista de listas
 	Estados = list_create();
 	EstadosConProgramasFinalizables = list_create();
+	ArchivosGlobales = list_create();
 	list_add(EstadosConProgramasFinalizables,Nuevos);
 	list_add(EstadosConProgramasFinalizables,Listos);
 	list_add(EstadosConProgramasFinalizables,Ejecutando);
@@ -494,6 +507,7 @@ void LimpiarListas(){
 	list_destroy_and_destroy_elements(Finalizados,free);
 	list_destroy_and_destroy_elements(Estados,free);
 	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
+	list_destroy_and_destroy_elements(ArchivosGlobales,free);
 }
 void ConsultarEstado(int pidAConsultar){
 	int i =0;
@@ -578,6 +592,50 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int soc
 		printf("El programa %d se cargo en memoria \n",pcb->PID);
 
 }
+
+void cargarEnTablaArchivosGlobal(char* path)
+{
+	void* result = NULL;
+
+	result = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == path; }));
+
+	if(result == NULL)
+	{
+		archivoGlobal* archivo;
+
+		archivo->pathArchivo = path;
+		archivo->cantAperturas = 1;
+
+		list_add(ArchivosGlobales, archivo);
+	}
+	else
+	{
+		archivoGlobal* archivo = (archivoGlobal*)result;
+
+		archivo->cantAperturas++;
+	}
+
+	//cargar tambien en tabla de proceso
+}
+
+uint32_t abrirArchivo(char* path, char permisos[3])
+{
+	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
+
+	if(archivoEstaCreado == 1)
+	{
+		cargarEnTablaArchivosGlobal(path);
+	}
+	else
+	{
+		if(strcmp(permisos[0], "c") == 0 || strcmp(permisos[1], "c") == 0 || strcmp(permisos[2], "c") == 0)
+		{
+			FS_CrearPrograma(socketConFS, KERNEL, path);
+			cargarEnTablaArchivosGlobal(path);
+		}
+	}
+}
+
 void accion(Paquete* paquete, int socketConectado){
 	/*pthread_t hiloSyscallWrite;
 	pthread_create(&hiloSyscallWrite,NULL, (void*)syscallWrite, &socketConectado);*/
@@ -622,6 +680,11 @@ void accion(Paquete* paquete, int socketConectado){
 
 					}
 
+				}
+
+				if(strcmp(paquete->header.emisor, CPU)==0)
+				{
+					//Reservado para operaciones de File System
 				}
 
 		break;
@@ -723,10 +786,11 @@ void userInterfaceHandler(uint32_t* socketFD) {
 
 int main(void)
 {
-	CrearListasEstados();
+	CrearListas();
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
+	while((socketConFS = ConectarAServidor(PUERTO_FS,IP_FS,FS,KERNEL, RecibirHandshake))<0);
 
 	pthread_t hiloConsola;
 	//pthread_t hiloSyscallWrite;

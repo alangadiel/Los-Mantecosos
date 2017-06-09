@@ -13,6 +13,7 @@ void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos){
 	pcb->ProgramCounter = 0;
 	(*ultimoPid)++;
 	list_add(nuevos,pcb);
+	pcb->ArchivosDeProceso = list_create();
 	//list_add(ListaPCB,pcb);
 }
 
