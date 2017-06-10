@@ -39,7 +39,7 @@ typedef struct {
 	uint32_t PID;
 	uint32_t ProgramCounter;
 	uint32_t PaginasDeCodigo;
-	t_list* IndiceDeCodigo;
+	t_list* IndiceDeCodigo;    //Cada elemento seria un array de 2 ints
 	t_list* IndiceDeEtiquetas;
 	t_list* IndiceDelStack; //lista de IndiceStack
 	int ExitCode;
