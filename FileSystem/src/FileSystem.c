@@ -81,16 +81,18 @@ int validarArchivo(char* path, int socketFD) {
 void cambiarValorBitmap(int posicion, int valor) {
 	bitmapArray[posicion] = valor;
 	int i;
-	FILE* bitmap = fopen(BITMAPFILE, "a");
+	FILE* bitmap = fopen(BITMAPFILE, "w+");
+	char* bitmapToWrite = string_new();
 	for(i = 0; i < CANTIDAD_BLOQUES; i++) {
-		fputc(string_itoa(bitmapArray[i]), bitmap);
+		string_append(&bitmapToWrite, string_itoa(bitmapArray[i]));
 	}
+	fputs(bitmapToWrite, bitmap);
 	fclose(bitmap);
 }
 
 int encontrarPrimerBloqueLibre() {
 	int i = 0;
-	int seEncontro;
+	int seEncontro = 0;
 	while (bitmapArray[i] < CANTIDAD_BLOQUES && seEncontro == 0) {
 		if (bitmapArray[i] == 0) {
 			seEncontro = 1;
@@ -104,12 +106,12 @@ int encontrarPrimerBloqueLibre() {
 	}
 }
 
-void crearBloques(int* bloques) {
+void crearBloques(int* bloques, int cantidadBloques) {
 	int i;
-	for (i = 0; i < length(bloques); i++) {
+	for (i = 0; i < cantidadBloques; i++) {
 		char* newFile = string_duplicate(BLOQUESPATH);
-		strcat(newFile, string_itoa(i));
-		strcat(newFile, ".bin");
+		string_append(&newFile, string_itoa(i));
+		string_append(&newFile, ".bin");
 		FILE* file = fopen(newFile, "a");
 		fclose(file);
 		cambiarValorBitmap(bloques[i], 1);
@@ -121,24 +123,29 @@ void eliminarBloques(int bloques[]) {
 	for (i = 0; i < length(bloques); i++) {
 		cambiarValorBitmap(bloques[i], 0);
 		char* pathToRemove = string_duplicate(BLOQUESPATH);
-		strcat(pathToRemove, string_itoa(bloques[i]));
-		strcat(pathToRemove, ".bin");
+		string_append(&pathToRemove, string_itoa(bloques[i]));
+		string_append(&pathToRemove, ".bin");
 		remove(pathToRemove);
 	}
 }
 
 void modificarValoresDeArchivo(int tamanio, int* bloques, char* path) {
 	FILE* newFile = fopen(path, "a");
-	char* strTamanio = "TAMANIO=";
-	strcat(strTamanio, string_itoa(tamanio));
-	strcat(strTamanio, "\n");
+	char* strTamanio = string_new();
+	string_append(&strTamanio, "TAMANIO=");
+	string_append(&strTamanio, string_itoa(tamanio));
+	string_append(&strTamanio, "\n");
 	fputs(strTamanio, newFile);
-	char* strBloque = "BLOQUES[";
+	char* strBloque = string_new();
+	string_append(&strBloque, "BLOQUES=[");
 	int i = 0;
+	string_append(&strBloque, string_itoa(bloques[i]));
+	i++;
 	while (bloques[i] >= 0) {
-		strcat(strBloque, string_itoa(bloques[i]));
+		string_append(&strBloque, ",");
+		string_append(&strBloque, string_itoa(bloques[i]));
 	}
-	strcat(strBloque, "]");
+	string_append(&strBloque, "]");
 	fputs(strBloque, newFile);
 	fclose(newFile);
 }
@@ -155,7 +162,7 @@ int reservarBloques(int cantidadDeBloques, char* path, int size) {
 	}
 	i++;
 	bloques[i] = -1;
-	crearBloques(bloques);
+	crearBloques(bloques, cantidadDeBloques);
 	modificarValoresDeArchivo(size, bloques, path);
 	free(bloques);
 	return 1;
@@ -163,15 +170,14 @@ int reservarBloques(int cantidadDeBloques, char* path, int size) {
 
 void crearArchivo(char* path,int socketFD) {
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
-	strcat(pathForValidation, path);
+	string_append(&pathForValidation, path);
 	if (!validarArchivo(pathForValidation, 0)) {
-		char **pathArray1 = malloc(sizeof(char) * 1000);
-		pathArray1 = string_split(path, "/");
+		char** pathArray1 = string_split(path, "/");
 		int i = 0;
 		char* nuevoPath = string_duplicate(ARCHIVOSPATH);
 		while (!string_ends_with(pathArray1[i], ".bin")) {
 			string_append(&nuevoPath, pathArray1[i]);
-
+			string_append(&nuevoPath, "/");
 			if (stat(nuevoPath, &st) == -1) {
 				mkdir(nuevoPath, 0777);
 			}
@@ -188,14 +194,46 @@ void crearArchivo(char* path,int socketFD) {
 	}
 }
 
+//CORREGIr
 ValoresArchivo obtenerValoresDeArchivo(char* pathArchivo) {
 	ValoresArchivo valores;
+	int contadorDeVariables = 0;
+		int c;
+		FILE *file;
+		file = fopen(pathArchivo, "r");
+		if (file) {
+			while ((c = getc(file)) != EOF)
+				if (c == '=')
+				{
+					if (contadorDeVariables == 1)
+					{
+						char buffer[10000];
+						char* bloques = fgets(buffer, sizeof buffer, file);
+						strtok(bloques, "\n");
+						char* bloquesSinCorchetes = string_substring(bloques, 1, string_length(bloques) - 1);
+						bloquesSinCorchetes = string_substring_until(bloquesSinCorchetes, string_length(bloquesSinCorchetes) - 1);
+						char** bloquesArray = string_split(bloquesSinCorchetes, ",");
+						int i;
+						for (i = 0; i < ceil(valores.Tamanio / TAMANIO_BLOQUES); i++) {
+							valores.Bloques[i] = (int) strtol(&bloquesArray[i], (char **)NULL, 10);
+						}
+						contadorDeVariables++;
+
+					}
+					if (contadorDeVariables == 0) {
+						fscanf(file, "%i", &valores.Tamanio);
+						contadorDeVariables++;
+					}
+				}
+			fclose(file);
+		}
 	return valores;
 }
 
 void borrarArchivo(char* path, int socketFD) {
-	char* pathArchivo = string_duplicate(ARCHIVOSPATH);
-	strcat(pathArchivo, path);
+	char* pathArchivo = string_new();
+	pathArchivo = string_duplicate(ARCHIVOSPATH);
+	string_append(&pathArchivo, path);
 	if (validarArchivo(pathArchivo, 0)) {
 		ValoresArchivo valores = obtenerValoresDeArchivo(pathArchivo);
 		eliminarBloques(valores.Bloques);
@@ -497,10 +535,10 @@ int main(void) {
 	char* scan5 = string_new();
 	while (true) {
 		printf("validarArchivo 2, crearArchivo 2, borrarArchivo 2, obtenerDatos 4, guardarDatos 5\n");
-		crearArchivo("alumnos/martinsapo.bin", 0);
-		scanf("%s", scan);
+		borrarArchivo("alumnos/martinsapo.bin", 0);
+		/*scanf("%s", scan);
 		scanf("%s", scan1);
-		/*scanf("%s", scan2);
+		scanf("%s", scan2);
 		scanf("%s", scan3);
 		scanf("%s", scan4);
 		scanf("%s", scan5);*/
