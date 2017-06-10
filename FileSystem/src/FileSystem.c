@@ -64,28 +64,28 @@ void imprimirArchivoConfiguracion() {
 	}
 }
 
-
 int validarArchivo(char* path, int socketFD) {
-	char* fileToValidate = string_duplicate(PUNTO_MONTAJE);
-	strcat(fileToValidate, path);
-	//if (S_ISDIR(fileToValidate)) {
-		if( access( fileToValidate, F_OK ) != -1 ) {
-			if (socketFD != 0) {
-				EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
-			}
-			return 1;
-		} else {
-			if (socketFD != 0) {
-				EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
-			}
+	if( access( path, F_OK ) != -1 ) {
+		if (socketFD != 0) {
+			EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
 		}
-	//}
+		return 1;
+	} else {
+		if (socketFD != 0) {
+			EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+		}
+	}
 	return 0;
 }
 
 void cambiarValorBitmap(int posicion, int valor) {
 	bitmapArray[posicion] = valor;
-	//cambiarlo en el archivo
+	int i;
+	FILE* bitmap = fopen(BITMAPFILE, "a");
+	for(i = 0; i < CANTIDAD_BLOQUES; i++) {
+		fputc(string_itoa(bitmapArray[i]), bitmap);
+	}
+	fclose(bitmap);
 }
 
 int encontrarPrimerBloqueLibre() {
@@ -165,18 +165,19 @@ void crearArchivo(char* path,int socketFD) {
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
 	strcat(pathForValidation, path);
 	if (!validarArchivo(pathForValidation, 0)) {
-		char** pathArray = string_split(path, "/");
+		char **pathArray1 = malloc(sizeof(char) * 1000);
+		pathArray1 = string_split(path, "/");
 		int i = 0;
 		char* nuevoPath = string_duplicate(ARCHIVOSPATH);
-		while (!string_ends_with(pathArray[i], ".bin")) {
-			strcat(nuevoPath, pathArray[i]);
+		while (!string_ends_with(pathArray1[i], ".bin")) {
+			string_append(&nuevoPath, pathArray1[i]);
 
 			if (stat(nuevoPath, &st) == -1) {
 				mkdir(nuevoPath, 0777);
 			}
 			i++;
 		}
-		strcat(nuevoPath, pathArray[i]);
+		string_append(&nuevoPath, pathArray1[i]);
 		int sePudoReservar = reservarBloques(1, nuevoPath, 0);
 		if (sePudoReservar) {
 			EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
@@ -436,10 +437,10 @@ void archivoBitmap() {
 		// file exists
 		FILE* bitmap = fopen(BITMAPFILE, "a");
 		char* stringBitmap = leerTodoElArchivo(BITMAPFILE);
-		char** fileArrayBitmap = string_get_string_as_array(stringBitmap);
 		int i;
+		int lengtharray = string_length(stringBitmap);
 		for (i = 0; i < CANTIDAD_BLOQUES; i++) {
-			bitmapArray[i] = (int) atoi(fileArrayBitmap[i]);
+			bitmapArray[i] = (int) strtol(&stringBitmap[i], (char **)NULL, 10);
 		}
 		fclose(bitmap);
 	}
@@ -488,7 +489,7 @@ int main(void) {
 	crearEstructurasDeCarpetas();
 	archivoMetadata();
 	archivoBitmap();
-	/*char* scan = string_new();
+	char* scan = string_new();
 	char* scan1 = string_new();
 	char* scan2 = string_new();
 	char* scan3 = string_new();
@@ -496,20 +497,21 @@ int main(void) {
 	char* scan5 = string_new();
 	while (true) {
 		printf("validarArchivo 2, crearArchivo 2, borrarArchivo 2, obtenerDatos 4, guardarDatos 5\n");
-		scanf("%s\n", scan);
-		scanf("%s\n", scan1);
-		scanf("%s\n", scan2);
-		scanf("%s\n", scan3);
-		scanf("%s\n", scan4);
-		scanf("%s\n", scan5);
+		crearArchivo("alumnos/martinsapo.bin", 0);
+		scanf("%s", scan);
+		scanf("%s", scan1);
+		/*scanf("%s", scan2);
+		scanf("%s", scan3);
+		scanf("%s", scan4);
+		scanf("%s", scan5);*/
 		if (strcmp(scan, "validarArchivo") == 0) {
-			validarArchivo(scan1, atoi(scan2));
+			validarArchivo(scan1, 0);
 		}
 		if (strcmp(scan, "crearArchivo") == 0) {
-			crearArchivo(scan1, atoi(scan2));
-				}
+			crearArchivo(scan1, 0);
+		}
 		if (strcmp(scan, "borrarArchivo") == 0) {
-			borrarArchivo(scan1, atoi(scan2));
+			borrarArchivo(scan1, (int) strtol(&scan2, (char **)NULL, 10));
 		}
 		if (strcmp(scan, "obtenerDatos") == 0) {
 			obtenerDatos(scan1, atoi(scan2), atoi(scan3), atoi(scan4));
@@ -518,6 +520,6 @@ int main(void) {
 			guardarDatos(scan1, atoi(scan2), atoi(scan3), scan4, atoi(scan5));
 		}
 	}
-	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);*/
+	//Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);
 	return 0;
 }
