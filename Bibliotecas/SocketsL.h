@@ -32,6 +32,15 @@
 //Comunicacion Kernel con CPU
 #define PEDIRSHAREDVAR 0
 #define ASIGNARSHAREDVAR 1
+#define WAITSEM 2
+#define SIGNALSEM 3
+#define RESERVARHEAP 4
+#define LIBERARHEAP 5
+#define BORRARARCHIVO 6
+#define CERRARARCHIVO 7
+#define MOVERCURSOSARCHIVO 8
+#define ESCRIBIRARCHIVO 9
+#define LEERARCHIVO 10
 //API Memoria:
 #define INIC_PROG 0
 #define SOL_BYTES 1

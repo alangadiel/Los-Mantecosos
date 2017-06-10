@@ -86,15 +86,8 @@ void obtenerValoresArchivoConfiguracion(){
 		fclose(file);
 	}
 }
-
-void* PedirValorVariableCompartida(t_nombre_variable* nombre){
-	//TODO: Programar en kernel para que me devuelva el valor de una variable compartida
-	int tamDatos = sizeof(uint32_t)+ string_length(nombre)+1;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
-	memcpy(datos+sizeof(uint32_t), nombre, string_length(nombre)+1);
+void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos){
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
 	while (RecibirPaqueteCliente(socketKernel, MEMORIA, paquete) <= 0);
 	void* r;
@@ -105,25 +98,37 @@ void* PedirValorVariableCompartida(t_nombre_variable* nombre){
 	free(paquete);
 	return r;
 }
-void* AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valor_variable valor ){
+t_valor_variable PedirValorVariableCompartida(t_nombre_variable* nombre){
+	//TODO: Programar en kernel para que me devuelva el valor de una variable compartida
+	int tamDatos = sizeof(uint32_t)+ string_length(nombre)+1;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
+	memcpy(datos+sizeof(uint32_t), nombre, string_length(nombre)+1);
+	t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	free(datos);
+	return result;
+}
+t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
+	int tamDatos = sizeof(uint32_t)*2;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = res;
+	((uint32_t*) datos)[1] = espacio;
+	t_puntero result = *(t_puntero*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	free(datos);
+	return result;
+}
+t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valor_variable valor ){
 	//TODO: Programar en kernel para que me asigne el valor de una variable compartida y me devuelta el valor
 		int tamDatos = sizeof(uint32_t)*2+ string_length(nombre)+1;
 		void* datos = malloc(tamDatos);
 		((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
 		((uint32_t*) datos)[1] = valor;
 		memcpy(datos+sizeof(uint32_t)*2, nombre, string_length(nombre)+1);
-		EnviarDatos(socketKernel,CPU,datos,tamDatos);
+		t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 		free(datos);
-		Paquete* paquete = malloc(sizeof(Paquete));
-		while (RecibirPaqueteCliente(socketKernel, MEMORIA, paquete) <= 0);
-		void* r;
-		if(paquete->header.tipoMensaje == ESERROR)
-			r = NULL;
-		else if(paquete->header.tipoMensaje == ESDATOS)
-			r = paquete->Payload;
-		free(paquete);
-		return r;
+		return result;
 }
+
 
 void imprimirArchivoConfiguracion() {
 	int c;
