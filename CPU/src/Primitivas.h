@@ -16,6 +16,7 @@
 	void primitiva_llamarSinRetorno(t_nombre_etiqueta etiqueta);
 	void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar);
 	void primitiva_finalizar(void);
+	void primitiva_retornar(t_valor_variable retorno);
 
 
 

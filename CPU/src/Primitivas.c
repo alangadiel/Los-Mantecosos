@@ -26,7 +26,7 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 		IndiceStack* is = (IndiceStack*)list_get(pcb.IndiceDelStack,j);
 		result = (Variable*)list_find(is->Variables,
 						LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
-		i++;
+		j++;
 	}
 	if(result==NULL)
 		return -1;
