@@ -118,9 +118,9 @@ void crearBloques(int* bloques, int cantidadBloques) {
 	}
 }
 
-void eliminarBloques(int bloques[]) {
+void eliminarBloques(int* bloques, int cantidadBloques) {
 	int i;
-	for (i = 0; i < length(bloques); i++) {
+	for (i = 0; i < cantidadBloques; i++) {
 		cambiarValorBitmap(bloques[i], 0);
 		char* pathToRemove = string_duplicate(BLOQUESPATH);
 		string_append(&pathToRemove, string_itoa(bloques[i]));
@@ -194,7 +194,6 @@ void crearArchivo(char* path,int socketFD) {
 	}
 }
 
-//CORREGIr
 ValoresArchivo obtenerValoresDeArchivo(char* pathArchivo) {
 	ValoresArchivo valores;
 	int contadorDeVariables = 0;
@@ -208,17 +207,16 @@ ValoresArchivo obtenerValoresDeArchivo(char* pathArchivo) {
 					if (contadorDeVariables == 1)
 					{
 						char buffer[10000];
-						char* bloques = fgets(buffer, sizeof buffer, file);
-						strtok(bloques, "\n");
-						char* bloquesSinCorchetes = string_substring(bloques, 1, string_length(bloques) - 1);
-						bloquesSinCorchetes = string_substring_until(bloquesSinCorchetes, string_length(bloquesSinCorchetes) - 1);
-						char** bloquesArray = string_split(bloquesSinCorchetes, ",");
-						int i;
-						for (i = 0; i < ceil(valores.Tamanio / TAMANIO_BLOQUES); i++) {
-							valores.Bloques[i] = (int) strtol(&bloquesArray[i], (char **)NULL, 10);
+						char *line = fgets(buffer,sizeof buffer,file);
+						int length = string_length(line)-2;
+						char *texto = string_substring(line,1,length);
+						texto  = strtok(texto,",");
+						int i = 0;
+						while (texto != NULL)
+						{
+							valores.Bloques[i++] = atoi(texto);
+							texto = strtok (NULL, ",");
 						}
-						contadorDeVariables++;
-
 					}
 					if (contadorDeVariables == 0) {
 						fscanf(file, "%i", &valores.Tamanio);
@@ -236,10 +234,11 @@ void borrarArchivo(char* path, int socketFD) {
 	string_append(&pathArchivo, path);
 	if (validarArchivo(pathArchivo, 0)) {
 		ValoresArchivo valores = obtenerValoresDeArchivo(pathArchivo);
-		eliminarBloques(valores.Bloques);
-
+		int cantidadBloques = ceil(valores.Tamanio/TAMANIO_BLOQUES);
+		if (cantidadBloques == 0) cantidadBloques = 1;
+		eliminarBloques(valores.Bloques, cantidadBloques);
 		int removeFile = remove(pathArchivo);
-		if (removeFile) {
+		if (removeFile >= 0 && socketFD != 0) {
 			EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
 		}
 		else {
@@ -308,8 +307,9 @@ int obtenerTamanioDeArchivo(char* path) {
 }
 
 void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int socketFD){
-	char* pathAEscribir = string_duplicate(ARCHIVOSPATH);
-	strcat(pathAEscribir, path);
+	char* pathAEscribir = string_new();
+	string_append(&pathAEscribir, ARCHIVOSPATH);
+	string_append(&pathAEscribir, path);
 	if (!validarArchivo(pathAEscribir, 0)) {
 		ValoresArchivo valores = obtenerValoresDeArchivo(pathAEscribir);
 		int nuevoTamanioDeArchivoQueSeNecesita;
@@ -337,8 +337,8 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 				j += TAMANIO_BLOQUES*i;
 				if (string_length(buffer) >= j) {
 					char* pathAEscribir = string_duplicate(BLOQUESPATH);
-					strcat(pathAEscribir, string_itoa(i));
-					strcat(pathAEscribir, ".bin");
+					string_append(&pathAEscribir, string_itoa(i));
+					string_append(&pathAEscribir, ".bin");
 					fputc((int)datosArray[j], file);
 				}
 			}
@@ -527,37 +527,9 @@ int main(void) {
 	crearEstructurasDeCarpetas();
 	archivoMetadata();
 	archivoBitmap();
-	char* scan = string_new();
-	char* scan1 = string_new();
-	char* scan2 = string_new();
-	char* scan3 = string_new();
-	char* scan4 = string_new();
-	char* scan5 = string_new();
-	while (true) {
-		printf("validarArchivo 2, crearArchivo 2, borrarArchivo 2, obtenerDatos 4, guardarDatos 5\n");
-		borrarArchivo("alumnos/martinsapo.bin", 0);
-		/*scanf("%s", scan);
-		scanf("%s", scan1);
-		scanf("%s", scan2);
-		scanf("%s", scan3);
-		scanf("%s", scan4);
-		scanf("%s", scan5);*/
-		if (strcmp(scan, "validarArchivo") == 0) {
-			validarArchivo(scan1, 0);
-		}
-		if (strcmp(scan, "crearArchivo") == 0) {
-			crearArchivo(scan1, 0);
-		}
-		if (strcmp(scan, "borrarArchivo") == 0) {
-			borrarArchivo(scan1, (int) strtol(&scan2, (char **)NULL, 10));
-		}
-		if (strcmp(scan, "obtenerDatos") == 0) {
-			obtenerDatos(scan1, atoi(scan2), atoi(scan3), atoi(scan4));
-				}
-		if (strcmp(scan, "guardarDatos") == 0) {
-			guardarDatos(scan1, atoi(scan2), atoi(scan3), scan4, atoi(scan5));
-		}
-	}
+	crearArchivo("kmisi/hola.bin", 0);
+	char* datos = "hola kmisi como estas todo bien? que contas?";
+	guardarDatos("kmisi/hola.bin", 0, string_length(datos), datos, 0);
 	//Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);
 	return 0;
 }
