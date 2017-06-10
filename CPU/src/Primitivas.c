@@ -56,7 +56,9 @@ t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, 
 	return val;
 }
 void primitiva_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
-
+	int linea= *(int*)dictionary_get(pcb.IndiceDeEtiquetas,t_nombre_etiqueta);
+	//La proxima instruccion a ejecutar es la de la linea donde esta la etiqueta
+	pcb.ProgramCounter = linea;
 }
 
 /*
