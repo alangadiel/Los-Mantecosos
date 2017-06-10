@@ -87,7 +87,43 @@ void obtenerValoresArchivoConfiguracion(){
 	}
 }
 
-
+void* PedirValorVariableCompartida(t_nombre_variable* nombre){
+	//TODO: Programar en kernel para que me devuelva el valor de una variable compartida
+	int tamDatos = sizeof(uint32_t)+ string_length(nombre)+1;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
+	memcpy(datos+sizeof(uint32_t), nombre, string_length(nombre)+1);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketKernel, MEMORIA, paquete) <= 0);
+	void* r;
+	if(paquete->header.tipoMensaje == ESERROR)
+		r = NULL;
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = paquete->Payload;
+	free(paquete);
+	return r;
+}
+void* AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valor_variable valor ){
+	//TODO: Programar en kernel para que me asigne el valor de una variable compartida y me devuelta el valor
+		int tamDatos = sizeof(uint32_t)*2+ string_length(nombre)+1;
+		void* datos = malloc(tamDatos);
+		((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
+		((uint32_t*) datos)[1] = valor;
+		memcpy(datos+sizeof(uint32_t)*2, nombre, string_length(nombre)+1);
+		EnviarDatos(socketKernel,CPU,datos,tamDatos);
+		free(datos);
+		Paquete* paquete = malloc(sizeof(Paquete));
+		while (RecibirPaqueteCliente(socketKernel, MEMORIA, paquete) <= 0);
+		void* r;
+		if(paquete->header.tipoMensaje == ESERROR)
+			r = NULL;
+		else if(paquete->header.tipoMensaje == ESDATOS)
+			r = paquete->Payload;
+		free(paquete);
+		return r;
+}
 
 void imprimirArchivoConfiguracion() {
 	int c;

@@ -21,7 +21,6 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 
 t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	void* result = NULL;
-	int i=0;
 	int j=0;
 	while(j< list_size(pcb.IndiceDelStack) && result==NULL){
 		IndiceStack* is = (IndiceStack*)list_get(pcb.IndiceDelStack,j);
@@ -39,13 +38,27 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 }
 t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 	void* dato = IM_LeerDatos(socketMemoria,CPU,pcb.PID,0,puntero,sizeof(int));
-	int val = *(int*)dato;
+	t_valor_variable val = *(t_valor_variable*)dato;
 	return val;
 }
 void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
 	t_valor_variable val = variable;
 	IM_GuardarDatos(socketMemoria,CPU,pcb.PID,0,puntero,sizeof(int),&val);
 }
+t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
+	void* result = PedirValorVariableCompartida(variable);
+	t_valor_variable val = *(t_valor_variable*)result;
+	return val;
+}
+t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
+	void result = AsignarValorVariableCompartida(variable,valor);
+	t_valor_variable val = *(t_valor_variable*)result;
+	return val;
+}
+void primitiva_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
+
+}
+
 /*
 void primitiva_finalizar(void){
 	termino = true;
