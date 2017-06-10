@@ -13,7 +13,15 @@
 	t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable);
 	t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor);
 	void primitiva_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta);
+	void primitiva_llamarSinRetorno(t_nombre_etiqueta etiqueta);
+	void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar);
 	void primitiva_finalizar(void);
+
+
+
+	//Kernel
+	t_puntero primitiva_reservar(t_valor_variable espacio);
+	void primitiva_liberar(t_puntero puntero);
 
 	bool terminoElPrograma(void);
 #endif

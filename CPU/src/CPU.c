@@ -108,15 +108,7 @@ t_valor_variable PedirValorVariableCompartida(t_nombre_variable* nombre){
 	free(datos);
 	return result;
 }
-t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
-	int tamDatos = sizeof(uint32_t)*2;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = res;
-	((uint32_t*) datos)[1] = espacio;
-	t_puntero result = *(t_puntero*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
-	free(datos);
-	return result;
-}
+
 t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valor_variable valor ){
 	//TODO: Programar en kernel para que me asigne el valor de una variable compartida y me devuelta el valor
 		int tamDatos = sizeof(uint32_t)*2+ string_length(nombre)+1;
@@ -128,7 +120,33 @@ t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valo
 		free(datos);
 		return result;
 }
-
+t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
+	int tamDatos = sizeof(uint32_t)*2;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = RESERVARHEAP;
+	((uint32_t*) datos)[1] = espacio;
+	t_puntero result = *(t_puntero*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	free(datos);
+	return result;
+}
+void LiberarBloqueMemoriaDinamica(t_puntero puntero){
+	int tamDatos = sizeof(uint32_t)*2;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = RESERVARHEAP;
+	((uint32_t*) datos)[1] = puntero;
+	//Este result es para indicar si salio todo bien o no,pero no seria necesario
+	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	free(datos);
+}
+/*Al ejecutar la última sentencia, el CPU deberá notificar al Kernel que el proceso finalizó para que este
+se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
+void FinDeEjecucionPrograma(){
+	int tamDatos = sizeof(uint32_t)*2;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = FINEJECUCIONPROGRAMA;
+	((uint32_t*) datos)[1] = pcb.PID;
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+}
 
 void imprimirArchivoConfiguracion() {
 	int c;
