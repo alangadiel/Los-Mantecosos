@@ -29,6 +29,9 @@
 #define ESPCB 4
 #define KILLPROGRAM 5
 #define ESERROR 6
+//Comunicacion Kernel con CPU
+#define PEDIRSHAREDVAR 0
+#define ASIGNARSHAREDVAR 1
 //API Memoria:
 #define INIC_PROG 0
 #define SOL_BYTES 1
