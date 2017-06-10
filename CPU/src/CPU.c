@@ -193,10 +193,14 @@ int main(void) {
 				if (strcmp(paquete -> header.emisor, KERNEL) == 0)
 				{
 					//Me mandan un programa a ejecutar
+					//Primero tengo que correr la funcion MetadataProgram
+					char* programa = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,PAGINACODIGOPROGRAMA,0,512);
+					t_metadata_program* metaProgram = metadata_desde_literal(programa);
 					pcb = *(BloqueControlProceso*) paquete -> Payload;
 					uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
-					char* instruccion = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,0,registro[0],registro[1]);
+					char* instruccion = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,PAGINACODIGOPROGRAMA,registro[0],registro[1]);
 					analizadorLinea(instruccion,&functions,&kernel_functions);
+					//TODO: Avisar al kernel que terminaste de ejecutar la instruccion
 
 				}
 			break;
