@@ -9,7 +9,7 @@ int socketKernel;
 int socketMemoria;
 uint32_t numeroDePagina;
 BloqueControlProceso pcb;
-
+uint32_t ultimoOffSetVariablesStack;
 typedef struct {
 	uint32_t byteComienzo;
 	uint32_t longitud;
@@ -37,8 +37,7 @@ AnSISOP_funciones functions = {
 
 AnSISOP_kernel kernel_functions = { };
 
-void obtenerValoresArchivoConfiguracion()
-{
+void obtenerValoresArchivoConfiguracion(){
 	int contadorDeVariables = 0;
 	int c;
 	FILE *file;
@@ -89,9 +88,7 @@ void obtenerValoresArchivoConfiguracion()
 }
 
 
-void EjecutarPrograma(BloqueControlProceso codigoAnsisop){
-	char* instruccion = (char*)IM_LeerDatos()
-}
+
 void imprimirArchivoConfiguracion() {
 	int c;
 	FILE *file;
@@ -126,11 +123,10 @@ int main(void) {
 			case ESSTRING:
 				if (strcmp(paquete -> header.emisor, MEMORIA) == 0)
 				{
-					printf("Texto recibido: %s", (char*)paquete -> Payload);
-
+					/*printf("Texto recibido: %s", (char*)paquete -> Payload);
 					analizadorLinea(PROGRAMA, &functions, &kernel_functions);
 					//IM_GuardarDatos()
-					pcb.ProgramCounter++;
+					pcb.ProgramCounter++;*/
 				}
 			break;
 
@@ -139,8 +135,9 @@ int main(void) {
 				{
 					//Me mandan un programa a ejecutar
 					pcb = *(BloqueControlProceso*) paquete -> Payload;
-
-					IM_LeerDatos(socketMemoria,CPU,pcb.PID,0,pcb.)
+					uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
+					char* instruccion = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,0,registro[0],registro[1]);
+					analizadorLinea(instruccion,&functions,&kernel_functions);
 
 				}
 			break;
