@@ -130,7 +130,10 @@ void eliminarBloques(int* bloques, int cantidadBloques) {
 }
 
 void modificarValoresDeArchivo(int tamanio, int* bloques, char* path) {
-	FILE* newFile = fopen(path, "a");
+	ValoresArchivo* valores;
+	obtenerValoresDeArchivo(path, &valores);
+
+	FILE* newFile = fopen(path, "w+");
 	char* strTamanio = string_new();
 	string_append(&strTamanio, "TAMANIO=");
 	string_append(&strTamanio, string_itoa(tamanio));
@@ -194,8 +197,7 @@ void crearArchivo(char* path,int socketFD) {
 	}
 }
 
-ValoresArchivo obtenerValoresDeArchivo(char* pathArchivo) {
-	ValoresArchivo valores;
+void obtenerValoresDeArchivo(char* pathArchivo, ValoresArchivo* valores) {
 	int contadorDeVariables = 0;
 		int c;
 		FILE *file;
@@ -214,18 +216,17 @@ ValoresArchivo obtenerValoresDeArchivo(char* pathArchivo) {
 						int i = 0;
 						while (texto != NULL)
 						{
-							valores.Bloques[i++] = atoi(texto);
+							valores->Bloques[i++] = atoi(texto);
 							texto = strtok (NULL, ",");
 						}
 					}
 					if (contadorDeVariables == 0) {
-						fscanf(file, "%i", &valores.Tamanio);
+						fscanf(file, "%i", &valores->Tamanio);
 						contadorDeVariables++;
 					}
 				}
 			fclose(file);
 		}
-	return valores;
 }
 
 void borrarArchivo(char* path, int socketFD) {
@@ -233,7 +234,8 @@ void borrarArchivo(char* path, int socketFD) {
 	pathArchivo = string_duplicate(ARCHIVOSPATH);
 	string_append(&pathArchivo, path);
 	if (validarArchivo(pathArchivo, 0)) {
-		ValoresArchivo valores = obtenerValoresDeArchivo(pathArchivo);
+		ValoresArchivo valores;
+		obtenerValoresDeArchivo(pathArchivo, &valores);
 		int cantidadBloques = ceil(valores.Tamanio/TAMANIO_BLOQUES);
 		if (cantidadBloques == 0) cantidadBloques = 1;
 		eliminarBloques(valores.Bloques, cantidadBloques);
@@ -287,7 +289,8 @@ void obtenerDatos(char* path, uint32_t offset, uint32_t size, int socketFD) {
 	char* pathAObtener = string_duplicate(ARCHIVOSPATH);
 	strcat(pathAObtener, path);
 	if (!validarArchivo(pathAObtener, 0)) {
-		ValoresArchivo valores = obtenerValoresDeArchivo(pathAObtener);
+		ValoresArchivo valores;
+		obtenerValoresDeArchivo(pathAObtener, &valores);
 		char* datos = obtenerTodosLosDatosDeBloques(valores.Bloques);
 		char* datosAEnviar = string_substring(datos, offset, size);
 		EnviarDatos(socketFD,FS,datosAEnviar,sizeof(char) * string_length(datosAEnviar));
@@ -306,12 +309,20 @@ int obtenerTamanioDeArchivo(char* path) {
 	return tamanio;
 }
 
+int calcularBloques(int tamanio) {
+	int cantidad = ceil(tamanio/TAMANIO_BLOQUES);
+	if (cantidad == 0) return 1;
+	return cantidad;
+}
+
 void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int socketFD){
 	char* pathAEscribir = string_new();
 	string_append(&pathAEscribir, ARCHIVOSPATH);
 	string_append(&pathAEscribir, path);
-	if (!validarArchivo(pathAEscribir, 0)) {
-		ValoresArchivo valores = obtenerValoresDeArchivo(pathAEscribir);
+	if (validarArchivo(pathAEscribir, 0)) {
+		ValoresArchivo valores;
+		obtenerValoresDeArchivo(pathAEscribir, &valores);
+		printf("%d\n", valores.Bloques[0]);
 		int nuevoTamanioDeArchivoQueSeNecesita;
 		if (valores.Tamanio > offset) {
 			nuevoTamanioDeArchivoQueSeNecesita = valores.Tamanio + size;
@@ -319,10 +330,12 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 		else {
 			nuevoTamanioDeArchivoQueSeNecesita = offset + size;
 		}
-		int cantidadDeBloquesTotales = (int) ceil(nuevoTamanioDeArchivoQueSeNecesita/TAMANIO_BLOQUES);
-		int cantidadDeBloquesNecesitados = cantidadDeBloquesTotales - length(valores.Bloques);
+
+		int cantidadDeBloquesTotales = calcularBloques(nuevoTamanioDeArchivoQueSeNecesita);
+		int cantidadDeBloquesNecesitados = cantidadDeBloquesTotales - calcularBloques(valores.Tamanio);
 		reservarBloques(cantidadDeBloquesNecesitados, pathAEscribir, nuevoTamanioDeArchivoQueSeNecesita);
-		ValoresArchivo nuevosValores = obtenerValoresDeArchivo(pathAEscribir);
+		ValoresArchivo nuevosValores;
+		obtenerValoresDeArchivo(pathAEscribir, &nuevosValores);
 		char** datosArray = string_get_string_as_array(obtenerTodosLosDatosDeBloques(nuevosValores.Bloques));
 		char** datosAGuardar = string_get_string_as_array(buffer);
 		int i;
@@ -476,7 +489,6 @@ void archivoBitmap() {
 		FILE* bitmap = fopen(BITMAPFILE, "a");
 		char* stringBitmap = leerTodoElArchivo(BITMAPFILE);
 		int i;
-		int lengtharray = string_length(stringBitmap);
 		for (i = 0; i < CANTIDAD_BLOQUES; i++) {
 			bitmapArray[i] = (int) strtol(&stringBitmap[i], (char **)NULL, 10);
 		}
@@ -527,7 +539,6 @@ int main(void) {
 	crearEstructurasDeCarpetas();
 	archivoMetadata();
 	archivoBitmap();
-	crearArchivo("kmisi/hola.bin", 0);
 	char* datos = "hola kmisi como estas todo bien? que contas?";
 	guardarDatos("kmisi/hola.bin", 0, string_length(datos), datos, 0);
 	//Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);
