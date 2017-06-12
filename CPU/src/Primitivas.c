@@ -47,7 +47,7 @@ void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
 	IM_GuardarDatos(socketMemoria,CPU,pcb.PID,PAGINASTACK,puntero,sizeof(int),&val);
 }
 t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
-	void* result = PedirValorVariableCompartida(variable);
+	t_valor_variable result = PedirValorVariableCompartida(variable);
 	t_valor_variable val = *(t_valor_variable*)result;
 	return val;
 }

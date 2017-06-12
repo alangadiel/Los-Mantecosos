@@ -89,7 +89,7 @@ void obtenerValoresArchivoConfiguracion(){
 void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos){
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketKernel, MEMORIA, paquete) <= 0);
+	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
 	void* r;
 	if(paquete->header.tipoMensaje == ESERROR)
 		r = NULL;
@@ -101,21 +101,23 @@ void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos){
 
 t_valor_variable PedirValorVariableCompartida(t_nombre_variable* nombre){
 	//TODO: Programar en kernel para que me devuelva el valor de una variable compartida
-	int tamDatos = sizeof(uint32_t)+ string_length(nombre)+1;
+	int tamDatos = sizeof(uint32_t)*2+ string_length(nombre)+1;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
-	memcpy(datos+sizeof(uint32_t), nombre, string_length(nombre)+1);
+	((uint32_t*) datos)[1] = pcb.PID;
+	memcpy(datos+sizeof(uint32_t)*2, nombre, string_length(nombre)+1);
 	t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
 	return result;
 }
 t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valor_variable valor ){
 	//TODO: Programar en kernel para que me asigne el valor de una variable compartida y me devuelta el valor
-	int tamDatos = sizeof(uint32_t)*2+ string_length(nombre)+1;
+	int tamDatos = sizeof(uint32_t)*3+ string_length(nombre)+1;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
-	((uint32_t*) datos)[1] = valor;
-	memcpy(datos+sizeof(uint32_t)*2, nombre, string_length(nombre)+1);
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = valor;
+	memcpy(datos+sizeof(uint32_t)*3, nombre, string_length(nombre)+1);
 	t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
 	return result;
@@ -132,20 +134,22 @@ void FinDeEjecucionPrograma(){
 
 void SolicitarWaitSemaforo(t_nombre_semaforo semaforo){
 	//TODO: Programar en kernel para que decida si bloquear o no el semaforo
-	int tamDatos = sizeof(uint32_t)+ string_length(semaforo)+1;
+	int tamDatos = sizeof(uint32_t)*2+ string_length(semaforo)+1;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = WAITSEM;
-	memcpy(datos+sizeof(uint32_t), semaforo, string_length(semaforo)+1);
+	((uint32_t*) datos)[1] = pcb.PID;
+	memcpy(datos+sizeof(uint32_t)*2, semaforo, string_length(semaforo)+1);
 	t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
 }
 
 void SolicitarSignalSemaforo(t_nombre_semaforo semaforo){
 	//TODO: Programar en kernel para que decida si desbloquear o no los procesos frenados
-	int tamDatos = sizeof(uint32_t)+ string_length(semaforo)+1;
+	int tamDatos = sizeof(uint32_t)*2+ string_length(semaforo)+1;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = SIGNALSEM;
-	memcpy(datos+sizeof(uint32_t), semaforo, string_length(semaforo)+1);
+	((uint32_t*) datos)[1] = pcb.PID;
+	memcpy(datos+sizeof(uint32_t)*2, semaforo, string_length(semaforo)+1);
 	uint32_t* result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
 }
@@ -153,42 +157,46 @@ void SolicitarSignalSemaforo(t_nombre_semaforo semaforo){
 
 
 t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
-	int tamDatos = sizeof(uint32_t)*2;
+	int tamDatos = sizeof(uint32_t)*3;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = RESERVARHEAP;
-	((uint32_t*) datos)[1] = espacio;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = espacio;
 	t_puntero result = *(t_puntero*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
 	return result;
 }
 
 void LiberarBloqueMemoriaDinamica(t_puntero puntero){
-	int tamDatos = sizeof(uint32_t)*2;
+	int tamDatos = sizeof(uint32_t)*3;
 	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = RESERVARHEAP;
-	((uint32_t*) datos)[1] = puntero;
+	((uint32_t*) datos)[0] = LIBERARHEAP;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = puntero;
 	//Este result es para indicar si salio todo bien o no,pero no seria necesario
 	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
 }
 t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags){
 	//TODO: Programar en kernel para que abra el archivo
-	int tamDatos = sizeof(uint32_t)+sizeof(t_banderas)+string_length(direccion)+1;
+	int tamDatos = sizeof(uint32_t)*2+sizeof(t_banderas)+string_length(direccion)+1;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] =ABRIRARCHIVO;
-	((bool*) datos)[sizeof(uint32_t)] =flags.creacion;
-	((bool*) datos)[sizeof(uint32_t)+sizeof(bool)] =flags.escritura;
-	((bool*) datos)[sizeof(uint32_t)+sizeof(bool)*2] =flags.lectura;
-	memcpy(datos+sizeof(uint32_t)+sizeof(t_banderas), direccion, string_length(direccion)+1);
+	((uint32_t*) datos)[1] = pcb.PID;
+	((bool*) datos)[sizeof(uint32_t)*2] =flags.creacion;
+	((bool*) datos)[sizeof(uint32_t)*2+sizeof(bool)] =flags.escritura;
+	((bool*) datos)[sizeof(uint32_t)*2+sizeof(bool)*2] =flags.lectura;
+	memcpy(datos+sizeof(uint32_t)*2+sizeof(t_banderas), direccion, string_length(direccion)+1);
 	t_descriptor_archivo result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
 	return result;
 }
 void SolicitarBorrarArchivo(t_descriptor_archivo desc){
-	int tamDatos = sizeof(uint32_t)*2;
+	int tamDatos = sizeof(uint32_t)*3;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = BORRARARCHIVO;
-	((uint32_t*) datos)[1] = desc;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = desc;
 	//Este result es para indicar si salio todo bien o no,pero no seria necesario
 	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
