@@ -36,6 +36,20 @@
 #define ASIG_PAG 3
 #define LIBE_PAG 4
 #define FIN_PROG 5
+//Comunicacion Kernel con CPU
+#define PEDIRSHAREDVAR 0
+#define ASIGNARSHAREDVAR 1
+#define WAITSEM 2
+#define SIGNALSEM 3
+#define RESERVARHEAP 4
+#define LIBERARHEAP 5
+#define ABRIRARCHIVO 6
+#define BORRARARCHIVO 7
+#define CERRARARCHIVO 8
+#define MOVERCURSOSARCHIVO 9
+#define ESCRIBIRARCHIVO 10
+#define LEERARCHIVO 11
+#define FINEJECUCIONPROGRAMA 12
 
 typedef struct {
 	int8_t tipoMensaje;
