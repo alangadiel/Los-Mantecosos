@@ -45,7 +45,6 @@ typedef struct {
 	uint32_t* IndiceDeCodigo[2]; //matriz de 2xCantInstrucciones
 	uint32_t* IndiceDeEtiquetas[2];//matriz de 2xCantEtiquetas
 	t_list* IndiceDelStack; //lista de IndiceStack
-	t_list* ArchivosDeProceso;
 	int ExitCode;
 }__attribute__((packed)) BloqueControlProceso;
 

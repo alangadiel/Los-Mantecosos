@@ -2,9 +2,6 @@
 #include "SocketsL.h"
 
 
-
-
-
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos){
 	//Creo el pcb y lo guardo en la lista de nuevos
 	pcb->PID = *ultimoPid+1;
@@ -13,7 +10,6 @@ void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos){
 	pcb->ProgramCounter = 0;
 	(*ultimoPid)++;
 	list_add(nuevos,pcb);
-	pcb->ArchivosDeProceso = list_create();
 	//list_add(ListaPCB,pcb);
 }
 

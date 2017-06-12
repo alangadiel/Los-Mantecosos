@@ -16,7 +16,10 @@ int pidAFinalizar;
 int ultimoPID=0;
 int socketConMemoria;
 int socketConFS;
+int ultimoFD = 3;
 double TamanioPagina;
+
+
 typedef struct  {
  uint32_t size;
  bool isFree;
@@ -39,8 +42,11 @@ typedef struct {
 } Pagina;
 
 typedef struct {
-	uint32_t flag;
-	char globalFD[3];
+	uint32_t PID;
+	uint32_t FD; //Empieza a partir de FD = 3. El 0, 1 y 2 estan reservados por convencion.
+	uint32_t offsetArchivo;
+	char* flag;
+	uint32_t globalFD;
 } archivoProceso;
 
 typedef struct {
@@ -76,6 +82,7 @@ t_list* EstadosConProgramasFinalizables;
 t_list* PaginasPorProceso;
 t_list* Paginas;
 t_list* ArchivosGlobales;
+t_list* ArchivosProcesos;
 
 
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina){
@@ -508,6 +515,7 @@ void LimpiarListas(){
 	list_destroy_and_destroy_elements(Estados,free);
 	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
 	list_destroy_and_destroy_elements(ArchivosGlobales,free);
+	list_destroy_and_destroy_elements(ArchivosProcesos,free);
 }
 void ConsultarEstado(int pidAConsultar){
 	int i =0;
@@ -590,49 +598,247 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int soc
 		list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
 		list_add(Listos, pcb);
 		printf("El programa %d se cargo en memoria \n",pcb->PID);
-
 }
 
-void cargarEnTablaArchivosGlobal(char* path)
+void cargarEnTablasArchivos(char* path, uint32_t PID, char* permisos)
 {
 	void* result = NULL;
 
 	result = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == path; }));
 
-	if(result == NULL)
+	archivoGlobal* archivoGlob = malloc(sizeof(archivoGlobal)); //El free se hace en limpiar listas
+
+	if(result == NULL) //No hay un archivo global con ese path
 	{
-		archivoGlobal* archivo;
+		archivoGlob->pathArchivo = path;
+		archivoGlob->cantAperturas = 1;
 
-		archivo->pathArchivo = path;
-		archivo->cantAperturas = 1;
-
-		list_add(ArchivosGlobales, archivo);
+		list_add(ArchivosGlobales, archivoGlob);
 	}
 	else
 	{
-		archivoGlobal* archivo = (archivoGlobal*)result;
+		archivoGlob = (archivoGlobal*)result;
 
-		archivo->cantAperturas++;
+		archivoGlob->cantAperturas++;
+
+		int index;
+
+		for(int i = 0; i < list_size(ArchivosGlobales); i++)
+		{
+			archivoGlobal* arch = list_get(ArchivosGlobales, i);
+
+			if(arch->pathArchivo == path)
+			{
+				index = i;
+			}
+		}
+
+		list_replace(ArchivosGlobales, index, archivoGlob);
 	}
 
-	//cargar tambien en tabla de proceso
+	int i = 0;
+
+	result = NULL;
+
+	while(i < list_size(ArchivosProcesos) && result == NULL)
+	{
+		t_list* lista = list_get(ArchivosProcesos, i);
+
+		result = (archivoProceso*) list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
+
+		i++;
+	}
+
+	archivoProceso* archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
+
+	int index;
+
+	for(int j = 0; j < list_size(ArchivosGlobales); j++)
+	{
+		archivoGlobal* arch = list_get(ArchivosGlobales, j);
+
+		if(arch->pathArchivo == path)
+		{
+			index = j;
+		}
+	}
+
+	if(result == NULL) //No hay ninguna lista de archivos para ese proceso porque no habia abierto ningun archivo todavia
+	{
+		archivoProc->PID = PID;
+		archivoProc->FD = ultimoFD;
+		archivoProc->flag = permisos;
+		archivoProc->offsetArchivo = 0;
+		archivoProc->globalFD = index;
+
+		ultimoFD++;
+
+		t_list* listaArchivoProceso = list_create();
+
+		list_add(listaArchivoProceso, archivoProc);
+
+		list_add(ArchivosProcesos, listaArchivoProceso);
+	}
+	else //Hay una lista para ese proceso, entonces solo agrego un archivo
+	{
+		archivoProc->PID = PID;
+		archivoProc->FD = ultimoFD;
+		archivoProc->flag = permisos;
+		archivoProc->offsetArchivo = 0;
+		archivoProc->globalFD = index;
+
+		ultimoFD++;
+
+		t_list* listaArchivoProceso = list_get(ArchivosProcesos, i-1);
+
+		list_add(listaArchivoProceso, archivoProc);
+	}
 }
 
-uint32_t abrirArchivo(char* path, char permisos[3])
+uint32_t abrirArchivo(char* path, uint32_t PID, char* permisos)
 {
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
 
 	if(archivoEstaCreado == 1)
 	{
-		cargarEnTablaArchivosGlobal(path);
+		cargarEnTablasArchivos(path, PID, permisos);
 	}
 	else
 	{
-		if(strcmp(permisos[0], "c") == 0 || strcmp(permisos[1], "c") == 0 || strcmp(permisos[2], "c") == 0)
+		if(strstr(*permisos, "c") != NULL)
 		{
 			FS_CrearPrograma(socketConFS, KERNEL, path);
-			cargarEnTablaArchivosGlobal(path);
+			cargarEnTablasArchivos(path, PID, permisos);
 		}
+		else
+		{
+			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -20 (El programa intentó crear un archivo sin permisos)
+		}
+	}
+
+	return archivoEstaCreado;
+}
+
+uint32_t leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* permisos)
+{
+	if(strstr(*permisos, "r") != NULL)
+	{
+		void* result = NULL;
+		int i = 0;
+
+		while(i < list_size(ArchivosProcesos) && result == NULL)
+		{
+			t_list* lista = list_get(ArchivosProcesos, i);
+
+			result = (archivoProceso*) list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+
+			i++;
+		}
+
+		if(result != NULL)
+		{
+			archivoProceso* archProc = malloc(sizeof(archivoProceso));
+
+			archProc = (archivoProceso*)result;
+
+			archivoGlobal* archGlob = list_get(ArchivosGlobales, archProc->FD);
+
+			uint32_t archivoFueLeido = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, archProc->offsetArchivo, sizeArchivo);
+
+			free(archProc);
+
+			return archivoFueLeido;
+		}
+		else
+		{
+			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
+		}
+	}
+	else
+	{
+		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -3
+	}
+}
+
+uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t datosAGrabar, char* permisos)
+{
+	if(strstr(*permisos, "w") != NULL)
+	{
+		void* result = NULL;
+		int i = 0;
+
+		while(i < list_size(ArchivosProcesos) && result == NULL)
+		{
+			t_list* lista = list_get(ArchivosProcesos, i);
+
+			result = (archivoProceso*) list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+
+			i++;
+		}
+
+		if(result != NULL)
+		{
+			archivoProceso* archProc = malloc(sizeof(archivoProceso));
+
+			archProc = (archivoProceso*)result;
+
+			archivoGlobal* archGlob = list_get(ArchivosGlobales, archProc->FD);
+
+			uint32_t archivoFueEscrito = FS_GuardarDatos(socketConFS, KERNEL, archGlob->pathArchivo, archProc->offsetArchivo, sizeArchivo, datosAGrabar);
+
+			free(archProc);
+
+			return archivoFueEscrito;
+		}
+		else
+		{
+			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
+		}
+	}
+	else
+	{
+		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -4
+	}
+}
+
+uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
+{
+	void* result = NULL;
+	int i = 0;
+
+	while(i < list_size(ArchivosProcesos) && result == NULL)
+	{
+		t_list* lista = list_get(ArchivosProcesos, i);
+
+		result = (archivoProceso*) list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+
+		i++;
+	}
+
+	if(result != NULL)
+	{
+		t_list* listaProcesoACerrar = list_get(ArchivosProcesos, i-1); //El indice que me habia quedado del while anterior
+
+		list_remove_and_destroy_by_condition(listaProcesoACerrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+
+		archivoGlobal* archivoGlob = malloc(sizeof(archivoGlobal));
+
+		archivoGlob = list_get(ArchivosGlobales, FD);
+
+		archivoGlob->cantAperturas--;
+
+		if(archivoGlob->cantAperturas == 0)
+		{
+			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }));
+		}
+		else
+		{
+			list_replace(ArchivosGlobales, FD, archivoGlob);
+		}
+	}
+	else
+	{
+		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -20 (El programa intentó cerrar un archivo que no existe)
 	}
 }
 
