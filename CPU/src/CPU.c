@@ -1,20 +1,8 @@
-#include <parser/metadata_program.h>
-#include "Primitivas.h"
+#include "CPU.h"
 
-char* IP_KERNEL;
-int PUERTO_KERNEL;
-char* IP_MEMORIA;
-int PUERTO_MEMORIA;
-int socketKernel;
-int socketMemoria;
-uint32_t numeroDePagina;
+
 BloqueControlProceso pcb;
-uint32_t ultimoOffSetVariablesStack;
-typedef struct {
-	uint32_t byteComienzo;
-	uint32_t longitud;
-} Instruccion;
-t_list* indiceDeCodigo;
+
 
 static const char* PROGRAMA =
 		"begin\n"

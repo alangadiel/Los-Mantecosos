@@ -1,5 +1,5 @@
 #include "Primitivas.h"
-#include "CPU.c"
+
 //agregar lista de variables?
 
 t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
