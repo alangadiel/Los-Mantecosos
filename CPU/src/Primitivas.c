@@ -4,7 +4,7 @@
 
 t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 	//Obtengo el ultimo contexto de ejecucion, donde guardara la/s variable/s a definir
-	IndiceStack is= list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+	IndiceStack* is=(IndiceStack*)list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
 	Variable varNueva;
 	PosicionDeMemoria pos;
 	pos.NumeroDePagina=0;
@@ -14,7 +14,7 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 	uint32_t pointerToReturn = pos.Offset;
 	varNueva.Posicion=pos;
 	varNueva.ID=identificador_variable;
-	list_add(is.Variables,&varNueva);
+	list_add(is->Variables,&varNueva);
 	return pointerToReturn;
 }
 
@@ -52,7 +52,7 @@ t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
 	return val;
 }
 t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
-	void result = AsignarValorVariableCompartida(variable,valor);
+	t_valor_variable result = AsignarValorVariableCompartida(variable,valor);
 	t_valor_variable val = *(t_valor_variable*)result;
 	return val;
 }
@@ -67,7 +67,7 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 	//Entrada del indice de codigo a donde se debe regresar
 	nuevoIs.DireccionDeRetorno = pcb.ProgramCounter;
 	//La posicion donde se almacenara es aquella que empieza en el puntero donde_retornar
-	void result = NULL;
+	void *result = NULL;
 	int i=0;
 	while(i< list_size(pcb.IndiceDelStack) && result == NULL){
 		IndiceStack* is = (IndiceStack*)list_get(pcb.IndiceDelStack,i);
@@ -76,7 +76,7 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 		i++;
 	}
 
-	nuevoIs.PosVariableDeRetorno = *(Variable*)result;
+	nuevoIs.PosVariableDeRetorno = ((Variable*)result)->Posicion;
 	//La proxima instruccion a ejecutar es la de la funcion en cuestion
 	primitiva_irAlLabel(etiqueta);
 }
@@ -87,10 +87,17 @@ void primitiva_finalizar(void){
 		FinDeEjecucionPrograma();
 	}
 }
+PosicionDeMemoria NewPosicionDeMemoriaVacia(){
+	PosicionDeMemoria res;
+	res.NumeroDePagina =NULL;
+	res.Offset=NULL;
+	res.Tamanio = NULL;
+	return res;
+}
 void primitiva_retornar(t_valor_variable retorno){
 	//Obtengo la ultima instruccion de retorno del stack
 	int i=0;
-	void result=NULL;
+	void *result=NULL;
 	while(i< list_size(pcb.IndiceDelStack)){
 		IndiceStack* is = (IndiceStack*)list_get(pcb.IndiceDelStack,i);
 		if(is->DireccionDeRetorno!=NULL){
@@ -103,16 +110,16 @@ void primitiva_retornar(t_valor_variable retorno){
 
 	//Obtengo la variable en cuestion
 	int j=0;
-	void res=NULL;
+	PosicionDeMemoria res=NewPosicionDeMemoriaVacia();
 	while(j< list_size(pcb.IndiceDelStack)){
 		IndiceStack* is = (IndiceStack*)list_get(pcb.IndiceDelStack,j);
-		if(is->PosVariableDeRetorno!=NULL){
+		//Forma de verificar si la estructura PosicionDeMemoria esta vacio o no
+		if(is->PosVariableDeRetorno.NumeroDePagina != NULL && is->PosVariableDeRetorno.Offset != NULL && is->PosVariableDeRetorno.Tamanio != NULL){
 			res = is->PosVariableDeRetorno;
 		}
 		j++;
 	}
-	t_valor_variable* val=&retorno;
-	PosicionDeMemoria pos = *(PosicionDeMemoria*)res;
+	PosicionDeMemoria pos = res;
 	//Guardo el valor de retorno en la variable correspondiente
 	primitiva_asignar(pos.Offset,retorno);
 
@@ -130,12 +137,25 @@ void primitiva_retornar(t_valor_variable retorno){
 
 
 //KERNEL
+void primitiva_wait(t_nombre_semaforo identificador_semaforo){
+	SolicitarWaitSemaforo(identificador_semaforo);
+}
+void primitiva_signal(t_nombre_semaforo identificador_semaforo){
+	SolicitarSignalSemaforo(identificador_semaforo);
+}
 t_puntero primitiva_reservar(t_valor_variable espacio){
 	t_puntero pointer = *(t_puntero*)ReservarBloqueMemoriaDinamica(espacio);
 	return pointer;
 }
 void primitiva_liberar(t_puntero puntero){
 	LiberarBloqueMemoriaDinamica(puntero);
+}
+t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
+	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags);
+	return fd;
+}
+void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
+	SolicitarBorrarArchivo(descriptor_archivo);
 }
 
 /*

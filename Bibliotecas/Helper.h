@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <commons/log.h>
 #include <commons/collections/list.h>
+#include <commons/collections/dictionary.h>
 #include <commons/string.h>
 #include <commons/txt.h>
 #include <pthread.h>
