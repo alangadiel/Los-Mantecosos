@@ -11,11 +11,11 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 	pos.Tamanio = sizeof(int);
 	//Como se que cada variable son enteros bytes, el offset siempre se incrementa en 4
 	pos.Offset = ultimoOffSetVariablesStack + sizeof(int);
-	uint32_t pointerToReturn = pos.Offset;
+	ultimoOffSetVariablesStack = pos.Offset;
 	varNueva.Posicion=pos;
 	varNueva.ID=identificador_variable;
 	list_add(is->Variables,&varNueva);
-	return pointerToReturn;
+	return ultimoOffSetVariablesStack;
 }
 
 
@@ -157,6 +157,14 @@ t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas f
 void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
 	SolicitarBorrarArchivo(descriptor_archivo);
 }
+void primitiva_cerrar(t_descriptor_archivo descriptor_archivo){
+	SolicitarCerrarArchivo(descriptor_archivo);
+}
+void primitiva_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion){
+	SolicitarMoverCursor(descriptor_archivo,posicion);
+}
+
+
 
 /*
 void primitiva_finalizar(void){

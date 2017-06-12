@@ -33,5 +33,8 @@
 	void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio);
 
 
+	//Otras
+	PosicionDeMemoria NewPosicionDeMemoriaVacia();
+
 
 #endif

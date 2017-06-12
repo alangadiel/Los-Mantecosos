@@ -201,7 +201,28 @@ void SolicitarBorrarArchivo(t_descriptor_archivo desc){
 	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
 }
-
+void SolicitarCerrarArchivo(t_descriptor_archivo desc){
+	int tamDatos = sizeof(uint32_t)*3;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = CERRARARCHIVO;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = desc;
+	//Este result es para indicar si salio todo bien o no,pero no seria necesario
+	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	free(datos);
+}
+void SolicitarMoverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion){
+	int tamDatos = sizeof(uint32_t)*3;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = MOVERCURSOSARCHIVO;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = descriptor_archivo;
+	//Posicion a donde mover el cursor
+	((uint32_t*) datos)[3] = posicion;
+	//Este result es para indicar si salio todo bien o no,pero no seria necesario
+	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	free(datos);
+}
 
 
 void imprimirArchivoConfiguracion() {
