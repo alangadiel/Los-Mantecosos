@@ -22,6 +22,7 @@ char* IP_MEMORIA;
 int PUERTO_MEMORIA;
 int socketKernel;
 int socketMemoria;
+uint32_t tamPagina;//tamaño de pagina
 extern BloqueControlProceso pcb;
 
 void obtenerValoresArchivoConfiguracion();
