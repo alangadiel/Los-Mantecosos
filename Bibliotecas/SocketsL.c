@@ -189,6 +189,28 @@ void RecibirHandshake(int socketFD, char emisor[11]) {
 	free(header);
 }
 
+uint32_t RecibirHandshake_DeMemoria(int socketFD, char emisor[11]){
+	uint32_t r;
+	Paquete* paquete =  malloc(sizeof(Paquete));
+	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
+	if (resul > 0 && paquete->header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
+		if (strcmp(paquete->header.emisor, emisor) == 0) {
+				printf("\nConectado con el servidor!\n");
+				if(strcmp(paquete->header.emisor, MEMORIA) == 0){
+					paquete->Payload = malloc(paquete->header.tamPayload);
+					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
+					r = *((uint32_t*)paquete->Payload);
+					free(paquete->Payload);
+				}
+		} else
+			perror("Error, no se recibio un handshake del servidor esperado\n");
+	} else
+		perror("Error de Conexion, no se recibio un handshake\n");
+
+	free(paquete);
+	return r;
+}
+
 int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir) {
 	void* datos = malloc(cantARecibir);
 	//char* punteroMsg = paquete;

@@ -36,6 +36,7 @@
 #define SIGNALSEM 3
 #define RESERVARHEAP 4
 #define LIBERARHEAP 5
+
 #define ABRIRARCHIVO 6
 #define BORRARARCHIVO 7
 #define CERRARARCHIVO 8
@@ -43,9 +44,6 @@
 #define ESCRIBIRARCHIVO 10
 #define LEERARCHIVO 11
 #define FINEJECUCIONPROGRAMA 12
-//Tipos de pagina
-#define PAGINACODIGOPROGRAMA 0
-#define PAGINASTACK 1
 
 //API Memoria:
 #define INIC_PROG 0
@@ -80,6 +78,7 @@ void EnviarPaquete(int socketCliente, Paquete* paquete);
 void EnviarMensaje(int socketFD, char* msg, char emisor[11]);
 
 void RecibirHandshake(int socketFD, char emisor[11]);
+uint32_t RecibirHandshake_DeMemoria(int socketFD, char emisor[11]); //Retorna el tamanio de pagina
 int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir);
 int RecibirPaqueteServidor(int socketFD, char receptor[11], Paquete* paquete); //Responde al recibir un Handshake
 int RecibirPaqueteCliente(int socketFD, char receptor[11], Paquete* paquete); //No responde los Handshakes
