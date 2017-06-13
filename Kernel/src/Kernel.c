@@ -1226,7 +1226,7 @@ void userInterfaceHandler(uint32_t* socketFD) {
 
 int main(void)
 {
-	CrearListas();
+	CrearListas(); //TODO: Cargar listas de semaforos y variables globales
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
