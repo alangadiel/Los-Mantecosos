@@ -96,7 +96,7 @@ int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake);
-	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake);
+	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake_DeMemoria);
 
 	//TODO: Recibir PCB del Kernel
 	//pcb=Funcion
@@ -106,7 +106,7 @@ int main(void) {
 	int i;
 	char* programa;
 	for (i=0; i < pcb.PaginasDeCodigo; i++)
-		string_append(&programa, (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,i,0,tamPagina));
+		string_append(&programa, (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,i,0,TamanioPaginaMemoria));
 	t_metadata_program* metaProgram = metadata_desde_literal(programa);
 
 	uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
