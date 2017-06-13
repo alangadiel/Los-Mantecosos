@@ -1,5 +1,5 @@
 #include "SocketsL.h"
-uint32_t TamanioPagina;
+uint32_t TamanioPaginaMemoria;
 
 void Servidor(char* ip, int puerto, char nombre[11],
 		void (*accion)(Paquete* paquete, int socketFD),
