@@ -98,7 +98,7 @@ void obtenerLinea(char** instruccion, uint32_t* registro){
 	int i;
 	//TODO: incompleta
 	for (i = 0; i < cantPaginasALeer; ++i) {
-		datos = IM_LeerDatos(socketMemoria,CPU,pcb.PID,i, offset, cantQueFaltaLeer);
+		datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,i, offset, cantQueFaltaLeer);
 		string_append(instruccion, datos);
 		//cantQueFaltaLeer-=
 	}
@@ -120,7 +120,7 @@ int main(void) {
 	char programa[pcb.PaginasDeCodigo * TamanioPaginaMemoria];
 	int i;
 	for (i=0; i < pcb.PaginasDeCodigo; i++){
-		char* datos = IM_LeerDatos(socketMemoria,CPU,pcb.PID,i,0,TamanioPaginaMemoria);
+		char* datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,i,0,TamanioPaginaMemoria);
 		memccpy(&programa[i*TamanioPaginaMemoria], datos, '\0', TamanioPaginaMemoria); //tal vez hay que usar una funcion diferente para copiarlo
 		free(datos);
 	}
@@ -128,7 +128,7 @@ int main(void) {
 	t_metadata_program* metaProgram = metadata_desde_literal(programa);
 
 	//TODO: ¿mandarle el metaProgram al kernel y recibir el pcb otra vez?
-
+	//Convertir el instrucciones_Serializer en la lista del indice de codigo
 	uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 
 	char instruccion[registro[1]-registro[0]];
