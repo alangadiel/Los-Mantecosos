@@ -43,7 +43,6 @@
 #define ESCRIBIRARCHIVO 10
 #define LEERARCHIVO 11
 #define FINEJECUCIONPROGRAMA 12
-
 //API Memoria:
 #define INIC_PROG 0
 #define SOL_BYTES 1

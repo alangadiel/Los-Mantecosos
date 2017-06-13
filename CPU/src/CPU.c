@@ -90,6 +90,21 @@ void imprimirArchivoConfiguracion() {
 	}
 }
 
+void obtenerLinea(char** instruccion, uint32_t* registro){
+	uint32_t cantQueFaltaLeer = registro[0] - registro[1];
+	uint32_t cantPaginasALeer = registro[0]/TamanioPaginaMemoria;
+	uint32_t offset = registro[0] % TamanioPaginaMemoria;
+	char* datos;
+	int i;
+	//TODO: incompleta
+	for (i = 0; i < cantPaginasALeer; ++i) {
+		datos = IM_LeerDatos(socketMemoria,CPU,pcb.PID,i, offset, cantQueFaltaLeer);
+		string_append(instruccion, datos);
+		//cantQueFaltaLeer-=
+	}
+	free(datos);
+}
+
 
 int main(void) {
 	indiceDeCodigo = list_create();
@@ -99,19 +114,28 @@ int main(void) {
 	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake_DeMemoria);
 
 	//TODO: Recibir PCB del Kernel
-	//pcb=Funcion
 
 	//Me mandan un programa a ejecutar
 	//Primero tengo que correr la funcion MetadataProgram
+	char programa[pcb.PaginasDeCodigo * TamanioPaginaMemoria];
 	int i;
-	char* programa;
-	for (i=0; i < pcb.PaginasDeCodigo; i++)
-		string_append(&programa, (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,i,0,TamanioPaginaMemoria));
+	for (i=0; i < pcb.PaginasDeCodigo; i++){
+		char* datos = IM_LeerDatos(socketMemoria,CPU,pcb.PID,i,0,TamanioPaginaMemoria);
+		memccpy(&programa[i*TamanioPaginaMemoria], datos, '\0', TamanioPaginaMemoria); //tal vez hay que usar una funcion diferente para copiarlo
+		free(datos);
+	}
+
 	t_metadata_program* metaProgram = metadata_desde_literal(programa);
 
+	//TODO: ¿mandarle el metaProgram al kernel y recibir el pcb otra vez?
+
 	uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
-	char* instruccion = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,PAGINACODIGOPROGRAMA,registro[0],registro[1]);
+
+	char instruccion[registro[1]-registro[0]];
+	obtenerLinea(&instruccion, registro);
+
 	analizadorLinea(instruccion,&functions,&kernel_functions);
+
 	//TODO: Avisar al kernel que terminaste de ejecutar la instruccion
 
 	return 0;
