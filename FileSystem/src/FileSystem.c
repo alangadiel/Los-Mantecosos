@@ -22,6 +22,43 @@ typedef struct {
 }__attribute__((packed)) ValoresArchivo;
 
 
+void obtenerValoresDeArchivo(char* pathArchivo, ValoresArchivo* valores) {
+	int contadorDeVariables = 0;
+		int c;
+		FILE *file;
+		file = fopen(pathArchivo, "r");
+		if (file) {
+			while ((c = getc(file)) != EOF)
+				if (c == '=')
+				{
+					if (contadorDeVariables == 1)
+					{
+						char buffer[10000];
+						char *line = fgets(buffer,sizeof buffer,file);
+						int length = string_length(line)-2;
+						char *texto = string_substring(line,1,length);
+						texto  = strtok(texto,",");
+						int i = 0;
+						while (texto != NULL)
+						{
+							valores->Bloques[i++] = atoi(texto);
+							texto = strtok (NULL, ",");
+						}
+					}
+					if (contadorDeVariables == 0) {
+						fscanf(file, "%i", &valores->Tamanio);
+						contadorDeVariables++;
+					}
+				}
+			fclose(file);
+		}
+}
+
+int calcularBloques(int tamanio) {
+	int cantidad = ceil(tamanio/TAMANIO_BLOQUES);
+	if (cantidad == 0) return 1;
+	return cantidad;
+}
 
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
@@ -47,10 +84,6 @@ void obtenerValoresArchivoConfiguracion() {
 			}
 		fclose(file);
 	}
-}
-
-int length(void* x) {
-	return sizeof(x) / sizeof((x)[0]);
 }
 
 void imprimirArchivoConfiguracion() {
@@ -130,7 +163,7 @@ void eliminarBloques(int* bloques, int cantidadBloques) {
 }
 
 void modificarValoresDeArchivo(int tamanio, int* bloques, char* path) {
-	ValoresArchivo* valores;
+	ValoresArchivo valores;
 	obtenerValoresDeArchivo(path, &valores);
 
 	FILE* newFile = fopen(path, "w+");
@@ -153,21 +186,40 @@ void modificarValoresDeArchivo(int tamanio, int* bloques, char* path) {
 	fclose(newFile);
 }
 
-int reservarBloques(int cantidadDeBloques, char* path, int size) {
-	int* bloques = malloc(sizeof(int) * cantidadDeBloques);
+int reservarBloques(int cantidadDeBloquesNuevos, char* path, int size, ValoresArchivo* valoresViejos) {
+	int* bloquesNuevos = malloc(sizeof(int) * cantidadDeBloquesNuevos);
 	int i;
-	for (i = 0; i < cantidadDeBloques; i++) {
+	for (i = 0; i < cantidadDeBloquesNuevos; i++) {
 		int posicion = encontrarPrimerBloqueLibre();
 		if (posicion < 0) {
 			return 0;
 		}
-		bloques[i] = posicion;
+		bloquesNuevos[i] = posicion;
+	}
+	int cantidadDeBloquesViejos;
+	int j;
+	int* bloquesTotales;
+	if (valoresViejos != NULL) {
+		cantidadDeBloquesViejos = calcularBloques(valoresViejos->Tamanio);
+		bloquesTotales = malloc(sizeof(int) * (cantidadDeBloquesViejos + cantidadDeBloquesNuevos));
+		for (j = 0; j < cantidadDeBloquesViejos; j++) {
+			bloquesTotales[j] = valoresViejos->Bloques[j];
+		}
+	}
+	else {
+		bloquesTotales = malloc(sizeof(int) * (cantidadDeBloquesNuevos));
+		cantidadDeBloquesViejos = 0;
+	}
+	for (j = cantidadDeBloquesViejos; j < cantidadDeBloquesNuevos; j++) {
+		bloquesTotales[j] = bloquesNuevos[j];
 	}
 	i++;
-	bloques[i] = -1;
-	crearBloques(bloques, cantidadDeBloques);
-	modificarValoresDeArchivo(size, bloques, path);
-	free(bloques);
+	j++;
+	bloquesNuevos[i] = -1;
+	bloquesTotales[j] = -1;
+	crearBloques(bloquesNuevos, cantidadDeBloquesNuevos);
+	modificarValoresDeArchivo(size, bloquesTotales, path);
+	free(bloquesNuevos);
 	return 1;
 }
 
@@ -187,7 +239,7 @@ void crearArchivo(char* path,int socketFD) {
 			i++;
 		}
 		string_append(&nuevoPath, pathArray1[i]);
-		int sePudoReservar = reservarBloques(1, nuevoPath, 0);
+		int sePudoReservar = reservarBloques(1, nuevoPath, 0, NULL);
 		if (sePudoReservar) {
 			EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
 		}
@@ -197,37 +249,7 @@ void crearArchivo(char* path,int socketFD) {
 	}
 }
 
-void obtenerValoresDeArchivo(char* pathArchivo, ValoresArchivo* valores) {
-	int contadorDeVariables = 0;
-		int c;
-		FILE *file;
-		file = fopen(pathArchivo, "r");
-		if (file) {
-			while ((c = getc(file)) != EOF)
-				if (c == '=')
-				{
-					if (contadorDeVariables == 1)
-					{
-						char buffer[10000];
-						char *line = fgets(buffer,sizeof buffer,file);
-						int length = string_length(line)-2;
-						char *texto = string_substring(line,1,length);
-						texto  = strtok(texto,",");
-						int i = 0;
-						while (texto != NULL)
-						{
-							valores->Bloques[i++] = atoi(texto);
-							texto = strtok (NULL, ",");
-						}
-					}
-					if (contadorDeVariables == 0) {
-						fscanf(file, "%i", &valores->Tamanio);
-						contadorDeVariables++;
-					}
-				}
-			fclose(file);
-		}
-}
+
 
 void borrarArchivo(char* path, int socketFD) {
 	char* pathArchivo = string_new();
@@ -254,33 +276,26 @@ void borrarArchivo(char* path, int socketFD) {
 }
 
 char* leerTodoElArchivo(char* fileToScan) {
-	FILE *fp;
-	long lSize;
-	char *buffer;
-
-	fp = fopen ( fileToScan , "rb" );
-	if( !fp ) perror(fileToScan),exit(1);
-
-	fseek( fp , 0L , SEEK_END);
-	lSize = ftell( fp );
-	rewind( fp );
-	buffer = calloc( 1, lSize+1 );
-	if( !buffer ) fclose(fp),fputs("memory alloc fails",stderr),exit(1);
-	if( 1!=fread( buffer , lSize, 1 , fp) )
-	  fclose(fp),free(buffer),fputs("entire read fails",stderr),exit(1);
-
-	fclose(fp);
+	char *buffer = NULL;
+	size_t size = 0;
+	FILE *fp = fopen(fileToScan, "r");
+	fseek(fp, 0, SEEK_END); /* Go to end of file */
+	size = ftell(fp); /* How many bytes did we pass ? */
+	rewind(fp);
+	buffer = malloc((size + 1) * sizeof(*buffer)); /* size + 1 byte for the \0 */
+	fread(buffer, size, 1, fp); /* Read 1 chunk of size bytes from fp into buffer */
+	buffer[size] = '\0';
 	return buffer;
 }
 
-char* obtenerTodosLosDatosDeBloques(int bloques[]) {
+char* obtenerTodosLosDatosDeBloques(ValoresArchivo* valores) {
 	char* datos = string_new();
 	int i;
-	for (i = 0; i < length(bloques); i++) {
+	for (i = 0; i < calcularBloques(valores->Tamanio); i++) {
 		char* pathAlBloque = string_duplicate(BLOQUESPATH);
-		strcat(pathAlBloque, string_itoa(i));
-		strcat(pathAlBloque, ".bin");
-		strcat(datos, leerTodoElArchivo(pathAlBloque));
+		string_append(&pathAlBloque, string_itoa(i));
+		string_append(&pathAlBloque, ".bin");
+		string_append(&datos, leerTodoElArchivo(pathAlBloque));
 	}
 	return datos;
 }
@@ -291,7 +306,7 @@ void obtenerDatos(char* path, uint32_t offset, uint32_t size, int socketFD) {
 	if (!validarArchivo(pathAObtener, 0)) {
 		ValoresArchivo valores;
 		obtenerValoresDeArchivo(pathAObtener, &valores);
-		char* datos = obtenerTodosLosDatosDeBloques(valores.Bloques);
+		char* datos = obtenerTodosLosDatosDeBloques(&valores);
 		char* datosAEnviar = string_substring(datos, offset, size);
 		EnviarDatos(socketFD,FS,datosAEnviar,sizeof(char) * string_length(datosAEnviar));
 	}
@@ -309,17 +324,12 @@ int obtenerTamanioDeArchivo(char* path) {
 	return tamanio;
 }
 
-int calcularBloques(int tamanio) {
-	int cantidad = ceil(tamanio/TAMANIO_BLOQUES);
-	if (cantidad == 0) return 1;
-	return cantidad;
-}
-
 void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int socketFD){
 	char* pathAEscribir = string_new();
 	string_append(&pathAEscribir, ARCHIVOSPATH);
 	string_append(&pathAEscribir, path);
 	if (validarArchivo(pathAEscribir, 0)) {
+		free(pathAEscribir);
 		ValoresArchivo valores;
 		obtenerValoresDeArchivo(pathAEscribir, &valores);
 		printf("%d\n", valores.Bloques[0]);
@@ -333,31 +343,37 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 
 		int cantidadDeBloquesTotales = calcularBloques(nuevoTamanioDeArchivoQueSeNecesita);
 		int cantidadDeBloquesNecesitados = cantidadDeBloquesTotales - calcularBloques(valores.Tamanio);
-		reservarBloques(cantidadDeBloquesNecesitados, pathAEscribir, nuevoTamanioDeArchivoQueSeNecesita);
+		reservarBloques(cantidadDeBloquesNecesitados, pathAEscribir, nuevoTamanioDeArchivoQueSeNecesita, &valores);
 		ValoresArchivo nuevosValores;
 		obtenerValoresDeArchivo(pathAEscribir, &nuevosValores);
-		char** datosArray = string_get_string_as_array(obtenerTodosLosDatosDeBloques(nuevosValores.Bloques));
-		char** datosAGuardar = string_get_string_as_array(buffer);
+		char* datosActuales = obtenerTodosLosDatosDeBloques(&nuevosValores);
 		int i;
 		int j = 0;
 		for (i = offset; i < nuevoTamanioDeArchivoQueSeNecesita; i++) {
-			datosArray[i] = datosAGuardar[j];
+			datosActuales[i] = buffer[j];
 			j++;
 		}
-		FILE* file = fopen(pathAEscribir, "w");
-		for (i = 0; i < length(valores.Bloques); i++) {
-			for (j = 0; j < TAMANIO_BLOQUES; j++) {
-				j += TAMANIO_BLOQUES*i;
-				if (string_length(buffer) >= j) {
-					char* pathAEscribir = string_duplicate(BLOQUESPATH);
-					string_append(&pathAEscribir, string_itoa(i));
-					string_append(&pathAEscribir, ".bin");
-					fputc((int)datosArray[j], file);
-				}
+		int cantidadDeBloques = calcularBloques(nuevosValores.Tamanio);
+		char* textToAppend = string_new();
+		for (i = 0; i < cantidadDeBloques; i++) {
+
+			j = TAMANIO_BLOQUES*(i+1);
+			if (i == cantidadDeBloques) {
+				textToAppend = string_substring(datosActuales, j - TAMANIO_BLOQUES, string_length(buffer));
 			}
+			else {
+				textToAppend = string_substring(datosActuales, j - TAMANIO_BLOQUES, TAMANIO_BLOQUES);
+			}
+			char* pathAEscribir = string_duplicate(BLOQUESPATH);
+			string_append(&pathAEscribir, string_itoa(i));
+			string_append(&pathAEscribir, ".bin");
+			FILE* file = fopen(pathAEscribir, "w+");
+			fputs(textToAppend, file);
+			fclose(file);
 		}
-		fclose(file);
-		EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
+		if (socketFD != 0) {
+			EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
+		}
 	}
 	else {
 		EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
