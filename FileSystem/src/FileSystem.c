@@ -241,11 +241,14 @@ void crearArchivo(char* path,int socketFD) {
 		}
 		string_append(&nuevoPath, pathArray1[i]);
 		int sePudoReservar = reservarBloques(1, nuevoPath, 0, NULL);
-		if (sePudoReservar) {
-			EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
-		}
-		else {
-			EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+		if (socketFD != 0) {
+			if (sePudoReservar) {
+
+				EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
+			}
+			else {
+				EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+			}
 		}
 	}
 }
