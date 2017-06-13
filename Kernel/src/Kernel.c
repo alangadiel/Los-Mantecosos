@@ -51,8 +51,18 @@ typedef struct {
 
 typedef struct {
 	char* pathArchivo;
-	int cantAperturas;
+	uint32_t cantAperturas;
 } archivoGlobal;
+
+typedef struct {
+	char* nombreVariableGlobal;
+	uint32_t valorVariableGlobal;
+} variableGlobal;
+
+typedef struct {
+	char* nombreSemaforo;
+	uint32_t valorSemaforo;
+} semaforo;
 
 //Variables archivo de configuracion
 int PUERTO_PROG;
@@ -83,6 +93,8 @@ t_list* PaginasPorProceso;
 t_list* Paginas;
 t_list* ArchivosGlobales;
 t_list* ArchivosProcesos;
+t_list* VariablesGlobales;
+t_list* Semaforos;
 
 
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina){
@@ -291,8 +303,6 @@ void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos
 		//No se encontro algun bloque ocupado: Hay que liberar la pagina
 		IM_LiberarPagina(socketFD,KERNEL,pid,pos.NumeroDePagina);
 	}
-
-
 }
 
 char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
@@ -500,6 +510,7 @@ void imprimirArchivoConfiguracion()
 		fclose(file);
 	}
 }
+
 void CrearListas(){
 	Nuevos = list_create();
 	Finalizados= list_create();
@@ -510,6 +521,8 @@ void CrearListas(){
 	Estados = list_create();
 	EstadosConProgramasFinalizables = list_create();
 	ArchivosGlobales = list_create();
+	VariablesGlobales = list_create();
+	Semaforos = list_create();
 	list_add(EstadosConProgramasFinalizables,Nuevos);
 	list_add(EstadosConProgramasFinalizables,Listos);
 	list_add(EstadosConProgramasFinalizables,Ejecutando);
@@ -517,6 +530,7 @@ void CrearListas(){
 	list_add_all(Estados,EstadosConProgramasFinalizables);
 	list_add(Estados,Finalizados);
 }
+
 void LimpiarListas(){
 	list_destroy_and_destroy_elements(Nuevos,free);
 	list_destroy_and_destroy_elements(Listos,free);
@@ -527,7 +541,10 @@ void LimpiarListas(){
 	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
 	list_destroy_and_destroy_elements(ArchivosGlobales,free);
 	list_destroy_and_destroy_elements(ArchivosProcesos,free);
+	list_destroy_and_destroy_elements(VariablesGlobales,free);
+	list_destroy_and_destroy_elements(Semaforos,free);
 }
+
 void ConsultarEstado(int pidAConsultar){
 	int i =0;
 	void* result=NULL;
@@ -632,7 +649,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, char* permisos)
 
 		archivoGlob->cantAperturas++;
 
-		int index;
+		int index = 0;
 
 		for(int i = 0; i < list_size(ArchivosGlobales); i++)
 		{
@@ -917,7 +934,7 @@ void accion(Paquete* paquete, int socketConectado){
 								break;
 
 								case ASIGNARSHAREDVAR:
-									int valorAAsignar = (uint32_t*)paquete->Payload[sizeof(uint32_t)];
+									uint32_t valorAAsignar = (uint32_t*)paquete->Payload[sizeof(uint32_t)];
 
 									char* variableCompartida;
 									strcpy(variableCompartida, (char*)paquete->Payload[(sizeof(uint32_t)) * 2]);
@@ -937,16 +954,103 @@ void accion(Paquete* paquete, int socketConectado){
 								break;
 
 								case WAITSEM:
+									uint32_t PID = (uint32_t*)paquete->Payload[sizeof(uint32_t)];
 
+									char* nombreSem;
+									strcpy(nombreSem, (char*)paquete->Payload[(sizeof(uint32_t)) * 2]);
+
+									void* result = NULL;
+
+									result = (semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((semaforo*) item)->nombreSemaforo == nombreSem; }));
+
+									if(result == NULL) //No hay semaforo con ese nombre
+									{
+										int tamDatos = sizeof(uint32_t) * 2;
+										void* datos = malloc(tamDatos);
+
+										((uint32_t*) datos)[0] = WAITSEM;
+										((uint32_t*) datos)[1] = -1;
+
+										EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
+										free(datos);
+									}
+									else
+									{
+										semaforo* semaf = (semaforo*)result;
+
+										if(semaf->valorSemaforo >= 1)
+										{
+											semaf->valorSemaforo--;
+
+											int tamDatos = sizeof(uint32_t) * 2;
+											void* datos = malloc(tamDatos);
+
+											((uint32_t*) datos)[0] = WAITSEM;
+											((uint32_t*) datos)[1] = semaf->valorSemaforo;
+
+											EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
+											free(datos);
+										}
+										else
+										{
+											int tamDatos = sizeof(uint32_t) * 2;
+											void* datos = malloc(tamDatos);
+
+											((uint32_t*) datos)[0] = WAITSEM;
+											((uint32_t*) datos)[1] = -2;
+
+											EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
+											free(datos);
+										}
+									}
 								break;
 
 								case SIGNALSEM:
+									uint32_t PID = (uint32_t*)paquete->Payload[sizeof(uint32_t)];
 
+									char* nombreSem;
+									strcpy(nombreSem, (char*)paquete->Payload[(sizeof(uint32_t)) * 2]);
+
+									void* result = NULL;
+
+									result = (semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((semaforo*) item)->nombreSemaforo == nombreSem; }));
+
+									if(result == NULL) //No hay semaforo con ese nombre
+									{
+										int tamDatos = sizeof(uint32_t) * 2;
+										void* datos = malloc(tamDatos);
+
+										((uint32_t*) datos)[0] = SIGNALSEM;
+										((uint32_t*) datos)[1] = -1;
+
+										EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
+										free(datos);
+									}
+									else
+									{
+										semaforo* semaf = (semaforo*)result;
+
+										semaf->valorSemaforo++;
+
+										int tamDatos = sizeof(uint32_t) * 2;
+										void* datos = malloc(tamDatos);
+
+										((uint32_t*) datos)[0] = WAITSEM;
+										((uint32_t*) datos)[1] = semaf->valorSemaforo;
+
+										EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
+										free(datos);
+									}
 								break;
 
 								case RESERVARHEAP:
-									int PID = (uint32_t*)paquete->Payload[sizeof(uint32_t) ];
-									int tamanioAReservar = (uint32_t*)paquete->Payload[sizeof(uint32_t) * 2];
+									uint32_t PID = (uint32_t*)paquete->Payload[sizeof(uint32_t)];
+									uint32_t tamanioAReservar = (uint32_t*)paquete->Payload[sizeof(uint32_t) * 2];
 
 									uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
 
@@ -962,10 +1066,32 @@ void accion(Paquete* paquete, int socketConectado){
 								break;
 
 								case LIBERARHEAP:
+									uint32_t PID = (uint32_t*)paquete->Payload[sizeof(uint32_t) ];
+									uint32_t* punteroALiberar = (uint32_t*)paquete->Payload[sizeof(uint32_t) * 2];
 
+									uint32_t valorADevolver = SolicitudLiberacionDeBloque(socketConectado, PID, punteroALiberar);
+
+									//SolicitudLiberacion no hace ningun return ni validacion, habria que hacer algo ahi
+									//asi puedo puedo ponerle un valor a valorADevolver
+
+									int tamDatos = sizeof(uint32_t) * 2;
+									void* datos = malloc(tamDatos);
+
+									((uint32_t*) datos)[0] = RESERVARHEAP;
+									((uint32_t*) datos)[1] = valorADevolver;
+
+									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 								break;
 
 								case ABRIRARCHIVO:
+									uint32_t PID = (uint32_t*)paquete->Payload[sizeof(uint32_t) ];
+									bool* flagCreacion = (bool*)paquete->Payload[sizeof(uint32_t) * 2];
+									//Hacer que los permisos sean char[3], hablar con uri
+									char* path = (char*)paquete->Payload[sizeof(uint32_t) * 2 + sizeof(bool)];
+
+									abrirArchivo(path, PID, flagCreacion);
+
+									uint32_t valorADevolver = SolicitudLiberacionDeBloque(socketConectado, PID, punteroALiberar);
 
 								break;
 
