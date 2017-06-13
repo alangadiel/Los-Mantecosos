@@ -21,6 +21,13 @@ typedef struct {
 	int Bloques[];
 }__attribute__((packed)) ValoresArchivo;
 
+char* obtenerPathABloque(int num) {
+	char* pathAEscribir = string_new();
+	string_append(&pathAEscribir, BLOQUESPATH);
+	string_append(&pathAEscribir, string_itoa(num));
+	string_append(&pathAEscribir, ".bin");
+	return pathAEscribir;
+}
 
 void obtenerValoresDeArchivo(char* pathArchivo, ValoresArchivo* valores) {
 	int contadorDeVariables = 0;
@@ -142,10 +149,7 @@ int encontrarPrimerBloqueLibre() {
 void crearBloques(int* bloques, int cantidadBloques) {
 	int i;
 	for (i = 0; i < cantidadBloques; i++) {
-		char* newFile = string_duplicate(BLOQUESPATH);
-		string_append(&newFile, string_itoa(i));
-		string_append(&newFile, ".bin");
-		FILE* file = fopen(newFile, "a");
+		FILE* file = fopen((char*)obtenerPathABloque(i), "a");
 		fclose(file);
 		cambiarValorBitmap(bloques[i], 1);
 	}
@@ -155,10 +159,7 @@ void eliminarBloques(int* bloques, int cantidadBloques) {
 	int i;
 	for (i = 0; i < cantidadBloques; i++) {
 		cambiarValorBitmap(bloques[i], 0);
-		char* pathToRemove = string_duplicate(BLOQUESPATH);
-		string_append(&pathToRemove, string_itoa(bloques[i]));
-		string_append(&pathToRemove, ".bin");
-		remove(pathToRemove);
+		remove((char*)obtenerPathABloque(bloques[i]));
 	}
 }
 
@@ -249,8 +250,6 @@ void crearArchivo(char* path,int socketFD) {
 	}
 }
 
-
-
 void borrarArchivo(char* path, int socketFD) {
 	char* pathArchivo = string_new();
 	pathArchivo = string_duplicate(ARCHIVOSPATH);
@@ -292,10 +291,7 @@ char* obtenerTodosLosDatosDeBloques(ValoresArchivo* valores) {
 	char* datos = string_new();
 	int i;
 	for (i = 0; i < calcularBloques(valores->Tamanio); i++) {
-		char* pathAlBloque = string_duplicate(BLOQUESPATH);
-		string_append(&pathAlBloque, string_itoa(i));
-		string_append(&pathAlBloque, ".bin");
-		string_append(&datos, leerTodoElArchivo(pathAlBloque));
+		string_append(&datos, leerTodoElArchivo(obtenerPathABloque(i)));
 	}
 	return datos;
 }
@@ -324,25 +320,34 @@ int obtenerTamanioDeArchivo(char* path) {
 	return tamanio;
 }
 
+char* obtenerTextoParaBloque(int numeroDeBloque, int cantidadDeBloques, char* datosActuales, char* datosAAgregar) {
+	int j = TAMANIO_BLOQUES*(numeroDeBloque+1);
+	if (numeroDeBloque == cantidadDeBloques) {
+		return string_substring(datosActuales, j - TAMANIO_BLOQUES, string_length(datosAAgregar));
+	}
+	else {
+		return string_substring(datosActuales, j - TAMANIO_BLOQUES, TAMANIO_BLOQUES);
+	}
+}
+
+int obtenerTamanioNuevoDeArchivo(int offset, ValoresArchivo* valores, int size) {
+	if (valores->Tamanio > offset) {
+		return valores->Tamanio + size;
+	}
+	else {
+		return offset + size;
+	}
+}
+
 void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int socketFD){
 	char* pathAEscribir = string_new();
 	string_append(&pathAEscribir, ARCHIVOSPATH);
 	string_append(&pathAEscribir, path);
 	if (validarArchivo(pathAEscribir, 0)) {
-		free(pathAEscribir);
 		ValoresArchivo valores;
 		obtenerValoresDeArchivo(pathAEscribir, &valores);
-		printf("%d\n", valores.Bloques[0]);
-		int nuevoTamanioDeArchivoQueSeNecesita;
-		if (valores.Tamanio > offset) {
-			nuevoTamanioDeArchivoQueSeNecesita = valores.Tamanio + size;
-		}
-		else {
-			nuevoTamanioDeArchivoQueSeNecesita = offset + size;
-		}
-
-		int cantidadDeBloquesTotales = calcularBloques(nuevoTamanioDeArchivoQueSeNecesita);
-		int cantidadDeBloquesNecesitados = cantidadDeBloquesTotales - calcularBloques(valores.Tamanio);
+		int nuevoTamanioDeArchivoQueSeNecesita = obtenerTamanioNuevoDeArchivo(offset, &valores, size);
+		int cantidadDeBloquesNecesitados = calcularBloques(nuevoTamanioDeArchivoQueSeNecesita) - calcularBloques(valores.Tamanio);
 		reservarBloques(cantidadDeBloquesNecesitados, pathAEscribir, nuevoTamanioDeArchivoQueSeNecesita, &valores);
 		ValoresArchivo nuevosValores;
 		obtenerValoresDeArchivo(pathAEscribir, &nuevosValores);
@@ -354,21 +359,9 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 			j++;
 		}
 		int cantidadDeBloques = calcularBloques(nuevosValores.Tamanio);
-		char* textToAppend = string_new();
 		for (i = 0; i < cantidadDeBloques; i++) {
-
-			j = TAMANIO_BLOQUES*(i+1);
-			if (i == cantidadDeBloques) {
-				textToAppend = string_substring(datosActuales, j - TAMANIO_BLOQUES, string_length(buffer));
-			}
-			else {
-				textToAppend = string_substring(datosActuales, j - TAMANIO_BLOQUES, TAMANIO_BLOQUES);
-			}
-			char* pathAEscribir = string_duplicate(BLOQUESPATH);
-			string_append(&pathAEscribir, string_itoa(i));
-			string_append(&pathAEscribir, ".bin");
-			FILE* file = fopen(pathAEscribir, "w+");
-			fputs(textToAppend, file);
+			FILE* file = fopen(obtenerPathABloque(i), "w+");
+			fputs(obtenerTextoParaBloque(i, cantidadDeBloques, datosActuales, buffer), file);
 			fclose(file);
 		}
 		if (socketFD != 0) {
