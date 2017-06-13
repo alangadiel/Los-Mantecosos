@@ -41,3 +41,22 @@ int GetTamanioArchivo(FILE * f) {
 	int size = ftell(f);
 	return size;
 }
+
+void pcb_Create(BloqueControlProceso* pcb,int* ultimoPid){
+	pcb->PID = *ultimoPid+1;
+	pcb->ProgramCounter = 0;
+	pcb->PaginasDeCodigo=0;
+	pcb->IndiceDeCodigo = list_create();
+	pcb->IndiceDeEtiquetas = dictionary_create();
+	pcb->IndiceDelStack = list_create();
+	//pcb->ExitCode = ? si todavia no finalizó
+	(*ultimoPid)++;
+}
+
+void pcb_Destroy(BloqueControlProceso* pcb){
+	//Creo el pcb y lo guardo en la lista de nuevos
+	list_destroy_and_destroy_elements(pcb->IndiceDeCodigo,free);
+	list_destroy_and_destroy_elements(pcb->IndiceDelStack,free);
+	dictionary_destroy_and_destroy_elements(pcb->IndiceDeEtiquetas,free);
+	free(pcb);
+}

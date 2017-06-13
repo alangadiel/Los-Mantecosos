@@ -141,4 +141,10 @@ estructuras usadas para administrar la memoria.
 uint32_t IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog);
 //Borra las paginas de ese programa. devuelve 0 si hay error, 1 sino.
 
+void pcb_Send(int socketCliente, char emisor[11], BloqueControlProceso* pcb);
+
+void pcb_Receive(BloqueControlProceso* pcb, int socketFD);
+
+
+
 #endif //SOCKETS_H_
