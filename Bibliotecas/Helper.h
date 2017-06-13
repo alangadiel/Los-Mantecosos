@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <commons/log.h>
 #include <commons/collections/list.h>
+#include <commons/collections/dictionary.h>
 #include <commons/string.h>
 #include <commons/txt.h>
 #include <pthread.h>
@@ -54,5 +55,8 @@ char* getWord(char* string, int pos);
 char* integer_to_string(int x);
 char* obtenerTiempoString(time_t t);
 int GetTamanioArchivo(FILE * f);
+
+void pcb_Create(BloqueControlProceso*, int*);
+void pcb_Destroy(BloqueControlProceso* pcb);
 
 #endif /* HELPER_*/
