@@ -46,28 +46,6 @@ void FinDeEjecucionPrograma(){
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 }
 
-void SolicitarWaitSemaforo(t_nombre_semaforo semaforo){
-	//TODO: Programar en kernel para que decida si bloquear o no el semaforo
-	int tamDatos = sizeof(uint32_t)*2+ string_length(semaforo)+1;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = WAITSEM;
-	((uint32_t*) datos)[1] = pcb.PID;
-	memcpy(datos+sizeof(uint32_t)*2, semaforo, string_length(semaforo)+1);
-	t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
-	free(datos);
-}
-
-void SolicitarSignalSemaforo(t_nombre_semaforo semaforo){
-	//TODO: Programar en kernel para que decida si desbloquear o no los procesos frenados
-	int tamDatos = sizeof(uint32_t)*2+ string_length(semaforo)+1;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = SIGNALSEM;
-	((uint32_t*) datos)[1] = pcb.PID;
-	memcpy(datos+sizeof(uint32_t)*2, semaforo, string_length(semaforo)+1);
-	uint32_t* result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
-	free(datos);
-}
-
 
 
 t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
@@ -81,17 +59,7 @@ t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
 	return result;
 }
 
-void LiberarBloqueMemoriaDinamica(t_puntero puntero){
-	int tamDatos = sizeof(uint32_t)*3;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = LIBERARHEAP;
-	((uint32_t*) datos)[1] = pcb.PID;
-	((uint32_t*) datos)[2] = puntero;
-	//Este result es para indicar si salio todo bien o no,pero no seria necesario
-	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
-	free(datos);
-}
-t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags){
+escriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags){
 	//TODO: Programar en kernel para que abra el archivo
 	int tamDatos = sizeof(uint32_t)*2+sizeof(t_banderas)+string_length(direccion)+1;
 	void* datos = malloc(tamDatos);
@@ -105,41 +73,7 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	free(datos);
 	return result;
 }
-void SolicitarBorrarArchivo(t_descriptor_archivo desc){
-	int tamDatos = sizeof(uint32_t)*3;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = BORRARARCHIVO;
-	((uint32_t*) datos)[1] = pcb.PID;
-	((uint32_t*) datos)[2] = desc;
-	//Este result es para indicar si salio todo bien o no,pero no seria necesario
-	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
-	free(datos);
-}
-void SolicitarCerrarArchivo(t_descriptor_archivo desc){
-	int tamDatos = sizeof(uint32_t)*3;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = CERRARARCHIVO;
-	((uint32_t*) datos)[1] = pcb.PID;
-	((uint32_t*) datos)[2] = desc;
-	//Este result es para indicar si salio todo bien o no,pero no seria necesario
-	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
-	free(datos);
-}
-void SolicitarMoverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion){
-	int tamDatos = sizeof(uint32_t)*3;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = MOVERCURSOSARCHIVO;
-	((uint32_t*) datos)[1] = pcb.PID;
-	((uint32_t*) datos)[2] = descriptor_archivo;
-	//Posicion a donde mover el cursor
-	((uint32_t*) datos)[3] = posicion;
-	//Este result es para indicar si salio todo bien o no,pero no seria necesario
-	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
-	free(datos);
-}
 
-
-//agregar lista de variables?
 
 t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 	//Obtengo el ultimo contexto de ejecucion, donde guardara la/s variable/s a definir
@@ -273,32 +207,93 @@ void primitiva_retornar(t_valor_variable retorno){
 
 //KERNEL
 void primitiva_wait(t_nombre_semaforo identificador_semaforo){
-	SolicitarWaitSemaforo(identificador_semaforo);
+	//TODO: Programar en kernel para que decida si bloquear o no el semaforo
+		int tamDatos = sizeof(uint32_t)*2+ string_length(identificador_semaforo)+1;
+		void* datos = malloc(tamDatos);
+		((uint32_t*) datos)[0] = WAITSEM;
+		((uint32_t*) datos)[1] = pcb.PID;
+		memcpy(datos+sizeof(uint32_t)*2, identificador_semaforo, string_length(identificador_semaforo)+1);
+		t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+		free(datos);
 }
 void primitiva_signal(t_nombre_semaforo identificador_semaforo){
-	SolicitarSignalSemaforo(identificador_semaforo);
-}
+	//TODO: Programar en kernel para que decida si desbloquear o no los procesos frenados
+		int tamDatos = sizeof(uint32_t)*2+ string_length(identificador_semaforo)+1;
+		void* datos = malloc(tamDatos);
+		((uint32_t*) datos)[0] = SIGNALSEM;
+		((uint32_t*) datos)[1] = pcb.PID;
+		memcpy(datos+sizeof(uint32_t)*2, identificador_semaforo, string_length(identificador_semaforo)+1);
+		uint32_t* result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+		free(datos);}
 t_puntero primitiva_reservar(t_valor_variable espacio){
 	t_puntero pointer = *(t_puntero*)ReservarBloqueMemoriaDinamica(espacio);
 	return pointer;
 }
 void primitiva_liberar(t_puntero puntero){
-	LiberarBloqueMemoriaDinamica(puntero);
+	int tamDatos = sizeof(uint32_t)*3;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = LIBERARHEAP;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = puntero;
+	//Este result es para indicar si salio todo bien o no,pero no seria necesario
+	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	free(datos);
 }
 t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
 	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags);
 	return fd;
 }
 void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
-	SolicitarBorrarArchivo(descriptor_archivo);
+	int tamDatos = sizeof(uint32_t)*3;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = BORRARARCHIVO;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = descriptor_archivo;
+	//Este result es para indicar si salio todo bien o no,pero no seria necesario
+	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	free(datos);
 }
 void primitiva_cerrar(t_descriptor_archivo descriptor_archivo){
-	SolicitarCerrarArchivo(descriptor_archivo);
+	int tamDatos = sizeof(uint32_t)*3;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = CERRARARCHIVO;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = descriptor_archivo;
+	//Este result es para indicar si salio todo bien o no,pero no seria necesario
+	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	free(datos);
 }
 void primitiva_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion){
-	SolicitarMoverCursor(descriptor_archivo,posicion);
+	int tamDatos = sizeof(uint32_t)*3;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = MOVERCURSOSARCHIVO;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = descriptor_archivo;
+	//Posicion a donde mover el cursor
+	((uint32_t*) datos)[3] = posicion;
+	//Este result es para indicar si salio todo bien o no,pero no seria necesario
+	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	free(datos);
 }
-
+void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
+	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo)+tamanio;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = ESCRIBIRARCHIVO;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = descriptor_archivo;
+	((uint32_t*) datos)[3] = tamanio;
+	memcpy(datos+sizeof(uint32_t)*4,informacion,tamanio);
+	uint32_t result = EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+}
+void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio){
+	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo) +sizeof(t_puntero);
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = LEERARCHIVO;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = descriptor_archivo;
+	((uint32_t*) datos)[3] = tamanio;
+	uint32_t result = EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+}
 
 
 /*

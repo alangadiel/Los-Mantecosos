@@ -14,16 +14,32 @@ static const char* PROGRAMA =
 		"\n";
 
 AnSISOP_funciones functions = {
+  .AnSISOP_asignar = primitiva_asignar,
+  .AnSISOP_asignarValorCompartida = primitiva_asignarValorCompartida,
   .AnSISOP_definirVariable = primitiva_definirVariable,
-  /*.AnSISOP_obtenerPosicionVariable= dummy_obtenerPosicionVariable,
-  .AnSISOP_finalizar     = dummy_finalizar,
-  .AnSISOP_dereferenciar   = dummy_dereferenciar,
-  .AnSISOP_asignar    = dummy_asignar,*/
-
+  .AnSISOP_dereferenciar = primitiva_dereferenciar,
+  .AnSISOP_finalizar = primitiva_finalizar,
+  .AnSISOP_irAlLabel = primitiva_irAlLabel,
+  .AnSISOP_llamarConRetorno = primitiva_llamarConRetorno,
+  .AnSISOP_llamarSinRetorno = primitiva_llamarSinRetorno,
+  .AnSISOP_obtenerPosicionVariable = primitiva_obtenerPosicionVariable,
+  .AnSISOP_obtenerValorCompartida = primitiva_obtenerValorCompartida,
+  .AnSISOP_retornar = primitiva_retornar
 };
 
 
-AnSISOP_kernel kernel_functions = { };
+AnSISOP_kernel kernel_functions = {
+	.AnSISOP_abrir = primitiva_abrir,
+	.AnSISOP_borrar = primitiva_borrar,
+	.AnSISOP_cerrar = primitiva_cerrar,
+	.AnSISOP_escribir = primitiva_escribir,
+	.AnSISOP_leer = primitiva_leer,
+	.AnSISOP_liberar = primitiva_liberar,
+	.AnSISOP_moverCursor = primitiva_moverCursor,
+	.AnSISOP_reservar = primitiva_reservar,
+	.AnSISOP_signal = primitiva_signal,
+	.AnSISOP_wait = primitiva_wait
+};
 
 void obtenerValoresArchivoConfiguracion(){
 	int contadorDeVariables = 0;
@@ -128,10 +144,11 @@ int main(void) {
 	t_metadata_program* metaProgram = metadata_desde_literal(programa);
 
 	//TODO: ¿mandarle el metaProgram al kernel y recibir el pcb otra vez?
-	//Convertir el instrucciones_Serializer en la lista del indice de codigo
-	uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
+	//TODO: Convertir el instrucciones_Serializer en la lista del indice de codigo
 
-	char instruccion[registro[1]-registro[0]];
+	uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
+	//Registro[0] es el byte donde arranca la instruccion y Registro[1] es el tamaño de esta
+	char instruccion[registro[1]];
 	obtenerLinea(&instruccion, registro);
 
 	analizadorLinea(instruccion,&functions,&kernel_functions);
