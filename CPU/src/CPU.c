@@ -110,10 +110,14 @@ int main(void) {
 	indiceDeCodigo = list_create();
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+
 	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake);
 	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake_DeMemoria);
 
-	//TODO: Recibir PCB del Kernel
+	BloqueControlProceso pcb;
+	uint32_t ultimoPID; //TODO: recibirlo por handshake del kernel? o directamente recibir el pid y restarle 1? o cambiar la funcion para q no pida ningun pid y q el kernel lo ponga?
+	pcb_Create(&pcb, ultimoPID);
+	pcb_Receive(&pcb, socketKernel); //Recibir PCB del Kernel
 
 	//Me mandan un programa a ejecutar
 	//Primero tengo que correr la funcion MetadataProgram
@@ -128,6 +132,8 @@ int main(void) {
 	t_metadata_program* metaProgram = metadata_desde_literal(programa);
 
 	//TODO: ¿mandarle el metaProgram al kernel y recibir el pcb otra vez?
+	pcb_Send(socketKernel, CPU, &pcb);
+	pcb_Receive(&pcb, socketKernel);
 	//Convertir el instrucciones_Serializer en la lista del indice de codigo
 	uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 
@@ -137,6 +143,8 @@ int main(void) {
 	analizadorLinea(instruccion,&functions,&kernel_functions);
 
 	//TODO: Avisar al kernel que terminaste de ejecutar la instruccion
+
+	pcb_Destroy(&pcb);
 
 	return 0;
 }
