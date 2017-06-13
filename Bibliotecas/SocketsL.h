@@ -64,6 +64,8 @@ typedef struct {
 	void* Payload;
 }__attribute__((packed)) Paquete;
 
+extern uint32_t TamanioPaginaMemoria;
+
 void Servidor(char* ip, int puerto, char nombre[11],
 		void (*accion)(Paquete* paquete, int socketFD),
 		int (*RecibirPaquete)(int socketFD, char receptor[11], Paquete* paquete));
@@ -78,7 +80,7 @@ void EnviarPaquete(int socketCliente, Paquete* paquete);
 void EnviarMensaje(int socketFD, char* msg, char emisor[11]);
 
 void RecibirHandshake(int socketFD, char emisor[11]);
-uint32_t RecibirHandshake_DeMemoria(int socketFD, char emisor[11]); //Retorna el tamanio de pagina
+void RecibirHandshake_DeMemoria(int socketFD, char emisor[11]); //Retorna el tamanio de pagina
 int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir);
 int RecibirPaqueteServidor(int socketFD, char receptor[11], Paquete* paquete); //Responde al recibir un Handshake
 int RecibirPaqueteCliente(int socketFD, char receptor[11], Paquete* paquete); //No responde los Handshakes

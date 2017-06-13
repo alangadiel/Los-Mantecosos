@@ -1,4 +1,5 @@
 #include "SocketsL.h"
+uint32_t TamanioPagina;
 
 void Servidor(char* ip, int puerto, char nombre[11],
 		void (*accion)(Paquete* paquete, int socketFD),
@@ -189,8 +190,7 @@ void RecibirHandshake(int socketFD, char emisor[11]) {
 	free(header);
 }
 
-uint32_t RecibirHandshake_DeMemoria(int socketFD, char emisor[11]){
-	uint32_t r;
+void RecibirHandshake_DeMemoria(int socketFD, char emisor[11]){
 	Paquete* paquete =  malloc(sizeof(Paquete));
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0 && paquete->header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
@@ -199,7 +199,7 @@ uint32_t RecibirHandshake_DeMemoria(int socketFD, char emisor[11]){
 				if(strcmp(paquete->header.emisor, MEMORIA) == 0){
 					paquete->Payload = malloc(paquete->header.tamPayload);
 					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
-					r = *((uint32_t*)paquete->Payload);
+					TamanioPaginaMemoria = *((uint32_t*)paquete->Payload);
 					free(paquete->Payload);
 				}
 		} else
@@ -208,7 +208,6 @@ uint32_t RecibirHandshake_DeMemoria(int socketFD, char emisor[11]){
 		perror("Error de Conexion, no se recibio un handshake\n");
 
 	free(paquete);
-	return r;
 }
 
 int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir) {
