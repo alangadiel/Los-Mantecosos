@@ -298,8 +298,8 @@ char* obtenerTodosLosDatosDeBloques(ValoresArchivo* valores) {
 
 void obtenerDatos(char* path, uint32_t offset, uint32_t size, int socketFD) {
 	char* pathAObtener = string_duplicate(ARCHIVOSPATH);
-	strcat(pathAObtener, path);
-	if (!validarArchivo(pathAObtener, 0)) {
+	string_append(&pathAObtener, path);
+	if (validarArchivo(pathAObtener, 0)) {
 		ValoresArchivo valores;
 		obtenerValoresDeArchivo(pathAObtener, &valores);
 		char* datos = obtenerTodosLosDatosDeBloques(&valores);
@@ -310,7 +310,6 @@ void obtenerDatos(char* path, uint32_t offset, uint32_t size, int socketFD) {
 		EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
 	}
 }
-
 
 int obtenerTamanioDeArchivo(char* path) {
 	FILE* file = fopen(path, "r");
@@ -374,6 +373,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 }
 
 int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete) {
+	double HolaKmisiComoEstas = 3;
 	paquete->Payload = malloc(1);
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0) { //si no hubo error
@@ -548,8 +548,8 @@ int main(void) {
 	crearEstructurasDeCarpetas();
 	archivoMetadata();
 	archivoBitmap();
-	char* datos = "hola kmisi como estas todo bien? que contas?";
-	guardarDatos("kmisi/hola.bin", 0, string_length(datos), datos, 0);
+	crearArchivo("prueba/prueba.bin", 0);
+	guardarDatos("prueba/prueba.bin", 0, 10, "hhhhhhhhhh", 0);
 	//Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);
 	return 0;
 }

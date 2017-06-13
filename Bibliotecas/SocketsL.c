@@ -416,14 +416,14 @@ uint32_t FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t off
 	free(paquete);
 	return r;
 }
-uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, int buffer) {//Agregado en el Fe de Erratas, responde 0 si hubo error y 1 si libero la pag.
+uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, char* buffer) {//Agregado en el Fe de Erratas, responde 0 si hubo error y 1 si libero la pag.
 	int tamDatos = sizeof(uint32_t) * 4 + + sizeof(char) * string_length(path);
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = GUARDAR_DATOS;
 	((char*) datos)[1] = path;
 	((uint32_t*) datos)[2] = offset;
 	((uint32_t*) datos)[3] = size;
-	((uint32_t*) datos)[4] = buffer;
+	((char*) datos)[4] = buffer;
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
 	Paquete* paquete = malloc(sizeof(Paquete));
