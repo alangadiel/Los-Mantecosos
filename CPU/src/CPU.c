@@ -91,7 +91,7 @@ void imprimirArchivoConfiguracion() {
 }
 
 void obtenerLinea(char** instruccion, uint32_t* registro){
-	uint32_t cantQueFaltaLeer = registro[0] - registro[1];
+	uint32_t cantQueFaltaLeer = registro[1];
 	uint32_t cantPaginasALeer = registro[0]/TamanioPaginaMemoria;
 	uint32_t offset = registro[0] % TamanioPaginaMemoria;
 	char* datos;
@@ -105,44 +105,73 @@ void obtenerLinea(char** instruccion, uint32_t* registro){
 	free(datos);
 }
 
+void crearIndiceDeCodigo(t_metadata_program* metaProgram){
+//TODO
+}
 
 int main(void) {
 	indiceDeCodigo = list_create();
+	bool DesconectarCPU = false;
+	pcb_Create(&pcb, 0); //TODO: sacar el 0 despues de mergear de newMaster
+
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 
-	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake);
+	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake); //TODO: Recibir datos
 	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake_DeMemoria);
 
-	BloqueControlProceso pcb;
-	uint32_t ultimoPID; //TODO: recibirlo por handshake del kernel? o directamente recibir el pid y restarle 1? o cambiar la funcion para q no pida ningun pid y q el kernel lo ponga?
-	pcb_Create(&pcb, ultimoPID);
-	pcb_Receive(&pcb, socketKernel); //Recibir PCB del Kernel
+	while(!DesconectarCPU) {
+		Paquete paquete;
+		while (RecibirPaqueteCliente(socketKernel, CPU, &paquete)<=0);
+		switch(paquete.header.tipoMensaje) {
+		case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
+			DesconectarCPU = true;
+			break;
+		case ESPCB:
+			//Ejecutar linea:
+			/*if (QUANTUM==0){ //FIFO
+			 * while(!end of codigo){
+			 * }
+			 *
+			} else { //RR
+			while(!end of codigo && !end of quantum){
+			}
+			}
+			*/
+			//Recibo el PCB del Kernel
+			pcb_Receive(&pcb, socketKernel);
 
-	//Me mandan un programa a ejecutar
-	//Primero tengo que correr la funcion MetadataProgram
-	char programa[pcb.PaginasDeCodigo * TamanioPaginaMemoria];
-	int i;
-	for (i=0; i < pcb.PaginasDeCodigo; i++){
-		char* datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,i,0,TamanioPaginaMemoria);
-		memccpy(&programa[i*TamanioPaginaMemoria], datos, '\0', TamanioPaginaMemoria); //tal vez hay que usar una funcion diferente para copiarlo
-		free(datos);
+			uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
+
+			char instruccion[registro[1]];
+			obtenerLinea(&instruccion, registro);
+
+			analizadorLinea(instruccion,&functions,&kernel_functions);
+			//pc++
+			// Avisar al kernel que terminaste de ejecutar la instruccion
+			pcb_Send(socketKernel, CPU, &pcb);
+			break;
+		case ESARCHIVO: //reemplazar ESARCHIVO por algo acorde, porque en realidad manda un PCB.
+			//Iniciar el programa:
+			//Recibo el PCB del Kernel
+			pcb_Receive(&pcb, socketKernel);
+			//Leo el codigo de la Memoria
+			char programa[pcb.PaginasDeCodigo * TamanioPaginaMemoria];
+			int i;
+			for (i=0; i < pcb.PaginasDeCodigo; i++){
+				char* datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,i,0,TamanioPaginaMemoria);
+				memccpy(&programa[i*TamanioPaginaMemoria], datos, '\0', TamanioPaginaMemoria); //tal vez hay que usar una funcion diferente para copiarlo
+				free(datos);
+			}
+			//Parseo el codigo
+			t_metadata_program* metaProgram = metadata_desde_literal(programa);
+			//Convertir el instrucciones_Serializer en la lista del indice de codigo
+			crearIndiceDeCodigo(metaProgram);
+			//enviar PCB lleno a kernel
+			pcb_Send(socketKernel, CPU, &pcb);
+			break;
+		}
 	}
-
-	t_metadata_program* metaProgram = metadata_desde_literal(programa);
-
-	//TODO: ¿mandarle el metaProgram al kernel y recibir el pcb otra vez?
-	pcb_Send(socketKernel, CPU, &pcb);
-	pcb_Receive(&pcb, socketKernel);
-	//Convertir el instrucciones_Serializer en la lista del indice de codigo
-	uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
-
-	char instruccion[registro[1]-registro[0]];
-	obtenerLinea(&instruccion, registro);
-
-	analizadorLinea(instruccion,&functions,&kernel_functions);
-
-	//TODO: Avisar al kernel que terminaste de ejecutar la instruccion
 
 	pcb_Destroy(&pcb);
 
