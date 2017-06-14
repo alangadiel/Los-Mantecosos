@@ -367,7 +367,7 @@ void accion(Paquete* paquete, int socketConectado){
 						if(paginasConfirmadas>0 ) // N° negativo significa que la memoria no tiene espacio
 						{
 							//TODO: Le pido a la memoria que me asigne las paginas
-							IM_AsignarPaginas(socketConMemoria,KERNEL,pcb.PID,tamanioCodigoYStackEnPaginas);
+							uint32_t pudoAsignarse = IM_AsignarPaginas(socketConMemoria,KERNEL,pcb.PID,tamanioCodigoYStackEnPaginas);
 
 							PonerElProgramaComoListo(pcb,paquete,socketConectado,tamaniCodigoEnPaginas);
 
