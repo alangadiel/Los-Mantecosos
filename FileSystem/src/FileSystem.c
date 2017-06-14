@@ -491,8 +491,6 @@ void archivoMetadata() {
 	}
 }
 
-
-
 void archivoBitmap() {
 	int i;
 	bitmapArray = malloc (CANTIDAD_BLOQUES * sizeof (bitmapArray[0]));
@@ -551,8 +549,6 @@ int main(void) {
 	crearEstructurasDeCarpetas();
 	archivoMetadata();
 	archivoBitmap();
-	crearArchivo("prueba/prueba.bin", 0);
-	guardarDatos("prueba/prueba.bin", 0, 10, "hhhhhhhhhh", 0);
-	//Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);
+	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);
 	return 0;
 }
