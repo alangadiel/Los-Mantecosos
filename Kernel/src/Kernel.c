@@ -337,7 +337,7 @@ bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket)
 void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int socketFD,double tamanioTotalPaginas){
 
 		pcb->PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
-		printf("Cant paginas asignadas: %d \n",pcb->PaginasDeCodigo);
+		printf("Cant paginas asignadas para el codigo: %d \n",pcb->PaginasDeCodigo);
 		//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
 		list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
 		list_add(Listos, pcb);
@@ -354,8 +354,8 @@ void accion(Paquete* paquete, int socketConectado){
 
 				if(strcmp(paquete->header.emisor,CONSOLA)==0)
 				{
-					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
-					double tamanioTotalPaginas = ceil(tamanioArchivo)+STACK_SIZE;
+					double tamaniCodigoEnPaginas = paquete->header.tamPayload/TamanioPagina;
+					double tamanioCodigoYStackEnPaginas = ceil(tamaniCodigoEnPaginas)+STACK_SIZE;
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
 					//TODO: Falta free, pero OJO, hay que ver la forma de ponerlo y que siga andando
 					CrearNuevoProceso(pcb,&ultimoPID,Nuevos);
@@ -363,16 +363,21 @@ void accion(Paquete* paquete, int socketConectado){
 					//Manejo la multiprogramacion
 					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
 						//Pregunta a la memoria si me puede guardar estas paginas
-						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb->PID,tamanioTotalPaginas);
+						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb->PID,tamanioCodigoYStackEnPaginas);
 						if(paginasConfirmadas>0 ) // N° negativo significa que la memoria no tiene espacio
 						{
-							PonerElProgramaComoListo(pcb,paquete,socketConectado,tamanioTotalPaginas);
+							//TODO: Le pido a la memoria que me asigne las paginas
+							IM_AsignarPaginas(socketConMemoria,KERNEL,pcb.PID,tamanioCodigoYStackEnPaginas);
+
+							PonerElProgramaComoListo(pcb,paquete,socketConectado,tamaniCodigoEnPaginas);
+
+							//TODO: Correr el MetadataProgram y cargar el indice de codigo del programa????
+
 							//Solicito a la memoria que me guarde el codigo del programa
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb->PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
 							EnviarDatos(socketConectado,KERNEL,&(pcb->PID),sizeof(uint32_t));
-							//TODO: Ejecutar en alguna CPU
+							//TODO: Ejecutar en alguna CPU(Enviar PCB)
 
-							//TODO: Realizar acciones en caso de solicitud de reserva de memoria dinamica
 						}
 						else
 						{
