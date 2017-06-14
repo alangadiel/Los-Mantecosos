@@ -371,3 +371,84 @@ uint32_t IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog) {
 	free(paquete);
 	return r;
 }
+
+//interfaz filesystem
+uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path) {
+	int tamDatos = sizeof(uint32_t) + sizeof(char) * string_length(path);
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = VALIDAR_ARCHIVO;
+	((char*) datos)[1] = path;
+	EnviarDatos(socketFD, emisor, datos, tamDatos);
+	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete->Payload);
+	free(paquete->Payload);
+	free(paquete);
+	return r;
+}
+void* FS_CrearPrograma(int socketFD, char emisor[11], char* path) {
+	int tamDatos = sizeof(uint32_t) + sizeof(char) * string_length(path);
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = CREAR_ARCHIVO;
+	((char*) datos)[1] = path;
+	EnviarDatos(socketFD, emisor, datos, tamDatos);
+	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete->Payload);
+	free(paquete->Payload);
+	free(paquete);
+	return r;
+
+}
+uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path) {
+	int tamDatos = sizeof(uint32_t) + sizeof(char) * string_length(path);
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = BORRAR_ARCHIVO;
+	((char*) datos)[1] = path;
+	EnviarDatos(socketFD, emisor, datos, tamDatos);
+	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete->Payload);
+	free(paquete->Payload);
+	free(paquete);
+	return r;
+}
+uint32_t FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset, uint32_t size) {
+	int tamDatos = sizeof(uint32_t) * 3 + sizeof(char) * string_length(path);
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = OBTENER_DATOS;
+	((char*) datos)[1] = path;
+	((uint32_t*) datos)[2] = offset;
+	((uint32_t*) datos)[3] = size;
+	EnviarDatos(socketFD, emisor, datos, tamDatos);
+	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
+	void* r;
+	if(paquete->header.tipoMensaje == ESERROR)
+		r = NULL;
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = paquete->Payload;
+	free(paquete);
+	return r;
+}
+uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, char* buffer) {//Agregado en el Fe de Erratas, responde 0 si hubo error y 1 si libero la pag.
+	int tamDatos = sizeof(uint32_t) * 4 + + sizeof(char) * string_length(path);
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = GUARDAR_DATOS;
+	((char*) datos)[1] = path;
+	((uint32_t*) datos)[2] = offset;
+	((uint32_t*) datos)[3] = size;
+	((char*) datos)[4] = buffer;
+	EnviarDatos(socketFD, emisor, datos, tamDatos);
+	free(datos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete->Payload);
+	free(paquete->Payload);
+	free(paquete);
+	return r;
+}

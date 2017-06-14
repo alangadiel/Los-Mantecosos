@@ -50,6 +50,12 @@
 #define ASIG_PAG 3
 #define LIBE_PAG 4
 #define FIN_PROG 5
+//API File system
+#define VALIDAR_ARCHIVO 0
+#define CREAR_ARCHIVO 1
+#define BORRAR_ARCHIVO 2
+#define OBTENER_DATOS 3
+#define GUARDAR_DATOS 4
 
 typedef struct {
 	int8_t tipoMensaje;
