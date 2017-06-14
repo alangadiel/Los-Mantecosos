@@ -25,6 +25,8 @@
 void CrearListasEstados();
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos);
 void LimpiarListas();
+void CrearListas();
+
 void obtenerError(int exitCode);
 void obtenerValoresArchivoConfiguracion();
 void imprimirArchivoConfiguracion();

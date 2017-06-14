@@ -1,103 +1,9 @@
-#include "SocketsL.h"
-#include "Helper.h"
-#include "Service.h"
+#include "Kernel.h"
 
 
-//Tipos de ExitCode
-#define FINALIZACIONNORMAL
-#define NOSEPUDIERONRESERVARRECURSOS -1
-#define DESCONECTADODESDECOMANDOCONSOLA -7
-#define SOLICITUDMASGRANDEQUETAMANIOPAGINA -8
 
-#define SIZEMETADATA 5
-
-
-int pidAFinalizar;
-int ultimoPID=0;
-int socketConMemoria;
-int socketConFS;
-int ultimoFD = 3;
-double TamanioPagina;
-
-
-typedef struct  {
- uint32_t size;
- bool isFree;
-} HeapMetadata;
-
-typedef struct {
-	FILE * file;
-	BloqueControlProceso pcb;
-} PeticionTamanioStack;
-
-typedef struct {
-	uint32_t pid;
-	uint32_t nroPagina; 		//Numero de pagina DEL PROCESO
-	uint32_t espacioDisponible;
-} PaginaDelProceso;
-
-typedef struct {
-	uint32_t numero;
-	t_list* HeapsMetadata;
-} Pagina;
-
-typedef struct {
-	uint32_t PID;
-	uint32_t FD; //Empieza a partir de FD = 3. El 0, 1 y 2 estan reservados por convencion.
-	uint32_t offsetArchivo;
-	char* flag;
-	uint32_t globalFD;
-} archivoProceso;
-
-typedef struct {
-	char* pathArchivo;
-	uint32_t cantAperturas;
-} archivoGlobal;
-
-typedef struct {
-	char* nombreVariableGlobal;
-	uint32_t valorVariableGlobal;
-} variableGlobal;
-
-typedef struct {
-	char* nombreSemaforo;
-	uint32_t valorSemaforo;
-} semaforo;
-
-//Variables archivo de configuracion
-int PUERTO_PROG;
-int PUERTO_CPU;
-char* IP_MEMORIA;
-int PUERTO_MEMORIA;
-char* IP_FS;
-int PUERTO_FS;
-int QUANTUM;
-int QUANTUM_SLEEP;
-char* ALGORITMO;
-int GRADO_MULTIPROG;
-char* SEM_IDS[4];
-int SEM_INIT[100];
-char* SHARED_VARS[100];
-int STACK_SIZE;
-char* IP_PROG;
-uint32_t PidAComparar;
-t_list* Nuevos;
-t_list* Finalizados;
-t_list* Bloqueados;
-t_list* Ejecutando;
-t_list* Listos;
-t_list* Estados;
-t_list* ListaPCB;
-t_list* EstadosConProgramasFinalizables;
-t_list* PaginasPorProceso;
-t_list* Paginas;
-t_list* ArchivosGlobales;
-t_list* ArchivosProcesos;
-t_list* VariablesGlobales;
-t_list* Semaforos;
-
-
-int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina){
+int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
+{
 	bool encontroOcupado=false;
 	uint32_t offsetOcupado=0;
 	//Recorro hasta encontrar el primer bloque ocupado
@@ -121,7 +27,8 @@ int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina){
 		else
 			return -1;
 }
-BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizacion, int index, int socketFD) {
+BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizacion, int index, int socketFD)
+{
 	BloqueControlProceso* pcbRemovido = NULL;
 	bool hayEstructurasNoLiberadas=false;
 	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid; }));
@@ -156,154 +63,6 @@ BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizaci
 	return pcbRemovido;
 }
 
-uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantAReservar, int socketFD){
-	uint32_t cantTotal = cantAReservar + sizeof(HeapMetadata);
-	//Obtengo la pagina en cuestion donde actualizar la metadata
-	void* datosPagina = IM_LeerDatos(socketFD, KERNEL, PID, nroPagina, 0, TamanioPagina);
-	uint32_t offset = 0;
-	bool estado;
-	uint32_t sizeBloque;
-	bool encontroLibre = false;
-	uint32_t punteroAlPrimerBloqueDisponible;
-
-	/*int offsetOcupado = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-	if(offsetOcupado<0) //HUBO ERROR
-		punteroAlPrimerBloqueDisponible = -1;
-	else
-		punteroAlPrimerBloqueDisponible= offsetOcupado + sizeof(HeapMetadata);*/
-
-	//Recorro hasta encontrar el primer bloque libre
-	while(offset < TamanioPagina - sizeof(HeapMetadata) && encontroLibre == false)
-	{
-		//Recorro el buffer obtenido
-		sizeBloque = *(uint32_t*)datosPagina + offset;
-		estado = *(bool*)(datosPagina + offset + sizeof(uint32_t));
-
-		if(estado == true)
-		{
-			//Si encuentra un metadata free, freno
-			encontroLibre = true;
-		}
-		else
-		{
-			//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
-			offset += (sizeof(HeapMetadata) + sizeBloque);
-		}
-
-	}
-
-	if(encontroLibre == true)
-	{
-		// Se encontro un bloque libre
-		uint32_t diferencia= sizeBloque - cantTotal;
-
-		//Actualizo el metadata de acuerdo a la cantidad de bytes a reservar
-		HeapMetadata metaOcupado;
-		metaOcupado.isFree = false;
-		metaOcupado.size = cantAReservar;
-
-		IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offset, sizeof(HeapMetadata), &metaOcupado);
-
-
-		//Creo el metadata para lo que queda libre del espacio que use
-		uint32_t offsetMetadataLibre = offset + sizeof(HeapMetadata) + cantAReservar;
-
-		HeapMetadata metaLibre;
-		metaLibre.isFree = true;
-		metaLibre.size = diferencia;
-
-		IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offsetMetadataLibre, sizeof(HeapMetadata), &metaLibre);
-
-		return offset + sizeof(HeapMetadata);
-	}
-	else
-	{
-		//No se encontro ningun bloque donde reservar memoria dinamica
-		return -1;
-	}
-}
-
-uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
-	uint32_t cantTotal = cantAReservar+sizeof(HeapMetadata);
-	uint32_t punteroAlPrimerDisponible=0;
-	//Como maximo, podes solicitar reservar: TamañoPagina -10(correspondiente a los metedatas iniciales)
-	if(cantTotal <= TamanioPagina-sizeof(HeapMetadata)*2){
-		void* result = NULL;
-		//Busco en las paginas asignadas a ese proceso, a ver si hay alguna con tamaño suficiente
-		result = list_find(PaginasPorProceso,
-				LAMBDA(bool _(void* item) {
-			return ((PaginaDelProceso*)item)->pid == PID && ((PaginaDelProceso*)item)->espacioDisponible >= cantTotal;
-		}));
-		if(result!=NULL){ 		//Se encontro la pagina con tamaño disponible
-			//Actualizar el tamaño disponible
-			PaginaDelProceso* paginaObtenida = (PaginaDelProceso*)result;
-			paginaObtenida->espacioDisponible -= cantTotal;
-			//Obtengo la pagina en cuestion y actualizo el metadata
-			punteroAlPrimerDisponible = ActualizarMetadata(PID,paginaObtenida->nroPagina,cantTotal,socket);
-
-		}
-		else  		//No hay una pagina del proceso utilizable
-		{
-			//Obtengo el ultimo numero de pagina, de ese PID
-			t_list* pagesProcess= list_filter(PaginasPorProceso,
-					LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}));
-			int i=0;
-			int maximoNroPag=0;
-			for (i = 0; i < list_size(pagesProcess); i++) {
-				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso,i);
-				if(maximoNroPag< elem->nroPagina)	maximoNroPag = elem->nroPagina;
-			}
-			PaginaDelProceso nuevaPPP;
-			nuevaPPP.nroPagina = maximoNroPag+1;
-			nuevaPPP.espacioDisponible = TamanioPagina;
-			nuevaPPP.pid = PID;
-			list_add(PaginasPorProceso,&nuevaPPP);
-			//Le pido al Proceso Memoria que me guarde esta pagina para el proceso en cuestion
-			IM_AsignarPaginas(socket,KERNEL,PID,1);
-			punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP.nroPagina,cantTotal,socket);
-			//Destruyo la lista PagesProcess
-			list_destroy_and_destroy_elements(pagesProcess,free);
-		}
-	}
-	else{ //Debe finalizar el programa pq quiere reservar mas de lo permitido
-		FinalizarPrograma(Ejecutando,PID,SOLICITUDMASGRANDEQUETAMANIOPAGINA,INDEX_EJECUTANDO,socket);
-		//TODO: Avisar a la CPU del programa finalizado
-		// EL TP DICE QUE HAY QUE PEDIR OTRA PAGINA
-	}
-	return punteroAlPrimerDisponible;
-}
-void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos){
-	void* datosPagina = IM_LeerDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,0,TamanioPagina);
-	uint32_t offSetMetadataAActualizar = pos.Offset- sizeof(HeapMetadata);
-	uint32_t sizeBloqueALiberar = *(uint32_t*)(datosPagina+offSetMetadataAActualizar);
-	HeapMetadata heapMetaAActualizar;
-	heapMetaAActualizar.isFree = true;
-	heapMetaAActualizar.size = sizeBloqueALiberar;
-	//Pongo el bloque como liberado
-	//Me fijo el estado del siguiente Metadata(si esta Free o Used)
-	uint32_t offsetMetadataSiguiente = pos.Offset+sizeBloqueALiberar;
-	uint32_t sizeDelMetadataSiguiente = *(uint32_t*)(datosPagina+offsetMetadataSiguiente);
-	bool estadoDelMetadataSiguiente = *(uint32_t*)(datosPagina+offsetMetadataSiguiente+sizeof(uint32_t));
-	if(estadoDelMetadataSiguiente==false) {
-		//Esta ocupado: solo actualizo el metadata del bloque que me liberaron
-		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
-	}
-	else {
-		//Esta libre: puedo compactarlos como un metadata solo
-		heapMetaAActualizar.size += sizeDelMetadataSiguiente;
-		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
-		char* datosBasura= malloc(5);
-		strncpy(datosBasura,"basur",5);
-		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offsetMetadataSiguiente,sizeof(heapMetaAActualizar),datosBasura);
-		free(datosBasura);
-	}
-	//Si estan todos los bloques de la pagina libres, hay que liberar la pagina entera
-	uint32_t offSet= RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-	if(offSet< 0){
-		//No se encontro algun bloque ocupado: Hay que liberar la pagina
-		IM_LiberarPagina(socketFD,KERNEL,pid,pos.NumeroDePagina);
-	}
-}
 
 char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
 {
@@ -318,7 +77,8 @@ char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de l
 }
 
 
-void ObtenerTamanioPagina(int socketFD){
+void ObtenerTamanioPagina(int socketFD)
+{
 	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
 	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD,KERNEL,datosInicialesMemoria);
 	if(datosRecibidos>0){
@@ -329,7 +89,8 @@ void ObtenerTamanioPagina(int socketFD){
 
 }
 
-void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator){
+void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator)
+{
 	printf("Procesos de la lista: %s \n",discriminator);
 	int index=0;
 	for (index = 0; index < list_size(lista); index++) {
@@ -493,59 +254,10 @@ void obtenerValoresArchivoConfiguracion()
 		fclose(file);
 	}
 }
-void imprimirArchivoConfiguracion()
+
+
+void ConsultarEstado(int pidAConsultar)
 {
-	int c;
-	FILE *file;
-
-	file = fopen("ArchivoConfiguracion.txt", "r");
-
-	if (file)
-	{
-		while ((c = getc(file)) != EOF)
-		{
-			putchar(c);
-		}
-
-		fclose(file);
-	}
-}
-
-void CrearListas(){
-	Nuevos = list_create();
-	Finalizados= list_create();
-	Bloqueados= list_create();
-	Ejecutando= list_create();
-	Listos= list_create();
-	//Creo una lista de listas
-	Estados = list_create();
-	EstadosConProgramasFinalizables = list_create();
-	ArchivosGlobales = list_create();
-	VariablesGlobales = list_create();
-	Semaforos = list_create();
-	list_add(EstadosConProgramasFinalizables,Nuevos);
-	list_add(EstadosConProgramasFinalizables,Listos);
-	list_add(EstadosConProgramasFinalizables,Ejecutando);
-	list_add(EstadosConProgramasFinalizables,Bloqueados);
-	list_add_all(Estados,EstadosConProgramasFinalizables);
-	list_add(Estados,Finalizados);
-}
-
-void LimpiarListas(){
-	list_destroy_and_destroy_elements(Nuevos,free);
-	list_destroy_and_destroy_elements(Listos,free);
-	list_destroy_and_destroy_elements(Ejecutando,free);
-	list_destroy_and_destroy_elements(Bloqueados,free);
-	list_destroy_and_destroy_elements(Finalizados,free);
-	list_destroy_and_destroy_elements(Estados,free);
-	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
-	list_destroy_and_destroy_elements(ArchivosGlobales,free);
-	list_destroy_and_destroy_elements(ArchivosProcesos,free);
-	list_destroy_and_destroy_elements(VariablesGlobales,free);
-	list_destroy_and_destroy_elements(Semaforos,free);
-}
-
-void ConsultarEstado(int pidAConsultar){
 	int i =0;
 	void* result=NULL;
 	//Busco el proceso en todas las listas
@@ -566,7 +278,8 @@ void ConsultarEstado(int pidAConsultar){
 	}
 }
 
-void syscallWrite(int socketFD) {
+void syscallWrite(int socketFD)
+{
 	if(socketFD == 1) {
 		char orden[100];
 		char texto[100];
@@ -590,7 +303,8 @@ void syscallWrite(int socketFD) {
 		}
 	}
 }
-void MostrarTodosLosProcesos(){
+void MostrarTodosLosProcesos()
+{
 	MostrarProcesosDeUnaLista(Nuevos,NUEVOS);
 	MostrarProcesosDeUnaLista(Listos,LISTOS);
 	MostrarProcesosDeUnaLista(Ejecutando,EJECUTANDO);
@@ -598,10 +312,12 @@ void MostrarTodosLosProcesos(){
 	MostrarProcesosDeUnaLista(Finalizados,FINALIZADOS);
 }
 
-void KillProgramDeUnaLista(t_list* lista,BloqueControlProceso* pcb,int tipoFinalizacion, int index, int socket) {
+void KillProgramDeUnaLista(t_list* lista,BloqueControlProceso* pcb,int tipoFinalizacion, int index, int socket)
+{
 	FinalizarPrograma(lista,pcb->PID,tipoFinalizacion, index, socket);
 }
-bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket){
+bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket)
+{
 	int i =0;
 	void* result = NULL;
 	while(i<list_size(EstadosConProgramasFinalizables) && result==NULL){
@@ -628,253 +344,6 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int soc
 		printf("El programa %d se cargo en memoria \n",pcb->PID);
 }
 
-void cargarEnTablasArchivos(char* path, uint32_t PID, char* permisos)
-{
-	void* result = NULL;
-
-	result = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == path; }));
-
-	archivoGlobal* archivoGlob = malloc(sizeof(archivoGlobal)); //El free se hace en limpiar listas
-
-	if(result == NULL) //No hay un archivo global con ese path
-	{
-		archivoGlob->pathArchivo = path;
-		archivoGlob->cantAperturas = 1;
-
-		list_add(ArchivosGlobales, archivoGlob);
-	}
-	else
-	{
-		archivoGlob = (archivoGlobal*)result;
-
-		archivoGlob->cantAperturas++;
-
-		int index = 0;
-
-		for(int i = 0; i < list_size(ArchivosGlobales); i++)
-		{
-			archivoGlobal* arch = (archivoGlobal*)list_get(ArchivosGlobales, i);
-
-			if(arch->pathArchivo == path)
-			{
-				index = i;
-			}
-		}
-
-		list_replace(ArchivosGlobales, index, archivoGlob);
-	}
-
-	int i = 0;
-
-	result = NULL;
-
-	while(i < list_size(ArchivosProcesos) && result == NULL)
-	{
-		t_list* lista = (t_list*)list_get(ArchivosProcesos, i);
-
-		result = (archivoProceso*) list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
-
-		i++;
-	}
-
-	archivoProceso* archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
-
-	int index;
-
-	for(int j = 0; j < list_size(ArchivosGlobales); j++)
-	{
-		archivoGlobal* arch = list_get(ArchivosGlobales, j);
-
-		if(arch->pathArchivo == path)
-		{
-			index = j;
-		}
-	}
-
-	if(result == NULL) //No hay ninguna lista de archivos para ese proceso porque no habia abierto ningun archivo todavia
-	{
-		archivoProc->PID = PID;
-		archivoProc->FD = ultimoFD;
-		archivoProc->flag = permisos;
-		archivoProc->offsetArchivo = 0;
-		archivoProc->globalFD = index;
-
-		ultimoFD++;
-
-		t_list* listaArchivoProceso = list_create();
-
-		list_add(listaArchivoProceso, archivoProc);
-
-		list_add(ArchivosProcesos, listaArchivoProceso);
-	}
-	else //Hay una lista para ese proceso, entonces solo agrego un archivo
-	{
-		archivoProc->PID = PID;
-		archivoProc->FD = ultimoFD;
-		archivoProc->flag = permisos;
-		archivoProc->offsetArchivo = 0;
-		archivoProc->globalFD = index;
-
-		ultimoFD++;
-
-		t_list* listaArchivoProceso = (t_list*)list_get(ArchivosProcesos, i-1);
-
-		list_add(listaArchivoProceso, archivoProc);
-
-		list_replace(ArchivosProcesos, i-1, listaArchivoProceso);
-	}
-}
-
-uint32_t abrirArchivo(char* path, uint32_t PID, char* permisos)
-{
-	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
-
-	if(archivoEstaCreado == 1)
-	{
-		cargarEnTablasArchivos(path, PID, permisos);
-	}
-	else
-	{
-		if(strstr(permisos, "c") != NULL)
-		{
-			FS_CrearPrograma(socketConFS, KERNEL, path);
-			cargarEnTablasArchivos(path, PID, permisos);
-		}
-		else
-		{
-			//TODO: Avisarle a la CPU que termino
-			//FinalizarPrograma(Ejecutando, PID, -20, INDEX_EJECUTANDO, socketConMemoria);
-			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -20 (El programa intentó crear un archivo sin permisos)
-		}
-	}
-
-	return archivoEstaCreado;
-}
-
-uint32_t leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* permisos)
-{
-	if(strstr(permisos, "r") != NULL)
-	{
-		void* result = NULL;
-		int i = 0;
-
-		while(i < list_size(ArchivosProcesos) && result == NULL)
-		{
-			t_list* lista = list_get(ArchivosProcesos, i);
-
-			result = (archivoProceso*) list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
-
-			i++;
-		}
-
-		if(result != NULL)
-		{
-			archivoProceso* archProc = malloc(sizeof(archivoProceso));
-
-			archProc = (archivoProceso*)result;
-
-			archivoGlobal* archGlob = list_get(ArchivosGlobales, archProc->FD);
-
-			uint32_t archivoFueLeido = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, archProc->offsetArchivo, sizeArchivo);
-
-			archProc->offsetArchivo += sizeArchivo;
-
-			free(archProc);
-
-			return archivoFueLeido;
-		}
-		else
-		{
-			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
-		}
-	}
-	else
-	{
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -3
-	}
-}
-
-uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t datosAGrabar, char* permisos)
-{
-	if(strstr(*permisos, "w") != NULL)
-	{
-		void* result = NULL;
-		int i = 0;
-
-		while(i < list_size(ArchivosProcesos) && result == NULL)
-		{
-			t_list* lista = list_get(ArchivosProcesos, i);
-
-			result = (archivoProceso*) list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
-
-			i++;
-		}
-
-		if(result != NULL)
-		{
-			archivoProceso* archProc = malloc(sizeof(archivoProceso));
-
-			archProc = (archivoProceso*)result;
-
-			archivoGlobal* archGlob = list_get(ArchivosGlobales, archProc->FD);
-
-			uint32_t archivoFueEscrito = FS_GuardarDatos(socketConFS, KERNEL, archGlob->pathArchivo, archProc->offsetArchivo, sizeArchivo, datosAGrabar);
-
-			free(archProc);
-
-			return archivoFueEscrito;
-		}
-		else
-		{
-			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
-		}
-	}
-	else
-	{
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -4
-	}
-}
-
-uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
-{
-	void* result = NULL;
-	int i = 0;
-
-	while(i < list_size(ArchivosProcesos) && result == NULL)
-	{
-		t_list* lista = list_get(ArchivosProcesos, i);
-
-		result = (archivoProceso*) list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
-
-		i++;
-	}
-
-	if(result != NULL)
-	{
-		t_list* listaProcesoACerrar = list_get(ArchivosProcesos, i-1); //El indice que me habia quedado del while anterior
-
-		list_remove_and_destroy_by_condition(listaProcesoACerrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
-
-		archivoGlobal* archivoGlob = malloc(sizeof(archivoGlobal));
-
-		archivoGlob = list_get(ArchivosGlobales, FD);
-
-		archivoGlob->cantAperturas--;
-
-		if(archivoGlob->cantAperturas == 0)
-		{
-			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }));
-		}
-		else
-		{
-			list_replace(ArchivosGlobales, FD, archivoGlob);
-		}
-	}
-	else
-	{
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -20 (El programa intentó cerrar un archivo que no existe)
-	}
-}
 
 void accion(Paquete* paquete, int socketConectado){
 	/*pthread_t hiloSyscallWrite;
@@ -929,14 +398,19 @@ void accion(Paquete* paquete, int socketConectado){
 						case ESDATOS:
 							switch ((*(uint32_t*)paquete->Payload))
 							{
+								uint32_t valorADevolver;
+								uint32_t valorAAsignar;
+								char* variableCompartida;
+								uint32_t PID;
+								void* result;
+								char* nombreSem;
+								uint32_t tamanioAReservar;
 								case PEDIRSHAREDVAR:
 
 								break;
 
 								case ASIGNARSHAREDVAR:
-									uint32_t valorAAsignar = (uint32_t*)paquete->Payload[sizeof(uint32_t)];
-
-									char* variableCompartida;
+									valorAAsignar = *(uint32_t*)paquete->Payload[sizeof(uint32_t)];
 									strcpy(variableCompartida, (char*)paquete->Payload[(sizeof(uint32_t)) * 2]);
 
 									/*char* contenidoVariableCompartida;
@@ -951,17 +425,17 @@ void accion(Paquete* paquete, int socketConectado){
 									}
 
 									strcpy(SHARED_VARS[i], variableCompartida);*/
+
+
 								break;
 
 								case WAITSEM:
-									uint32_t PID = (uint32_t*)paquete->Payload[sizeof(uint32_t)];
-
-									char* nombreSem;
+									PID = *(uint32_t*)paquete->Payload[sizeof(uint32_t)];
 									strcpy(nombreSem, (char*)paquete->Payload[(sizeof(uint32_t)) * 2]);
 
-									void* result = NULL;
+									result = NULL;
 
-									result = (semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((semaforo*) item)->nombreSemaforo == nombreSem; }));
+									result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((semaforo*) item)->nombreSemaforo == nombreSem; }));
 
 									if(result == NULL) //No hay semaforo con ese nombre
 									{
@@ -1006,15 +480,14 @@ void accion(Paquete* paquete, int socketConectado){
 											free(datos);
 										}
 									}
+
+
 								break;
 
 								case SIGNALSEM:
-									uint32_t PID = (uint32_t*)paquete->Payload[sizeof(uint32_t)];
-
-									char* nombreSem;
+									PID = *(uint32_t*)paquete->Payload[sizeof(uint32_t)];
 									strcpy(nombreSem, (char*)paquete->Payload[(sizeof(uint32_t)) * 2]);
-
-									void* result = NULL;
+									 result = NULL;
 
 									result = (semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((semaforo*) item)->nombreSemaforo == nombreSem; }));
 
@@ -1046,11 +519,13 @@ void accion(Paquete* paquete, int socketConectado){
 
 										free(datos);
 									}
+
+
 								break;
 
 								case RESERVARHEAP:
-									uint32_t PID = (uint32_t*)paquete->Payload[sizeof(uint32_t)];
-									uint32_t tamanioAReservar = (uint32_t*)paquete->Payload[sizeof(uint32_t) * 2];
+									PID = *(uint32_t*)paquete->Payload[sizeof(uint32_t)];
+									tamanioAReservar = (uint32_t*)paquete->Payload[sizeof(uint32_t) * 2];
 
 									uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
 
@@ -1063,10 +538,12 @@ void accion(Paquete* paquete, int socketConectado){
 									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
 									free(datos);
+
+
 								break;
 
 								case LIBERARHEAP:
-									uint32_t PID = (uint32_t*)paquete->Payload[sizeof(uint32_t) ];
+									 PID = *(uint32_t*)paquete->Payload[sizeof(uint32_t) ];
 									uint32_t* punteroALiberar = (uint32_t*)paquete->Payload[sizeof(uint32_t) * 2];
 
 									uint32_t valorADevolver = SolicitudLiberacionDeBloque(socketConectado, PID, punteroALiberar);
@@ -1081,10 +558,12 @@ void accion(Paquete* paquete, int socketConectado){
 									((uint32_t*) datos)[1] = valorADevolver;
 
 									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
+
 								break;
 
 								case ABRIRARCHIVO:
-									uint32_t PID = (uint32_t*)paquete->Payload[sizeof(uint32_t) ];
+									PID = *(uint32_t*)paquete->Payload[sizeof(uint32_t) ];
 									bool* flagCreacion = (bool*)paquete->Payload[sizeof(uint32_t) * 2];
 									//Hacer que los permisos sean char[3], hablar con uri
 									char* path = (char*)paquete->Payload[sizeof(uint32_t) * 2 + sizeof(bool)];
@@ -1092,6 +571,8 @@ void accion(Paquete* paquete, int socketConectado){
 									abrirArchivo(path, PID, flagCreacion);
 
 									uint32_t valorADevolver = SolicitudLiberacionDeBloque(socketConectado, PID, punteroALiberar);
+
+
 
 								break;
 
