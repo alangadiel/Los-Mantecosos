@@ -1,3 +1,4 @@
+
 #ifndef HELPER_
 #define HELPER_
 #define LAMBDA(c_) ({ c_ _;}) //Para funciones lamda
@@ -8,6 +9,7 @@
 #include <unistd.h>
 #include <commons/log.h>
 #include <commons/collections/list.h>
+#include <commons/collections/dictionary.h>
 #include <commons/string.h>
 #include <commons/txt.h>
 #include <commons/bitarray.h>
@@ -22,10 +24,7 @@
 
 
 
-
-
 typedef struct {
-
 	uint32_t NumeroDePagina;
 	uint32_t Offset; //Desplazamiento
 	uint32_t Tamanio;
@@ -47,8 +46,8 @@ typedef struct {
 	uint32_t PID;
 	uint32_t ProgramCounter;
 	uint32_t PaginasDeCodigo;
-	uint32_t* IndiceDeCodigo[2]; //matriz de 2xCantInstrucciones
-	uint32_t* IndiceDeEtiquetas[2];//matriz de 2xCantEtiquetas
+	t_list* IndiceDeCodigo;    //Cada elemento seria un array de 2 ints
+	t_dictionary* IndiceDeEtiquetas;
 	t_list* IndiceDelStack; //lista de IndiceStack
 	int ExitCode;
 }__attribute__((packed)) BloqueControlProceso;
@@ -62,5 +61,8 @@ char* getWord(char* string, int pos);
 char* integer_to_string(int x);
 char* obtenerTiempoString(time_t t);
 int GetTamanioArchivo(FILE * f);
+
+void pcb_Create(BloqueControlProceso*, int*);
+void pcb_Destroy(BloqueControlProceso* pcb);
 
 #endif /* HELPER_*/

@@ -1,7 +1,6 @@
 #include "Kernel.h"
 
 
-
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
 {
 	bool encontroOcupado=false;
@@ -106,154 +105,6 @@ void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator)
 	}
 }
 
-void obtenerValoresArchivoConfiguracion()
-{
-	int contadorDeVariables = 0;
-	int c;
-	FILE *file;
-
-	file = fopen("ArchivoConfiguracion.txt", "r");
-
-	if (file)
-	{
-		while ((c = getc(file)) != EOF)
-		{
-			if (c == '=')
-			{
-				if (contadorDeVariables == 14)
-				{
-					char buffer[10000];
-
-					IP_PROG = fgets(buffer, sizeof buffer, file);
-					strtok(IP_PROG, "\n");
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 13)
-				{
-					fscanf(file, "%i", &STACK_SIZE);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 12)
-				{
-					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
-					int i = 0;
-
-					while (texto != NULL)
-					{
-						SHARED_VARS[i] = texto;
-						texto = strtok (NULL, ",");
-						i++;
-					}
-
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 11)
-				{
-					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
-					int i = 0;
-
-					while (texto != NULL)
-					{
-						SEM_INIT[i++] = atoi(texto);
-						texto = strtok (NULL, ",");
-					}
-
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 10){
-					char * texto = ObtenerTextoDeArchivoSinCorchetes(file);
-					int i = 0;
-
-					while (texto != NULL)
-					{
-						SEM_IDS[i++] = texto;
-						texto = strtok (NULL, ",");
-					}
-
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 9)
-				{
-					fscanf(file, "%i", &GRADO_MULTIPROG);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 8)
-				{
-					char buffer[10000];
-
-					ALGORITMO = fgets(buffer, sizeof buffer, file);
-					strtok(ALGORITMO, "\n");
-
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 7)
-				{
-					fscanf(file, "%i", &QUANTUM_SLEEP);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 6)
-				{
-					fscanf(file, "%i", &QUANTUM);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 5)
-				{
-					fscanf(file, "%i", &PUERTO_FS);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 4)
-				{
-					char buffer[10000];
-
-					IP_FS = fgets(buffer, sizeof buffer, file);
-					strtok(IP_FS, "\n");
-
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 3)
-				{
-					fscanf(file, "%i", &PUERTO_MEMORIA);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 2)
-				{
-					char buffer[10000];
-
-					IP_MEMORIA = fgets(buffer, sizeof buffer, file);
-					strtok(IP_MEMORIA, "\n");
-
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 1)
-				{
-					fscanf(file, "%i", &PUERTO_CPU);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 0)
-				{
-					fscanf(file, "%i", &PUERTO_PROG);
-					contadorDeVariables++;
-				}
-			}
-		}
-
-		fclose(file);
-	}
-}
 
 
 void ConsultarEstado(int pidAConsultar)
@@ -344,7 +195,30 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int soc
 		printf("El programa %d se cargo en memoria \n",pcb->PID);
 }
 
+void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* bcp,Paquete* paquete){
+	t_metadata_program* metaProgram = metadata_desde_literal((char*)paquete->Payload);
+	int i=0;
 
+	while(i<metaProgram->instrucciones_size){
+		int *registroIndice;
+		registroIndice[0]= metaProgram->instrucciones_serializado[i].start;
+		registroIndice[1]= metaProgram->instrucciones_serializado[i].offset;
+		list_add(bcp->IndiceDeCodigo,registroIndice);
+		i++;
+	}
+	//TODO: Inicializar indice de etiquetas
+	i=0;
+	// Leer metadataprogram.c a ver como desarrollaron esto
+	while(i<metaProgram->etiquetas_size){
+		char* etiquetaABuscar;
+		while(metaProgram->etiquetas[i]!=metaProgram->instrucciones_size){
+			etiquetaABuscar[i]=metaProgram->etiquetas[i];
+			i++;
+		}
+		t_puntero_instruccion pointer = metadata_buscar_etiqueta(etiquetaABuscar,metaProgram->etiquetas,metaProgram->etiquetas_size);
+		dictionary_put(bcp->IndiceDeEtiquetas,etiquetaABuscar,&pointer);
+	}
+}
 void accion(Paquete* paquete, int socketConectado){
 	/*pthread_t hiloSyscallWrite;
 	pthread_create(&hiloSyscallWrite,NULL, (void*)syscallWrite, &socketConectado);*/
@@ -371,7 +245,8 @@ void accion(Paquete* paquete, int socketConectado){
 
 							PonerElProgramaComoListo(pcb,paquete,socketConectado,tamaniCodigoEnPaginas);
 
-							//TODO: Correr el MetadataProgram y cargar el indice de codigo del programa????
+							//TODO: Correr el MetadataProgram y cargar el indice de codigo del programa
+							CargarInformacionDelCodigoDelPrograma(pcb,paquete);
 
 							//Solicito a la memoria que me guarde el codigo del programa
 							IM_GuardarDatos(socketConMemoria, KERNEL, pcb->PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
@@ -549,14 +424,14 @@ void accion(Paquete* paquete, int socketConectado){
 
 								case LIBERARHEAP:
 									 PID = ((uint32_t*)paquete->Payload)[sizeof(uint32_t) ];
-									uint32_t* punteroALiberar = ((uint32_t**)paquete->Payload)[sizeof(uint32_t) * 2];
-									uint32_t valorADevolver = SolicitudLiberacionDeBloque(socketConectado, PID, punteroALiberar);
+									uint32_t punteroALiberar = ((uint32_t*)paquete->Payload)[sizeof(uint32_t) * 2];
+									valorADevolver = SolicitudLiberacionDeBloque(socketConectado, PID, punteroALiberar);
 
 									//SolicitudLiberacion no hace ningun return ni validacion, habria que hacer algo ahi
 									//asi puedo puedo ponerle un valor a valorADevolver
 
-									int tamDatos = sizeof(uint32_t) * 2;
-									void* datos = malloc(tamDatos);
+									 tamDatos = sizeof(uint32_t) * 2;
+									 datos = malloc(tamDatos);
 
 									((uint32_t*) datos)[0] = RESERVARHEAP;
 									((uint32_t*) datos)[1] = valorADevolver;
@@ -568,7 +443,7 @@ void accion(Paquete* paquete, int socketConectado){
 
 								case ABRIRARCHIVO:
 									PID = ((uint32_t*)paquete->Payload)[sizeof(uint32_t) ];
-									bool* flagCreacion = ((bool*)paquete->Payload)[sizeof(uint32_t) * 2];
+									bool* flagCreacion = ((bool**)paquete->Payload)[sizeof(uint32_t) * 2];
 									//Hacer que los permisos sean char[3], hablar con uri
 									char* path = ((char**)paquete->Payload)[sizeof(uint32_t) * 2 + sizeof(bool)];
 
