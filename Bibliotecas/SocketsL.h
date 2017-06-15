@@ -36,6 +36,7 @@
 #define ASIG_PAG 3
 #define LIBE_PAG 4
 #define FIN_PROG 5
+
 //Comunicacion Kernel con CPU
 #define PEDIRSHAREDVAR 0
 #define ASIGNARSHAREDVAR 1
@@ -50,6 +51,13 @@
 #define ESCRIBIRARCHIVO 10
 #define LEERARCHIVO 11
 #define FINEJECUCIONPROGRAMA 12
+
+//API File system
+#define VALIDAR_ARCHIVO 0
+#define CREAR_ARCHIVO 1
+#define BORRAR_ARCHIVO 2
+#define OBTENER_DATOS 3
+#define GUARDAR_DATOS 4
 
 typedef struct {
 	int8_t tipoMensaje;
@@ -138,5 +146,11 @@ estructuras usadas para administrar la memoria.
  */
 uint32_t IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog);
 //Borra las paginas de ese programa. devuelve 0 si hay error, 1 sino.
+
+uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path);
+void* FS_CrearPrograma(int socketFD, char emisor[11], char* path);
+uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path);
+uint32_t FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset, uint32_t size);
+uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, char* buffer);
 
 #endif //SOCKETS_H_

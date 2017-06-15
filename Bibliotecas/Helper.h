@@ -10,12 +10,17 @@
 #include <commons/collections/list.h>
 #include <commons/string.h>
 #include <commons/txt.h>
+#include <commons/bitarray.h>
 #include <pthread.h>
 #include <fcntl.h>
 #include <time.h>
 #include <string.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+
+
 
 
 
