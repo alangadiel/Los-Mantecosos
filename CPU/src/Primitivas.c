@@ -141,6 +141,7 @@ void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
 	int nroPag = puntero/TamanioPaginaMemoria;
 	int offset = puntero%TamanioPaginaMemoria;
 	IM_GuardarDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int),&val);
+
 }
 t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
 	t_valor_variable result = PedirValorVariableCompartida(variable);
