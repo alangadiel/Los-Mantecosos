@@ -388,7 +388,7 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp,Paquete* paqu
 
 	}
 }
-void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* bcp,Paquete* paquete){
+void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* paquete){
 	t_metadata_program* metaProgram = metadata_desde_literal((char*)paquete->Payload);
 	int i=0;
 
@@ -396,10 +396,10 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* bcp,Paquete* pa
 		int *registroIndice;
 		registroIndice[0]= metaProgram->instrucciones_serializado[i].start;
 		registroIndice[1]= metaProgram->instrucciones_serializado[i].offset;
-		list_add(bcp->IndiceDeCodigo,registroIndice);
+		list_add(pcb->IndiceDeCodigo,registroIndice);
 		i++;
 	}
-	//TODO: Inicializar indice de etiquetas
+	//Inicializar indice de etiquetas
 	i=0;
 	// Leer metadataprogram.c a ver como desarrollaron esto
 	while(i<metaProgram->etiquetas_size){
@@ -409,7 +409,7 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* bcp,Paquete* pa
 			i++;
 		}
 		t_puntero_instruccion pointer = metadata_buscar_etiqueta(etiquetaABuscar,metaProgram->etiquetas,metaProgram->etiquetas_size);
-		dictionary_put(bcp->IndiceDeEtiquetas,etiquetaABuscar,&pointer);
+		dictionary_put(pcb->IndiceDeEtiquetas,etiquetaABuscar,&pointer);
 	}
 }
 void accion(Paquete* paquete, int socketConectado){
