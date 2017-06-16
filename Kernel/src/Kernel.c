@@ -371,7 +371,23 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int soc
 		list_add(Listos, pcb);
 		printf("El programa %d se cargo en memoria \n",pcb->PID);
 }
+void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp,Paquete* paquete){
+	int i,j=0;
+	for (i = 0; i < bcp->PaginasDeCodigo; i++) {
+		char* str;
+		if(i+1 != bcp->PaginasDeCodigo){
+			str = string_substring((char*)paquete.Payload,j,TamanioPagina);
+			j+=TamanioPagina;
+		}
+		else
+		{
+			//Ultima pagina de codigo
+			 str = string_substring_from((char*)paquete->Payload,j);
+		}
+		IM_GuardarDatos(socketConMemoria, KERNEL, bcp->PID, i, 0, string_length(str)+1, str);
 
+	}
+}
 void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* bcp,Paquete* paquete){
 	t_metadata_program* metaProgram = metadata_desde_literal((char*)paquete->Payload);
 	int i=0;
@@ -421,8 +437,8 @@ void accion(Paquete* paquete, int socketConectado){
 							//Ejecuto el metadata program
 							CargarInformacionDelCodigoDelPrograma(pcb,paquete);
 
-							//Solicito a la memoria que me guarde el codigo del programa
-							IM_GuardarDatos(socketConMemoria, KERNEL, pcb->PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
+							//Solicito a la memoria que me guarde el codigo del programa(dependiendo cuantas paginas se requiere para el codigo
+							GuardarCodigoDelProgramaEnLaMemoria(pcb,paquete);
 							EnviarDatos(socketConectado,KERNEL,&(pcb->PID),sizeof(uint32_t));
 							//TODO: Ejecutar en alguna CPU(Enviar PCB)
 
