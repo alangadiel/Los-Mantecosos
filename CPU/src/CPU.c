@@ -143,7 +143,7 @@ int main(void) {
 		case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
 			DesconectarCPU = true;
 			break;
-		case ESPCB:
+		case ESPCB:	{
 			//Ejecutar linea:
 			/*if (QUANTUM==0){ //FIFO
 			 * while(!end of codigo){
@@ -166,8 +166,11 @@ int main(void) {
 			//pc++
 			// Avisar al kernel que terminaste de ejecutar la instruccion
 			pcb_Send(socketKernel, CPU, &pcb);
+		}
 			break;
-		case ESARCHIVO: //reemplazar ESARCHIVO por algo acorde, porque en realidad manda un PCB.
+
+		case ESARCHIVO: {//reemplazar ESARCHIVO por algo acorde, porque en realidad manda un PCB.
+
 			//Iniciar el programa:
 			//Recibo el PCB del Kernel
 			pcb_Receive(&pcb, socketKernel);
@@ -185,7 +188,9 @@ int main(void) {
 			crearIndiceDeCodigo(metaProgram);
 			//enviar PCB lleno a kernel
 			pcb_Send(socketKernel, CPU, &pcb);
+		}
 			break;
+
 		}
 	}
 	pcb_Destroy(&pcb);

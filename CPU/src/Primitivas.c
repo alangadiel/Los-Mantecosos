@@ -59,7 +59,7 @@ t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
 	return result;
 }
 
-escriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags){
+t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags){
 	//TODO: Programar en kernel para que abra el archivo
 	int tamDatos = sizeof(uint32_t)*2+sizeof(t_banderas)+string_length(direccion)+1;
 	void* datos = malloc(tamDatos);
@@ -116,8 +116,8 @@ t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 	return val;
 }
 void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
-	t_valor_variable val = variable;
-	IM_GuardarDatos(socketMemoria,CPU,pcb.PID,PAGINASTACK,puntero,sizeof(int),&val);
+	t_valor_variable val = variable; //TODO
+	//IM_GuardarDatos(socketMemoria,CPU,pcb.PID,PAGINASTACK,puntero,sizeof(int),&val);
 }
 t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
 	t_valor_variable result = PedirValorVariableCompartida(variable);
