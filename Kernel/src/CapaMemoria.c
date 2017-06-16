@@ -136,24 +136,22 @@ void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos
 	//Pongo el bloque como liberado
 	//Me fijo el estado del siguiente Metadata(si esta Free o Used)
 	uint32_t offsetMetadataSiguiente = pos.Offset+sizeBloqueALiberar;
-	uint32_t sizeDelMetadataSiguiente = *(uint32_t*)(datosPagina+offsetMetadataSiguiente);
-	bool estadoDelMetadataSiguiente = *(uint32_t*)(datosPagina+offsetMetadataSiguiente+sizeof(uint32_t));
-	if(estadoDelMetadataSiguiente==false) {
+	HeapMetadata heapMetedataSiguiente =*(HeapMetadata*)(datosPagina+offsetMetadataSiguiente);
+
+
+	if(heapMetedataSiguiente.isFree==false) {
 		//Esta ocupado: solo actualizo el metadata del bloque que me liberaron
 		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
 	}
 	else {
 		//Esta libre: puedo compactarlos como un metadata solo
-		heapMetaAActualizar.size += sizeDelMetadataSiguiente;
+		heapMetaAActualizar.size += heapMetedataSiguiente.size;
 		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
-		char* datosBasura= malloc(5);
-		strncpy(datosBasura,"basur",5);
-		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offsetMetadataSiguiente,sizeof(heapMetaAActualizar),datosBasura);
-		free(datosBasura);
+
 	}
 	//Si estan todos los bloques de la pagina libres, hay que liberar la pagina entera
-	uint32_t offSet= RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-	if(offSet< 0){
+	bool hayAlgunBloqueUsado= RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
+	if(hayAlgunBloqueUsado==false){
 		//No se encontro algun bloque ocupado: Hay que liberar la pagina
 		IM_LiberarPagina(socketFD,KERNEL,pid,pos.NumeroDePagina);
 	}

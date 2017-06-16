@@ -69,11 +69,9 @@ typedef struct {
 
 
 int pidAFinalizar;
-int ultimoPID=0;
 int socketConMemoria;
 int socketConFS;
-int ultimoFD = 3;
-double TamanioPagina;
+uint32_t TamanioPagina;
 
 
 

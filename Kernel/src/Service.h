@@ -4,7 +4,6 @@
  *  Created on: 9/6/2017
  *      Author: utnso
  */
-
 #ifndef SERVICE_H_
 #define SERVICE_H_
 
