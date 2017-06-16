@@ -21,33 +21,52 @@ uint32_t cuantasPagTiene(uint32_t pid){
 	}
 	return c;
 }
-
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
-	if (pid != 0 && cuantasPagTiene(pid) == 0)//no existe el proceso
-		AsignarPaginas(pid, cantPag, socketFD);
-	else
-		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t));
-	//hubo un error porque el proceso ya existe o el PID es 0
+	uint32_t r = 0;
+	if (pid != 0 && cuantasPagTiene(pid) == 0 && cantPagAsignadas + cantPag < MARCOS) {
+		//si no existe el proceso y hay lugar en la memoria
+		int i;
+		for (i = 0; i < cantPag; i++) {
+			//lo agregamos a la tabla
+			uint32_t frame = Hash(pid, i);
+			while(TablaDePagina[frame].PID != 0) frame++;
+			TablaDePagina[frame].PID = pid;
+			TablaDePagina[frame].Pag = i;
+			cantPagAsignadas++;
+		}
+		r=1;
+	}
+	EnviarDatos(socketFD, MEMORIA, &r, sizeof(uint32_t));
 }
 
-void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,
-		uint32_t tam, int socketFD) {
-
+void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam, int socketFD) {
+	void* datosSolicitados = NULL;
+	if(numPag>0 && cuantasPagTiene(pid)>=numPag && offset+tam < MARCO_SIZE) { //valido los parametros
+		uint32_t frame = FrameLookup(pid, numPag);
+		datosSolicitados = ContenidoMemoria + MARCO_SIZE * frame + offset;
+	}
+	EnviarDatos(socketFD, MEMORIA, datosSolicitados, tam);
 }
 void AlmacenarBytes(Paquete paquete, int socketFD) {
-	//esperar tiempo definido por arch de config
-	sleep(RETARDO_MEMORIA);
-	//buscar pagina
-	void* pagina = ContenidoMemoria + MARCO_SIZE * FrameLookup(DATOS[1], DATOS[2]);
-	//escribir en pagina
-	memcpy(pagina + DATOS[3],(void*) DATOS[5], DATOS[4]);
-	printf("Datos Almacenados: %*s", DATOS[4],(char*) DATOS[5]);
-	//TODO: actualizar cache
+	uint32_t r = 0;
+	if(DATOS[2]>0 && cuantasPagTiene(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
+		//esperar tiempo definido por arch de config
+		sleep(RETARDO_MEMORIA);
+		//buscar pagina
+		void* pagina = ContenidoMemoria + MARCO_SIZE * FrameLookup(DATOS[1], DATOS[2]);
+		//escribir en pagina
+		memcpy(pagina + DATOS[3],(void*) DATOS[5], DATOS[4]);
+		printf("Datos Almacenados: %*s", DATOS[4],(char*) DATOS[5]);
 
+		//TODO: actualizar cache
+
+		r=1;
+	}
+	EnviarDatos(socketFD, MEMORIA, &r, sizeof(uint32_t));
 }
 
 void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
-	int r = 0;
+	uint32_t r = 0;
 	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cuantasPagTiene(pid) > 0) {
 		int i;
 		for (i = cuantasPagTiene(pid); i < cantPagParaAsignar; i++) {
@@ -64,14 +83,17 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 }
 
 void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
+	uint32_t r = 0;
 	if(cuantasPagTiene(pid) > 0) {
 		cantPagAsignadas--;
 		TablaDePagina[FrameLookup(pid, numPag)].PID=0;
-	} else
-		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t)); //hubo un error porque el proceso no existe
+		r=1;
+	}
+	EnviarDatos(socketFD, MEMORIA, &r, sizeof(uint32_t));
 }
 
 void FinalizarPrograma(uint32_t pid, int socketFD) {
+	uint32_t r = 0;
 	uint32_t cantPag = cuantasPagTiene(pid);
 	if(cantPag > 0) {
 		//TODO: join de hilo correspondiente?
@@ -80,8 +102,9 @@ void FinalizarPrograma(uint32_t pid, int socketFD) {
 			TablaDePagina[FrameLookup(pid, i)].PID=0;
 			cantPagAsignadas--;
 		}
-	} else
-		EnviarDatos(socketFD, MEMORIA, 0, sizeof(uint32_t)); //hubo un error porque el proceso no existe
+		r=1;
+	}
+	EnviarDatos(socketFD, MEMORIA, &r, sizeof(uint32_t));
 }
 
 int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {

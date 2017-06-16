@@ -5,7 +5,6 @@
 #include "Threads.h"
 #include "Interface.h"
 
-#define IP_MEMORIA 127.0.0.1
 #define DATOS ((uint32_t*)paquete.Payload)
 #define TablaDePagina ((RegistroTablaPaginacion*)BloquePrincipal)
 

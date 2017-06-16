@@ -79,13 +79,21 @@ void imprimirArchivoConfiguracion() {
 		fclose(file);
 	}
 }
+void InicializarTablaDePagina() {
+	uint32_t i;
+	for(i=0;i<MARCOS;i++){
+		TablaDePagina[i].Frame = i;
+	}
 
+}
 
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+
 	tamEstructurasAdm = sizeof(RegistroTablaPaginacion) * MARCOS;
 	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE) + tamEstructurasAdm;
+
 	BloquePrincipal = malloc(tamanioTotalBytesMemoria); //Reservo toda mi memoria
 	ContenidoMemoria = BloquePrincipal + tamEstructurasAdm; //guardo el puntero donde empieza el contenido
 	listaHilos = list_create();
@@ -98,6 +106,8 @@ int main(void) {
 	 for (i = 0; i < MARCOS; ++i)
 	 tablaCache[i].contenido = malloc(MARCO_SIZE);
 	 */
+	InicializarTablaDePagina();
+
 	pthread_t hiloConsola;
 	pthread_create(&hiloConsola, NULL, (void*) userInterfaceHandler, NULL);
 
@@ -105,7 +115,6 @@ int main(void) {
 	struct sockaddr_in their_addr; // información sobre la dirección del cliente
 	int new_fd;
 	socklen_t sin_size;
-	uint32_t j = Hash(3, 5);
 
 	while(!end) { // Loop Principal
 		sin_size = sizeof(struct sockaddr_in);
