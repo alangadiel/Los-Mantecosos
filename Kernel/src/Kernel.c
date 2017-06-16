@@ -376,7 +376,7 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp,Paquete* paqu
 	for (i = 0; i < bcp->PaginasDeCodigo; i++) {
 		char* str;
 		if(i+1 != bcp->PaginasDeCodigo){
-			str = string_substring((char*)paquete.Payload,j,TamanioPagina);
+			str = string_substring((char*)paquete->Payload,j,TamanioPagina);
 			j+=TamanioPagina;
 		}
 		else
@@ -479,8 +479,9 @@ void accion(Paquete* paquete, int socketConectado){
 								break;
 
 								case ASIGNARSHAREDVAR:
-									valorAAsignar = ((uint32_t*)paquete->Payload)[sizeof(uint32_t)];
-									strcpy(variableCompartida, ((char**)paquete->Payload)[(sizeof(uint32_t)) * 2]);
+									PID = ((uint32_t*)paquete->Payload)[1];
+									valorAAsignar = ((uint32_t*)paquete->Payload)[2];
+									strcpy(variableCompartida, (char*)(paquete->Payload+sizeof(uint32_t) * 2));
 
 									/*char* contenidoVariableCompartida;
 									strcpy(contenidoVariableCompartida, SHARED_VARS[0]);
@@ -500,7 +501,7 @@ void accion(Paquete* paquete, int socketConectado){
 
 								case WAITSEM:
 									PID = ((uint32_t*)paquete->Payload)[sizeof(uint32_t)];
-									strcpy(nombreSem, ((char**)paquete->Payload)[(sizeof(uint32_t)) * 2]);
+									strcpy(nombreSem, (char*)(paquete->Payload+sizeof(uint32_t) * 2));
 
 									result = NULL;
 
@@ -554,8 +555,8 @@ void accion(Paquete* paquete, int socketConectado){
 								break;
 
 								case SIGNALSEM:
-									PID = ((uint32_t*)paquete->Payload)[sizeof(uint32_t)];
-									strcpy(nombreSem, ((char**)paquete->Payload)[(sizeof(uint32_t)) * 2]);
+									PID = ((uint32_t*)paquete->Payload)[1];
+									strcpy(nombreSem, (char*)(paquete->Payload+sizeof(uint32_t)));
 									 result = NULL;
 
 									result = (semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((semaforo*) item)->nombreSemaforo == nombreSem; }));
@@ -593,8 +594,8 @@ void accion(Paquete* paquete, int socketConectado){
 								break;
 
 								case RESERVARHEAP:
-									PID = ((uint32_t*)paquete->Payload)[sizeof(uint32_t)];
-									tamanioAReservar = ((uint32_t*)paquete->Payload)[sizeof(uint32_t) * 2];
+									PID = ((uint32_t*)paquete->Payload)[1];
+									tamanioAReservar = ((uint32_t*)paquete->Payload)[2];
 
 									uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
 
@@ -634,8 +635,8 @@ void accion(Paquete* paquete, int socketConectado){
 								break;
 
 								case ABRIRARCHIVO:
-									PID = ((uint32_t*)paquete->Payload)[sizeof(uint32_t) ];
-									bool* flagCreacion = ((bool**)paquete->Payload)[sizeof(uint32_t) * 2];
+									PID = ((uint32_t*)paquete->Payload)[1];
+									bool* flagCreacion = ((bool*)(paquete->Payload+sizeof(uint32_t) * 2));
 									//Hacer que los permisos sean char[3], hablar con uri
 									char* path = ((char**)paquete->Payload)[sizeof(uint32_t) * 2 + sizeof(bool)];
 
@@ -766,7 +767,17 @@ void userInterfaceHandler(uint32_t* socketFD) {
 		}
 		else if (strcmp(command, "kill_program") == 0){
 			scanf("%d", &pidConsulta);
-			KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA, *socketFD);
+			bool finalizadoOK = KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA, *socketFD);
+			if(finalizadoOK == true)
+			{
+				printf("El programa %d fue finalizado\n", pidAFinalizar);
+				EnviarMensaje(*socketFD,"KILLEADO",KERNEL);
+			}
+			else
+			{
+				printf("Error al finalizar programa %d\n", pidAFinalizar);
+				EnviarMensaje(*socketFD, "Error al finalizar programa", KERNEL);
+			}
 		}
 		else {
 			printf("No se conoce el mensaje %s\n", orden);
