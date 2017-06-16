@@ -59,7 +59,7 @@ t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
 	return result;
 }
 
-escriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags){
+t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags){
 	//TODO: Programar en kernel para que abra el archivo
 	int tamDatos = sizeof(uint32_t)*2+sizeof(t_banderas)+string_length(direccion)+1;
 	void* datos = malloc(tamDatos);
@@ -74,20 +74,39 @@ escriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_bandera
 	return result;
 }
 
-
+void CrearRegistroStack(IndiceStack* is){
+	is->Argumentos = list_create();
+	is->Variables = list_create();
+	is->PosVariableDeRetorno = NewPosicionDeMemoriaVacia();
+}
 t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 	//Obtengo el ultimo contexto de ejecucion, donde guardara la/s variable/s a definir
-	IndiceStack* is=(IndiceStack*)list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+	int ultimoStackPointer =-4;
+	IndiceStack is;
+	void* res = list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+	if(res!=NULL){
+		is=*(IndiceStack*)list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+		//Obtengo el ultimo stackpointer
+		void* result = list_get(is.Variables,list_size(is.Variables)-1);
+		if(result!=NULL){
+			Variable ultimaVar = *(Variable*)result;
+			ultimoStackPointer = ultimaVar.Posicion.NumeroDePagina*TamanioPaginaMemoria+ultimaVar.Posicion.Offset;
+		}
+	}
+	else {
+		//No hay ningun registro de stack hasta el momento
+		CrearRegistroStack(&is);
+	}
+	int nuevoStackPointer = ultimoStackPointer+sizeof(int);
 	Variable varNueva;
 	PosicionDeMemoria pos;
-	pos.NumeroDePagina=0;
+	pos.NumeroDePagina=nuevoStackPointer/TamanioPaginaMemoria;
 	pos.Tamanio = sizeof(int);
 	//Como se que cada variable son enteros bytes, el offset siempre se incrementa en 4
-	pos.Offset = ultimoOffSetVariablesStack + sizeof(int);
-	ultimoOffSetVariablesStack = pos.Offset;
+	pos.Offset = nuevoStackPointer % TamanioPaginaMemoria;
 	varNueva.Posicion=pos;
 	varNueva.ID=identificador_variable;
-	list_add(is->Variables,&varNueva);
+	list_add(is.Variables,&varNueva);
 	return ultimoOffSetVariablesStack;
 }
 
@@ -106,18 +125,22 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	else
 	{
 		Variable* var = (Variable*)result;
-		return var->Posicion.Offset;
+		return var->Posicion.NumeroDePagina*TamanioPaginaMemoria+ var->Posicion.Offset;
 	}
 
 }
 t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
-	void* dato = IM_LeerDatos(socketMemoria,CPU,pcb.PID,1,puntero,sizeof(int));
+	int nroPag = puntero/TamanioPaginaMemoria;
+	int offset = puntero%TamanioPaginaMemoria;
+	void* dato = IM_LeerDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int));
 	t_valor_variable val = *(t_valor_variable*)dato;
 	return val;
 }
 void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
 	t_valor_variable val = variable;
-	IM_GuardarDatos(socketMemoria,CPU,pcb.PID,PAGINASTACK,puntero,sizeof(int),&val);
+	int nroPag = puntero/TamanioPaginaMemoria;
+	int offset = puntero%TamanioPaginaMemoria;
+	IM_GuardarDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int),&val);
 }
 t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
 	t_valor_variable result = PedirValorVariableCompartida(variable);
@@ -145,7 +168,9 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 	while(i< list_size(pcb.IndiceDelStack) && result == NULL){
 		IndiceStack* is = (IndiceStack*)list_get(pcb.IndiceDelStack,i);
 		result = list_find(is->Variables,
-				LAMBDA(bool _(void*item){return ((Variable*)item)->Posicion.Offset==donde_retornar;}));
+				LAMBDA(bool _(void*item){
+			return TamanioPaginaMemoria* ((Variable*)item)->Posicion.NumeroDePagina +((Variable*)item)->Posicion.Offset==donde_retornar;
+		}));
 		i++;
 	}
 
