@@ -1,9 +1,3 @@
-/*
- * CapaMemoria.c
- *
- *  Created on: 13/6/2017
- *      Author: utnso
- */
 #include "CapaMemoria.h"
 
 uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantAReservar, int socketFD)
@@ -155,4 +149,24 @@ void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos
 		//No se encontro algun bloque ocupado: Hay que liberar la pagina
 		IM_LiberarPagina(socketFD,KERNEL,pid,pos.NumeroDePagina);
 	}
+}
+
+int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
+{
+	bool encontroOcupado=false;
+	uint32_t offsetOcupado=0;
+	//Recorro hasta encontrar el primer bloque ocupado
+		while(offsetOcupado<TamanioPagina-sizeof(HeapMetadata) && encontroOcupado == false){
+			//Recorro el buffer obtenido
+			HeapMetadata heapMD = *(HeapMetadata*)(datosPagina + offsetOcupado);
+			if(heapMD.isFree==false){
+				//Si encuentra un metadata free, freno
+				encontroOcupado = true;
+			}
+			else{
+				//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
+				offsetOcupado+=(sizeof(HeapMetadata)+ heapMD.size);
+			}
+		}
+	return encontroOcupado;
 }

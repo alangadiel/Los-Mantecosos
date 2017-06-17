@@ -1,12 +1,5 @@
-/*
- * CapaFS.c
- *
- *  Created on: 13/6/2017
- *      Author: utnso
- */
 #include "CapaFS.h"
 int ultimoFD = 3;
-
 
 void cargarEnTablasArchivos(char* path, uint32_t PID, char* permisos)
 {

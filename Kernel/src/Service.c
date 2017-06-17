@@ -1,6 +1,49 @@
-#include "Helper.h"
-#include "SocketsL.h"
 #include "Service.h"
+
+t_list* ArchivosGlobales;
+t_list* ArchivosProcesos;
+t_list* PIDsPorSocketConsola;
+t_list* Semaforos;
+//t_list* Paginas;
+t_list* VariablesGlobales;
+t_list* PaginasPorProceso;
+t_list* Nuevos;
+t_list* Finalizados;
+t_list* Bloqueados;
+t_list* Ejecutando;
+t_list* Listos;
+t_list* Estados;
+t_list* ListaPCB;
+t_list* EstadosConProgramasFinalizables;
+
+bool end;
+uint32_t TamanioPagina;
+int pidAFinalizar;
+
+int socketConMemoria;
+int socketConFS;
+
+int QUANTUM;
+int QUANTUM_SLEEP;
+char* ALGORITMO;
+int GRADO_MULTIPROG;
+char* SEM_IDS[4];
+int SEM_INIT[100];
+char* SHARED_VARS[100];
+int STACK_SIZE;
+
+char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
+{
+	char buffer[10000];
+	char *line = fgets(buffer,sizeof buffer,f);
+	int length = string_length(line)-3;
+	char *texto = string_substring(line,1,length);
+
+	texto  = strtok(texto,",");
+
+	return texto;
+}
+
 
 
 void imprimirArchivoConfiguracion()
@@ -19,6 +62,41 @@ void imprimirArchivoConfiguracion()
 
 		fclose(file);
 	}
+}
+
+void CrearListas() {
+	Nuevos = list_create();
+	Finalizados= list_create();
+	Bloqueados= list_create();
+	Ejecutando= list_create();
+	Listos= list_create();
+	//Creo una lista de listas
+	Estados = list_create();
+	EstadosConProgramasFinalizables = list_create();
+	ArchivosGlobales = list_create();
+	VariablesGlobales = list_create();
+	Semaforos = list_create();
+	PIDsPorSocketConsola = list_create();
+	list_add(EstadosConProgramasFinalizables,Nuevos);
+	list_add(EstadosConProgramasFinalizables,Listos);
+	list_add(EstadosConProgramasFinalizables,Ejecutando);
+	list_add(EstadosConProgramasFinalizables,Bloqueados);
+	list_add_all(Estados,EstadosConProgramasFinalizables);
+	list_add(Estados,Finalizados);
+}
+void LimpiarListas() {
+	list_destroy_and_destroy_elements(Nuevos,free);
+	list_destroy_and_destroy_elements(Listos,free);
+	list_destroy_and_destroy_elements(Ejecutando,free);
+	list_destroy_and_destroy_elements(Bloqueados,free);
+	list_destroy_and_destroy_elements(Finalizados,free);
+	list_destroy_and_destroy_elements(Estados,free);
+	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
+	list_destroy_and_destroy_elements(ArchivosGlobales,free);
+	list_destroy_and_destroy_elements(ArchivosProcesos,free);
+	list_destroy_and_destroy_elements(VariablesGlobales,free);
+	list_destroy_and_destroy_elements(Semaforos,free);
+	list_destroy_and_destroy_elements(PIDsPorSocketConsola, free);
 }
 
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos){

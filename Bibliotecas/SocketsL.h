@@ -29,6 +29,20 @@
 #define ESPCB 4
 #define KILLPROGRAM 5
 #define ESERROR 6
+//Comunicacion Kernel con CPU
+#define PEDIRSHAREDVAR 0
+#define ASIGNARSHAREDVAR 1
+#define WAITSEM 2
+#define SIGNALSEM 3
+#define RESERVARHEAP 4
+#define LIBERARHEAP 5
+#define ABRIRARCHIVO 6
+#define BORRARARCHIVO 7
+#define CERRARARCHIVO 8
+#define MOVERCURSOSARCHIVO 9
+#define ESCRIBIRARCHIVO 10
+#define LEERARCHIVO 11
+#define FINEJECUCIONPROGRAMA 12
 //API Memoria:
 #define INIC_PROG 0
 #define SOL_BYTES 1
@@ -70,9 +84,18 @@ typedef struct {
 	void* Payload;
 }__attribute__((packed)) Paquete;
 
+typedef struct {
+	pthread_t hilo;
+	int socket;
+} structHilo;
+
+extern uint32_t TamanioPaginaMemoria;
+
 void Servidor(char* ip, int puerto, char nombre[11],
 		void (*accion)(Paquete* paquete, int socketFD),
 		int (*RecibirPaquete)(int socketFD, char receptor[11], Paquete* paquete));
+void ServidorConcuerrente(char* ip, int puerto, char nombre[11], t_list** listaDeHilos,
+		bool* terminar, void (*accionHilo)(void* socketFD));
 int StartServidor(char* MyIP, int MyPort);
 int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11],
 		void RecibirElHandshake(int socketFD, char emisor[11])); //Sobrecarga para Kernel
@@ -84,6 +107,7 @@ void EnviarPaquete(int socketCliente, Paquete* paquete);
 void EnviarMensaje(int socketFD, char* msg, char emisor[11]);
 
 void RecibirHandshake(int socketFD, char emisor[11]);
+void RecibirHandshake_DeMemoria(int socketFD, char emisor[11]); //Retorna el tamanio de pagina
 int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir);
 int RecibirPaqueteServidor(int socketFD, char receptor[11], Paquete* paquete); //Responde al recibir un Handshake
 int RecibirPaqueteCliente(int socketFD, char receptor[11], Paquete* paquete); //No responde los Handshakes
@@ -152,5 +176,8 @@ void* FS_CrearPrograma(int socketFD, char emisor[11], char* path);
 uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path);
 uint32_t FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset, uint32_t size);
 uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, char* buffer);
+
+void pcb_Send(int socketCliente, char emisor[11], BloqueControlProceso* pcb);
+void pcb_Receive(BloqueControlProceso* pcb, int socketFD);
 
 #endif //SOCKETS_H_

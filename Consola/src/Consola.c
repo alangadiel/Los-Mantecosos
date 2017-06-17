@@ -79,56 +79,63 @@ void sendSignalOpenFile(char* programPath, int socketFD) {
 		printf("No se encontro el archivo");
 }
 void programHandler(void *programPath) {
+	bool fin = false;
 	time_t tiempoDeInicio = time(NULL);
+	char* sTiempoDeInicio = temporal_get_string_time();
 	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
 	uint32_t pid;
 	sendSignalOpenFile((char*) programPath, socketFD);
 	Paquete paquete;
-	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, &paquete);
-	/*while (datosRecibidos < 0) {
-		datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, &paquete);
-	}*/
-	switch (paquete.header.tipoMensaje) {
-		case ESDATOS:
-			if(strcmp(paquete.header.emisor,KERNEL)==0){
-				pid = *((uint32_t*) paquete.Payload);
-				if(pid >= 1){
-					SocketProceso* sp = malloc(sizeof(SocketProceso));     //TODO: Falta free
-					sp->pid = pid;
-					sp->socket = socketFD;
-					list_add(SocketsProcesos,sp);
-					SocketProceso* result = (SocketProceso*)list_get(SocketsProcesos,0);
-					printf("socket: %d\n",result->socket);
-					printf("pid: %d\n",result->pid);
-					printf("El pid del nuevo programa es %d \n",pid);
-				}
+	while(!fin) {
+		while(RecibirPaqueteCliente(socketFD, CONSOLA, &paquete)<0);
+		switch (paquete.header.tipoMensaje) {
+			case ESDATOS:
+				if(strcmp(paquete.header.emisor,KERNEL)==0){
+					pid = *((uint32_t*) paquete.Payload);
+					if(pid >= 1){
+						SocketProceso* sp = malloc(sizeof(SocketProceso));     //TODO: Falta free
+						sp->pid = pid;
+						sp->socket = socketFD;
+						list_add(SocketsProcesos,sp);
+						SocketProceso* result = (SocketProceso*)list_get(SocketsProcesos,0);
+						printf("socket: %d\n",result->socket);
+						printf("pid: %d\n",result->pid);
+						printf("El pid del nuevo programa es %d \n",pid);
+					}
 
-			}
-		break;
-		case ESSTRING:
-			printf("%s\n",(char*)paquete.Payload);
-			if(strcmp(paquete.header.emisor,KERNEL)==0){
-
-				if (strcmp((char*)paquete.Payload, "KILLEADO") == 0) {
-					time_t tiempoFinalizacion = time(NULL);
-					printf("%s\n", obtenerTiempoString(tiempoDeInicio));
-					printf("%s\n", obtenerTiempoString(tiempoFinalizacion));
-					double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
-					printf("La duracion del programa en segundos es de %f\n",
-							diferencia);
 				}
-				else if (strcmp(string_substring_until(paquete.Payload,8),"imprimir") == 0) {
-					printf("%s\n", string_substring_from((char*)paquete.Payload,8));
-				}
-				else {
-					  printf("%s\n", (char*)paquete.Payload);
-				}
+			break;
+			case ESSTRING:
+				printf("%s\n",(char*)paquete.Payload);
+				if(strcmp(paquete.header.emisor,KERNEL)==0){
 
-			}
-		break;
+					if (strcmp((char*)paquete.Payload, "KILLEADO") == 0) {
+						time_t tiempoFinalizacion = time(NULL);
+						char* sTiempoDeFin = temporal_get_string_time();
+						printf("%s\n", sTiempoDeInicio);
+						printf("%s\n", sTiempoDeFin);
+						free(sTiempoDeFin);
+						free(sTiempoDeInicio);
+						double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
+						printf("La duracion del programa en segundos es de %f\n",
+								diferencia);
+					fin = true;
+					}
+					else if (strcmp(string_substring_until(paquete.Payload,8),"imprimir") == 0) {
+						printf("%s\n", string_substring_from((char*)paquete.Payload,8));
+					}
+					else {
+						  printf("%s\n", (char*)paquete.Payload);
+					}
 
+				}
+			break;
+
+		}
 	}
 	free(paquete.Payload);
+
+
 	/*int end = 1;
 	int cantMensajes = 0;
 	while (end) {
@@ -173,19 +180,22 @@ void endProgram(uint32_t pid,uint32_t* socketgeneral) {
 		printf("socket: %d\n",sp->socket);
 		printf("pid: %d\n",sp->pid);
 		EnviarPaquete(sp->socket, &paquete);
-		Paquete paquete;
-		uint32_t datosRecibidos = RecibirPaqueteCliente(sp->socket, CONSOLA, &paquete);
-		if(paquete.header.tipoMensaje==ESSTRING){
-			if(strcmp(paquete.header.emisor,KERNEL)==0){
-			char* result = (char*)paquete.Payload;
-			printf("result: %s\n",result);
+
+		Paquete nuevoPaquete;
+		while(RecibirPaqueteCliente(sp->socket, CONSOLA, &nuevoPaquete)<0);
+		free(sp);
+
+		if(nuevoPaquete.header.tipoMensaje==ESSTRING){
+			if(strcmp(nuevoPaquete.header.emisor,KERNEL)==0){
+			char* result = (char*)nuevoPaquete.Payload;
+			printf("result: %s",result);
+
 			if (strcmp(result, "KILLEADO") == 0) {
 				printf("Se finalizo el programa N°: %d\n",pid);
 			}
 		}
-
 	 }
-
+	free(nuevoPaquete.Payload);
 	}
 	else
 		printf("No se reconoce algun programa con ese PID");
@@ -198,26 +208,26 @@ void clean() {
 
 
 void userInterfaceHandler(uint32_t* socketGeneral) {
-	int end = 1;
-	while (end) {
+	bool fin = false;
+	while (!fin) {
 		char command[100];
-		//TODO: corregir que muestra mensaje incorrecto
-		printf("\n\nIngrese el comando: \n");
-		scanf("%s", command);
+		char parametro[100];
+		printf("\n\nIngrese SOLO el comando: \n");
+		scanf("%99s", command);
 		/*char* command = getWord(str, 0);
 		char* parameter = getWord(str, 1);*/
 		if (strcmp(command, "start_program") == 0) {
-			scanf("%s", command);
-			char* pmtr = getWord(command,0);
-			startProgram(pmtr);
+			printf("\n\nIngrese nombre de archivo: \n");
+			scanf("%99s", parametro);
+			startProgram(parametro);
 		}
 		if (strcmp(command, "end_program") == 0) {
-			scanf("%s", command);
-			char* pmtr = getWord(command,0);
-			uint32_t pid = atoi(pmtr);
+			printf("\n\nIngrese numero de programa: \n");
+			scanf("%99s", parametro);
+			uint32_t pid = atoi(parametro);
 			endProgram(pid,socketGeneral);
 		} else if (strcmp(command, "disconnect") == 0) {
-			end = 0;
+			fin = true;
 		} else if (strcmp(command, "clean") == 0) {
 			clean();
 		} else {
