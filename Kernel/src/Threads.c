@@ -200,61 +200,78 @@ void* accion(void* socket){
 						}
 
 					}
+					break;
+					case ESDATOS:
 
 					if(strcmp(paquete.header.emisor, CPU)==0)
 					{
-						switch (paquete.header.tipoMensaje)
-						{
-							case ESDATOS:
-								switch ((*(uint32_t*)paquete.Payload))
-								{
-									uint32_t valorADevolver;
-									uint32_t valorAAsignar;
-									char* variableCompartida;
-									uint32_t PID;
-									void* result;
-									char* nombreSem;
-									uint32_t tamanioAReservar;
-									case PEDIRSHAREDVAR:
+							switch ((*(uint32_t*)paquete.Payload))
+							{
+								uint32_t valorADevolver;
+								uint32_t valorAAsignar;
+								char* variableCompartida;
+								uint32_t PID;
+								void* result;
+								char* nombreSem;
+								uint32_t tamanioAReservar;
+								case PEDIRSHAREDVAR:
 
-									break;
+								break;
 
-									case ASIGNARSHAREDVAR:
-										PID = ((uint32_t*)paquete.Payload)[1];
-										valorAAsignar = ((uint32_t*)paquete.Payload)[2];
-										strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
+								case ASIGNARSHAREDVAR:
+									PID = ((uint32_t*)paquete.Payload)[1];
+									valorAAsignar = ((uint32_t*)paquete.Payload)[2];
+									strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
 
-										/*char* contenidoVariableCompartida;
-										strcpy(contenidoVariableCompartida, SHARED_VARS[0]);
+									/*char* contenidoVariableCompartida;
+									strcpy(contenidoVariableCompartida, SHARED_VARS[0]);
 
-										int i = 0;
+									int i = 0;
 
-										while(strcmp(contenidoVariableCompartida, "") != 0)
+									while(strcmp(contenidoVariableCompartida, "") != 0)
+									{
+										i++;
+										strcpy(contenidoVariableCompartida, SHARED_VARS[i]);
+									}
+
+									strcpy(SHARED_VARS[i], variableCompartida);*/
+
+
+								break;
+
+								case WAITSEM:
+									PID = ((uint32_t*)paquete.Payload)[sizeof(uint32_t)];
+									strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
+
+									result = NULL;
+
+									result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((semaforo*) item)->nombreSemaforo == nombreSem; }));
+
+									if(result == NULL) //No hay semaforo con ese nombre
+									{
+										int tamDatos = sizeof(uint32_t) * 2;
+										void* datos = malloc(tamDatos);
+
+										((uint32_t*) datos)[0] = WAITSEM;
+										((uint32_t*) datos)[1] = -1;
+
+										EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
+										free(datos);
+									}
+									else
+									{
+										semaforo* semaf = (semaforo*)result;
+
+										if(semaf->valorSemaforo >= 1)
 										{
-											i++;
-											strcpy(contenidoVariableCompartida, SHARED_VARS[i]);
-										}
+											semaf->valorSemaforo--;
 
-										strcpy(SHARED_VARS[i], variableCompartida);*/
-
-
-									break;
-
-									case WAITSEM:
-										PID = ((uint32_t*)paquete.Payload)[sizeof(uint32_t)];
-										strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
-
-										result = NULL;
-
-										result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((semaforo*) item)->nombreSemaforo == nombreSem; }));
-
-										if(result == NULL) //No hay semaforo con ese nombre
-										{
 											int tamDatos = sizeof(uint32_t) * 2;
 											void* datos = malloc(tamDatos);
 
 											((uint32_t*) datos)[0] = WAITSEM;
-											((uint32_t*) datos)[1] = -1;
+											((uint32_t*) datos)[1] = semaf->valorSemaforo;
 
 											EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
@@ -262,35 +279,17 @@ void* accion(void* socket){
 										}
 										else
 										{
-											semaforo* semaf = (semaforo*)result;
+											int tamDatos = sizeof(uint32_t) * 2;
+											void* datos = malloc(tamDatos);
 
-											if(semaf->valorSemaforo >= 1)
-											{
-												semaf->valorSemaforo--;
+											((uint32_t*) datos)[0] = WAITSEM;
+											((uint32_t*) datos)[1] = -2;
 
-												int tamDatos = sizeof(uint32_t) * 2;
-												void* datos = malloc(tamDatos);
+											EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
-												((uint32_t*) datos)[0] = WAITSEM;
-												((uint32_t*) datos)[1] = semaf->valorSemaforo;
-
-												EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-
-												free(datos);
-											}
-											else
-											{
-												int tamDatos = sizeof(uint32_t) * 2;
-												void* datos = malloc(tamDatos);
-
-												((uint32_t*) datos)[0] = WAITSEM;
-												((uint32_t*) datos)[1] = -2;
-
-												EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-
-												free(datos);
-											}
+											free(datos);
 										}
+									}
 
 
 									break;
@@ -413,10 +412,10 @@ void* accion(void* socket){
 
 									break;
 								}
-							break;
-						}
 					}
-			break;
+					break;
+
+
 
 			case KILLPROGRAM:
 				if(strcmp(paquete.header.emisor, CONSOLA) == 0)
