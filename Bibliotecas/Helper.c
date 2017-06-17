@@ -29,13 +29,6 @@ char* integer_to_string(int x) {
 	return buffer; // caller is expected to invoke free() on this buffer to release memory
 }
 
-char* obtenerTiempoString(time_t t) {
-	struct tm *tm = localtime(&t);
-	char s[64];
-	strftime(s, sizeof(s), "%c", tm);
-	return s;
-}
-
 int GetTamanioArchivo(FILE * f) {
 	fseek(f, 0L, SEEK_END);
 	int size = ftell(f);

@@ -53,6 +53,7 @@ void Servidor(char* ip, int puerto, char nombre[11],
 void ServidorConcuerrente(char* ip, int puerto, char nombre[11], t_list** listaDeHilos,
 		bool* terminar, void (*accionHilo)(void* socketFD)) {
 
+	*terminar = false;
 	*listaDeHilos = list_create();
 	int socketFD = StartServidor(ip, puerto);
 	struct sockaddr_in their_addr; // información sobre la dirección del cliente
