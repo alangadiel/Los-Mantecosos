@@ -130,7 +130,7 @@ int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
 	return resul;
 }
 
-void* accionHilo(void* socket){
+void* accion(void* socket){
 	int socketFD = *(int*)socket;
 	Paquete paquete;
 	while (RecibirPaqueteMemoria(socketFD, MEMORIA, &paquete) > 0) {

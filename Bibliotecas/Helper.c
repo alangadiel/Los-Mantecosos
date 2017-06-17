@@ -29,13 +29,6 @@ char* integer_to_string(int x) {
 	return buffer; // caller is expected to invoke free() on this buffer to release memory
 }
 
-char* obtenerTiempoString(time_t t) {
-	struct tm *tm = localtime(&t);
-	char s[64];
-	strftime(s, sizeof(s), "%c", tm);
-	return s;
-}
-
 int GetTamanioArchivo(FILE * f) {
 	fseek(f, 0L, SEEK_END);
 	int size = ftell(f);
@@ -47,3 +40,23 @@ bool list_contains(t_list* list, void* item) {
 	contains = list_any_satisfy(list, LAMBDA(bool _(void* itemCompare) { if (itemCompare == item) return true; else return false; }));
 	return contains;
 }
+
+void pcb_Create(BloqueControlProceso* pcb,int* ultimoPid){
+	pcb->PID = *ultimoPid+1;
+	pcb->ProgramCounter = 0;
+	pcb->PaginasDeCodigo=0;
+	pcb->IndiceDeCodigo = list_create();
+	pcb->IndiceDeEtiquetas = dictionary_create();
+	pcb->IndiceDelStack = list_create();
+	//pcb->ExitCode = ? si todavia no finalizó
+	(*ultimoPid)++;
+}
+
+void pcb_Destroy(BloqueControlProceso* pcb){
+	//Creo el pcb y lo guardo en la lista de nuevos
+	list_destroy_and_destroy_elements(pcb->IndiceDeCodigo,free);
+	list_destroy_and_destroy_elements(pcb->IndiceDelStack,free);
+	dictionary_destroy_and_destroy_elements(pcb->IndiceDeEtiquetas,free);
+	free(pcb);
+}
+

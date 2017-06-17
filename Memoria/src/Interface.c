@@ -7,7 +7,9 @@ void dumpMemoryContent() {
 		printf("Imprimiendo todo el contenido de la memoria\n");
 		printf("%*s\n", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
 		char nombreDelArchivo[64+27+1];//tam de la hora + tam de "Contenido de la memoria en " + \0
-		sprintf(nombreDelArchivo, "Contenido de la memoria en %s", obtenerTiempoString(time(0)));
+		char* t = temporal_get_string_time();
+		sprintf(nombreDelArchivo, "Contenido de la memoria en %s", t);
+		free(t);
 		FILE* file = fopen(nombreDelArchivo, "w");
 		fprintf(file, "%*s", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
 		fclose(file);
@@ -21,7 +23,9 @@ void dumpMemoryContentOfPID(uint32_t pid) {
 	} else {
 		printf("Imprimiendo el contenido en memoria del proceso %d\n", pid);
 		char nombreDelArchivo[200];
-		sprintf(nombreDelArchivo, "Contenido del proceso %i en %s", pid, obtenerTiempoString(time(0)));
+		char* t = temporal_get_string_time();
+		sprintf(nombreDelArchivo, "Contenido del proceso %i en %s", pid, t);
+		free(t);
 		FILE* file = fopen(nombreDelArchivo, "w");
 		uint32_t i;
 		for(i=0; i<cantPag; i++){
@@ -36,7 +40,9 @@ void dumpMemoryContentOfPID(uint32_t pid) {
 void dumpMemoryStruct() {
 	printf("Imprimiendo las estructuras de la memoria\n");
 	char nombreDelArchivo[64+29+1];//tam de la hora + tam de "Estructuras de la memoria en " + \0
-	sprintf(nombreDelArchivo, "Estructuras de la memoria en %s", obtenerTiempoString(time(0)));
+	char* t = temporal_get_string_time();
+	sprintf(nombreDelArchivo, "Estructuras de la memoria en %s", t);
+	free(t);
 	FILE* file = fopen(nombreDelArchivo, "w");
 	int i;
 	for (i = 0; i < MARCOS; i++) {
