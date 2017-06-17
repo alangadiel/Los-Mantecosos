@@ -79,6 +79,15 @@ void CrearRegistroStack(IndiceStack* is){
 	is->Variables = list_create();
 	is->PosVariableDeRetorno = NewPosicionDeMemoriaVacia();
 }
+PosicionDeMemoria NewPosicionDeMemoriaVacia(){
+	PosicionDeMemoria res;
+	res.NumeroDePagina =NULL;
+	res.Offset=NULL;
+	res.Tamanio = NULL;
+	return res;
+}
+
+//primitivas basicas
 t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 	//Obtengo el ultimo contexto de ejecucion, donde guardara la/s variable/s a definir
 	int ultimoStackPointer =-4;
@@ -107,6 +116,7 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 	varNueva.Posicion=pos;
 	varNueva.ID=identificador_variable;
 	list_add(is.Variables,&varNueva);
+	pcb.ProgramCounter++;
 	return ultimoOffSetVariablesStack;
 }
 
@@ -120,6 +130,7 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 						LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
 		j++;
 	}
+	pcb.ProgramCounter++;
 	if(result==NULL)
 		return -1;
 	else
@@ -134,6 +145,8 @@ t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 	int offset = puntero%TamanioPaginaMemoria;
 	void* dato = IM_LeerDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int));
 	t_valor_variable val = *(t_valor_variable*)dato;
+	pcb.ProgramCounter++;
+
 	return val;
 }
 void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
@@ -141,16 +154,22 @@ void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
 	int nroPag = puntero/TamanioPaginaMemoria;
 	int offset = puntero%TamanioPaginaMemoria;
 	IM_GuardarDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int),&val);
+	pcb.ProgramCounter++;
+
 
 }
 t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
 	t_valor_variable result = PedirValorVariableCompartida(variable);
 	t_valor_variable val = *(t_valor_variable*)result;
+	pcb.ProgramCounter++;
+
 	return val;
 }
 t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
 	t_valor_variable result = AsignarValorVariableCompartida(variable,valor);
 	t_valor_variable val = *(t_valor_variable*)result;
+	pcb.ProgramCounter++;
+
 	return val;
 }
 void primitiva_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
@@ -186,13 +205,7 @@ void primitiva_finalizar(void){
 		FinDeEjecucionPrograma();
 	}
 }
-PosicionDeMemoria NewPosicionDeMemoriaVacia(){
-	PosicionDeMemoria res;
-	res.NumeroDePagina =NULL;
-	res.Offset=NULL;
-	res.Tamanio = NULL;
-	return res;
-}
+
 void primitiva_retornar(t_valor_variable retorno){
 	//Obtengo la ultima instruccion de retorno del stack
 	int i=0;
@@ -231,7 +244,7 @@ void primitiva_retornar(t_valor_variable retorno){
 
 
 
-//KERNEL
+//PRIMITIVAS KERNEL
 void primitiva_wait(t_nombre_semaforo identificador_semaforo){
 	//TODO: Programar en kernel para que decida si bloquear o no el semaforo
 		int tamDatos = sizeof(uint32_t)*2+ string_length(identificador_semaforo)+1;
@@ -241,6 +254,8 @@ void primitiva_wait(t_nombre_semaforo identificador_semaforo){
 		memcpy(datos+sizeof(uint32_t)*2, identificador_semaforo, string_length(identificador_semaforo)+1);
 		t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 		free(datos);
+		pcb.ProgramCounter++;
+
 }
 void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 	//TODO: Programar en kernel para que decida si desbloquear o no los procesos frenados
@@ -250,9 +265,14 @@ void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 		((uint32_t*) datos)[1] = pcb.PID;
 		memcpy(datos+sizeof(uint32_t)*2, identificador_semaforo, string_length(identificador_semaforo)+1);
 		uint32_t* result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
-		free(datos);}
+		free(datos);
+		pcb.ProgramCounter++;
+
+}
 t_puntero primitiva_reservar(t_valor_variable espacio){
 	t_puntero pointer = *(t_puntero*)ReservarBloqueMemoriaDinamica(espacio);
+	pcb.ProgramCounter++;
+
 	return pointer;
 }
 void primitiva_liberar(t_puntero puntero){
@@ -264,9 +284,13 @@ void primitiva_liberar(t_puntero puntero){
 	//Este result es para indicar si salio todo bien o no,pero no seria necesario
 	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
+	pcb.ProgramCounter++;
+
 }
 t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
 	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags);
+	pcb.ProgramCounter++;
+
 	return fd;
 }
 void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
@@ -278,6 +302,8 @@ void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
 	//Este result es para indicar si salio todo bien o no,pero no seria necesario
 	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
+	pcb.ProgramCounter++;
+
 }
 void primitiva_cerrar(t_descriptor_archivo descriptor_archivo){
 	int tamDatos = sizeof(uint32_t)*3;
@@ -288,6 +314,8 @@ void primitiva_cerrar(t_descriptor_archivo descriptor_archivo){
 	//Este result es para indicar si salio todo bien o no,pero no seria necesario
 	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
+	pcb.ProgramCounter++;
+
 }
 void primitiva_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion){
 	int tamDatos = sizeof(uint32_t)*3;
@@ -300,6 +328,8 @@ void primitiva_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_vari
 	//Este result es para indicar si salio todo bien o no,pero no seria necesario
 	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
+	pcb.ProgramCounter++;
+
 }
 void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
 	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo)+tamanio;
@@ -310,6 +340,8 @@ void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informaci
 	((uint32_t*) datos)[3] = tamanio;
 	memcpy(datos+sizeof(uint32_t)*4,informacion,tamanio);
 	uint32_t result = EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	pcb.ProgramCounter++;
+
 }
 void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio){
 	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo) +sizeof(t_puntero);
@@ -319,6 +351,7 @@ void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informaci
 	((uint32_t*) datos)[2] = descriptor_archivo;
 	((uint32_t*) datos)[3] = tamanio;
 	uint32_t result = EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	pcb.ProgramCounter++;
 }
 
 
