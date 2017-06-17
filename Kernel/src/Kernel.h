@@ -23,7 +23,7 @@
 
 #define SIZEMETADATA 5
 
-typedef struct  {
+typedef struct {
  uint32_t size;
  bool isFree;
 } HeapMetadata;
@@ -67,46 +67,13 @@ typedef struct {
 	uint32_t valorSemaforo;
 } semaforo;
 
+typedef struct {
+	uint32_t PID;
+	int socketConsola;
+} PIDporSocketConsola;
 
-int pidAFinalizar;
-int socketConMemoria;
-int socketConFS;
-uint32_t TamanioPagina;
-
-
-
-
-//Variables archivo de configuracion
-int PUERTO_PROG;
-int PUERTO_CPU;
-char* IP_MEMORIA;
-int PUERTO_MEMORIA;
-char* IP_FS;
-int PUERTO_FS;
-int QUANTUM;
-int QUANTUM_SLEEP;
-char* ALGORITMO;
-int GRADO_MULTIPROG;
-char* SEM_IDS[4];
-int SEM_INIT[100];
-char* SHARED_VARS[100];
-int STACK_SIZE;
-char* IP_PROG;
-uint32_t PidAComparar;
-t_list* Nuevos;
-t_list* Finalizados;
-t_list* Bloqueados;
-t_list* Ejecutando;
-t_list* Listos;
-t_list* Estados;
-t_list* ListaPCB;
-t_list* EstadosConProgramasFinalizables;
-t_list* PaginasPorProceso;
-t_list* Paginas;
 extern t_list* ArchivosGlobales;
-t_list* ArchivosProcesos;
-t_list* VariablesGlobales;
-t_list* Semaforos;
+
 
 
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina);

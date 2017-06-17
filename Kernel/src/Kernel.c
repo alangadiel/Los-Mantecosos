@@ -1,7 +1,50 @@
 #include "Kernel.h"
 
-int ultimoPID=0;
+int ultimoPID = 0;
+int pidAFinalizar;
+int socketConMemoria;
+int socketConFS;
+uint32_t TamanioPagina;
+
+
+int cantProcesadores = 0;
+
+
+//Variables archivo de configuracion
+int PUERTO_PROG;
+int PUERTO_CPU;
+char* IP_MEMORIA;
+int PUERTO_MEMORIA;
+char* IP_FS;
+int PUERTO_FS;
+int QUANTUM;
+int QUANTUM_SLEEP;
+char* ALGORITMO;
+int GRADO_MULTIPROG;
+char* SEM_IDS[4];
+int SEM_INIT[100];
+char* SHARED_VARS[100];
+int STACK_SIZE;
+char* IP_PROG;
+
+uint32_t PidAComparar;
+
+t_list* Nuevos;
+t_list* Finalizados;
+t_list* Bloqueados;
+t_list* Ejecutando;
+t_list* Listos;
+t_list* Estados;
+t_list* ListaPCB;
+t_list* EstadosConProgramasFinalizables;
+t_list* PaginasPorProceso;
+t_list* Paginas;
 t_list* ArchivosGlobales;
+t_list* ArchivosProcesos;
+t_list* VariablesGlobales;
+t_list* Semaforos;
+t_list* PIDsPorSocketConsola;
+
 
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
 {
@@ -35,6 +78,7 @@ void LimpiarListas()
 	list_destroy_and_destroy_elements(ArchivosProcesos,free);
 	list_destroy_and_destroy_elements(VariablesGlobales,free);
 	list_destroy_and_destroy_elements(Semaforos,free);
+	list_destroy_and_destroy_elements(PIDsPorSocketConsola, free);
 }
 void CrearListas()
 {
@@ -49,6 +93,7 @@ void CrearListas()
 	ArchivosGlobales = list_create();
 	VariablesGlobales = list_create();
 	Semaforos = list_create();
+	PIDsPorSocketConsola = list_create();
 	list_add(EstadosConProgramasFinalizables,Nuevos);
 	list_add(EstadosConProgramasFinalizables,Listos);
 	list_add(EstadosConProgramasFinalizables,Ejecutando);
@@ -412,6 +457,17 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 		dictionary_put(pcb->IndiceDeEtiquetas,etiquetaABuscar,&pointer);
 	}
 }
+
+void AgregarAListadePidsPorSocket(uint32_t PID, int socket)
+{
+	PIDporSocketConsola* PIDxSocket = malloc(sizeof(uint32_t));
+
+	PIDxSocket->PID = PID;
+	PIDxSocket->socketConsola = socket;
+
+	list_add(PIDsPorSocketConsola, PIDxSocket);
+}
+
 void accion(Paquete* paquete, int socketConectado){
 	/*pthread_t hiloSyscallWrite;
 	pthread_create(&hiloSyscallWrite,NULL, (void*)syscallWrite, &socketConectado);*/
@@ -419,13 +475,15 @@ void accion(Paquete* paquete, int socketConectado){
 
 		case ESSTRING:
 
-				if(strcmp(paquete->header.emisor,CONSOLA)==0)
+				if(strcmp(paquete->header.emisor, CONSOLA)==0)
 				{
 					double tamaniCodigoEnPaginas = paquete->header.tamPayload/TamanioPagina;
 					double tamanioCodigoYStackEnPaginas = ceil(tamaniCodigoEnPaginas)+STACK_SIZE;
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
 					//TODO: Falta free, pero OJO, hay que ver la forma de ponerlo y que siga andando
 					CrearNuevoProceso(pcb,&ultimoPID,Nuevos);
+
+					AgregarAListadePidsPorSocket(pcb->PID, socketConectado);
 
 					//Manejo la multiprogramacion
 					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
@@ -785,6 +843,29 @@ void userInterfaceHandler(uint32_t* socketFD) {
 	}
 }
 
+int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paquete) {
+	paquete->Payload = malloc(1);
+	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
+	if (resul > 0) { //si no hubo error
+		if (paquete->header.tipoMensaje == ESHANDSHAKE) { //vemos si es un handshake
+			printf("Se establecio conexion con %s\n", paquete->header.emisor);
+
+			if(strcmp(paquete->header.emisor, CPU) == 0)
+			{
+				cantProcesadores++;
+			}
+
+			EnviarHandshake(socketFD, receptor); // paquete->header.emisor
+		} else { //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
+			paquete->Payload = realloc(paquete->Payload,
+					paquete->header.tamPayload);
+			resul = RecibirDatos(paquete->Payload, socketFD,
+					paquete->header.tamPayload);
+		}
+	}
+
+	return resul;
+}
 
 
 int main(void)
@@ -795,12 +876,13 @@ int main(void)
 	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
 	while((socketConFS = ConectarAServidor(PUERTO_FS,IP_FS,FS,KERNEL, RecibirHandshake))<0);
 
-	pthread_t hiloConsola;
 	//pthread_t hiloSyscallWrite;
 	//pthread_create(&hiloSyscallWrite, NULL, (void*)syscallWrite, 2); //socket 2 hardcodeado
 	//pthread_join(hiloSyscallWrite, NULL);
+
+	pthread_t hiloConsola;
 	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, &socketConMemoria);
-	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidor);
+	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidorKernel);
 	pthread_join(hiloConsola, NULL);
 	LimpiarListas();
 
