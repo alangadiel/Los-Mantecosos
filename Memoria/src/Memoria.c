@@ -14,13 +14,6 @@ int RETARDO_MEMORIA;
 char* IP;
 t_list* listaHilos;
 
-
-typedef struct {
-	pthread_t hilo;
-	int socket;
-} structHilo;
-
-
 typedef struct {
 	uint32_t Frame;
 	uint32_t PID;
