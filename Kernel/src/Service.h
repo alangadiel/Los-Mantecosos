@@ -45,6 +45,7 @@ typedef struct {
 extern t_list* ArchivosGlobales;
 extern t_list* ArchivosProcesos;
 extern t_list* PIDsPorSocketConsola;
+extern t_list* CPUSDisponibles;
 extern t_list* Semaforos;
 extern t_list* VariablesGlobales;
 extern t_list* PaginasPorProceso;

@@ -3,6 +3,7 @@
 t_list* ArchivosGlobales;
 t_list* ArchivosProcesos;
 t_list* PIDsPorSocketConsola;
+t_list* CPUSDisponibles;
 t_list* Semaforos;
 //t_list* Paginas;
 t_list* VariablesGlobales;
@@ -77,6 +78,8 @@ void CrearListas() {
 	VariablesGlobales = list_create();
 	Semaforos = list_create();
 	PIDsPorSocketConsola = list_create();
+	CPUSDisponibles = list_create();
+
 	list_add(EstadosConProgramasFinalizables,Nuevos);
 	list_add(EstadosConProgramasFinalizables,Listos);
 	list_add(EstadosConProgramasFinalizables,Ejecutando);
@@ -97,6 +100,7 @@ void LimpiarListas() {
 	list_destroy_and_destroy_elements(VariablesGlobales,free);
 	list_destroy_and_destroy_elements(Semaforos,free);
 	list_destroy_and_destroy_elements(PIDsPorSocketConsola, free);
+	list_destroy_and_destroy_elements(CPUSDisponibles, free);
 }
 
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos){

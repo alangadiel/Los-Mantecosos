@@ -6,7 +6,11 @@
 #define DESCONECTADODESDECOMANDOCONSOLA -7
 #define SOLICITUDMASGRANDEQUETAMANIOPAGINA -8
 
-int cantProcesadores = 0;
+typedef struct {
+	int socketCPU;
+	bool isFree;
+} DisponibilidadCPU;
+
 int ultimoPID = 0;
 
 void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp,Paquete* paquete){
@@ -125,7 +129,12 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 
 			if(strcmp(paquete->header.emisor, CPU) == 0)
 			{
-				cantProcesadores++;
+				DisponibilidadCPU* disp = malloc(sizeof(DisponibilidadCPU));
+
+				disp->isFree = true;
+				disp->socketCPU = socketFD;
+
+				list_add(CPUSDisponibles, disp);
 			}
 
 			EnviarHandshake(socketFD, receptor); // paquete->header.emisor
@@ -214,6 +223,7 @@ void* accion(void* socket){
 								void* result;
 								char* nombreSem;
 								uint32_t tamanioAReservar;
+
 								case PEDIRSHAREDVAR:
 
 								break;
@@ -292,126 +302,126 @@ void* accion(void* socket){
 									}
 
 
-									break;
+								break;
 
-									case SIGNALSEM:
-										PID = ((uint32_t*)paquete.Payload)[1];
-										strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t)));
-										 result = NULL;
+								case SIGNALSEM:
+									PID = ((uint32_t*)paquete.Payload)[1];
+									strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t)));
+									 result = NULL;
 
-										result = (semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((semaforo*) item)->nombreSemaforo == nombreSem; }));
+									result = (semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((semaforo*) item)->nombreSemaforo == nombreSem; }));
 
-										if(result == NULL) //No hay semaforo con ese nombre
-										{
-											int tamDatos = sizeof(uint32_t) * 2;
-											void* datos = malloc(tamDatos);
-
-											((uint32_t*) datos)[0] = SIGNALSEM;
-											((uint32_t*) datos)[1] = -1;
-
-											EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-
-											free(datos);
-										}
-										else
-										{
-											semaforo* semaf = (semaforo*)result;
-
-											semaf->valorSemaforo++;
-
-											int tamDatos = sizeof(uint32_t) * 2;
-											void* datos = malloc(tamDatos);
-
-											((uint32_t*) datos)[0] = WAITSEM;
-											((uint32_t*) datos)[1] = semaf->valorSemaforo;
-
-											EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-
-											free(datos);
-										}
-
-
-									break;
-
-									case RESERVARHEAP:
-										PID = ((uint32_t*)paquete.Payload)[1];
-										tamanioAReservar = ((uint32_t*)paquete.Payload)[2];
-
-										uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
-
+									if(result == NULL) //No hay semaforo con ese nombre
+									{
 										int tamDatos = sizeof(uint32_t) * 2;
 										void* datos = malloc(tamDatos);
 
-										((uint32_t*) datos)[0] = RESERVARHEAP;
-										((uint32_t*) datos)[1] = punteroADevolver;
+										((uint32_t*) datos)[0] = SIGNALSEM;
+										((uint32_t*) datos)[1] = -1;
 
 										EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
 										free(datos);
+									}
+									else
+									{
+										semaforo* semaf = (semaforo*)result;
 
+										semaf->valorSemaforo++;
 
-									break;
+										int tamDatos = sizeof(uint32_t) * 2;
+										void* datos = malloc(tamDatos);
 
-									case LIBERARHEAP:
-										 PID = ((uint32_t*)paquete.Payload)[1];
-										uint32_t punteroALiberar = ((uint32_t*)paquete.Payload)[2];
-										PosicionDeMemoria pos;
-										pos.NumeroDePagina = punteroALiberar/TamanioPagina;
-										pos.Offset = punteroALiberar % TamanioPagina;
-										SolicitudLiberacionDeBloque(socketConectado, PID, pos);
-
-										//SolicitudLiberacion no hace ningun return ni validacion, habria que hacer algo ahi
-										//asi puedo puedo ponerle un valor a valorADevolver
-
-										 tamDatos = sizeof(uint32_t) * 2;
-										 datos = malloc(tamDatos);
-
-										((uint32_t*) datos)[0] = RESERVARHEAP;
-										((uint32_t*) datos)[1] = valorADevolver;
+										((uint32_t*) datos)[0] = WAITSEM;
+										((uint32_t*) datos)[1] = semaf->valorSemaforo;
 
 										EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
-
-									break;
-
-									case ABRIRARCHIVO:
-										PID = ((uint32_t*)paquete.Payload)[1];
-										bool* flagCreacion = ((bool*)(paquete.Payload+sizeof(uint32_t) * 2));
-										//Hacer que los permisos sean char[3], hablar con uri
-										char* path = ((char**)paquete.Payload)[sizeof(uint32_t) * 2 + sizeof(bool)];
-
-										abrirArchivo(path, PID, flagCreacion);
+										free(datos);
+									}
 
 
+								break;
+
+								case RESERVARHEAP:
+									PID = ((uint32_t*)paquete.Payload)[1];
+									tamanioAReservar = ((uint32_t*)paquete.Payload)[2];
+
+									uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
+
+									int tamDatos = sizeof(uint32_t) * 2;
+									void* datos = malloc(tamDatos);
+
+									((uint32_t*) datos)[0] = RESERVARHEAP;
+									((uint32_t*) datos)[1] = punteroADevolver;
+
+									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
+									free(datos);
 
 
-									break;
+								break;
 
-									case BORRARARCHIVO:
-										PID = ((int*)paquete.Payload)[1];
+								case LIBERARHEAP:
+									 PID = ((uint32_t*)paquete.Payload)[1];
+									uint32_t punteroALiberar = ((uint32_t*)paquete.Payload)[2];
+									PosicionDeMemoria pos;
+									pos.NumeroDePagina = punteroALiberar/TamanioPagina;
+									pos.Offset = punteroALiberar % TamanioPagina;
+									SolicitudLiberacionDeBloque(socketConectado, PID, pos);
 
-									break;
+									//SolicitudLiberacion no hace ningun return ni validacion, habria que hacer algo ahi
+									//asi puedo puedo ponerle un valor a valorADevolver
 
-									case CERRARARCHIVO:
+									 tamDatos = sizeof(uint32_t) * 2;
+									 datos = malloc(tamDatos);
 
-									break;
+									((uint32_t*) datos)[0] = RESERVARHEAP;
+									((uint32_t*) datos)[1] = valorADevolver;
 
-									case MOVERCURSOSARCHIVO:
+									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
-									break;
 
-									case ESCRIBIRARCHIVO:
+								break;
 
-									break;
+								case ABRIRARCHIVO:
+									PID = ((uint32_t*)paquete.Payload)[1];
+									bool* flagCreacion = ((bool*)(paquete.Payload+sizeof(uint32_t) * 2));
+									//Hacer que los permisos sean char[3], hablar con uri
+									char* path = ((char**)paquete.Payload)[sizeof(uint32_t) * 2 + sizeof(bool)];
 
-									case LEERARCHIVO:
+									abrirArchivo(path, PID, flagCreacion);
 
-									break;
 
-									case FINEJECUCIONPROGRAMA:
 
-									break;
-								}
+
+								break;
+
+								case BORRARARCHIVO:
+									PID = ((int*)paquete.Payload)[1];
+
+								break;
+
+								case CERRARARCHIVO:
+
+								break;
+
+								case MOVERCURSOSARCHIVO:
+
+								break;
+
+								case ESCRIBIRARCHIVO:
+
+								break;
+
+								case LEERARCHIVO:
+
+								break;
+
+								case FINEJECUCIONPROGRAMA:
+
+								break;
+							}
 					}
 					break;
 
@@ -436,9 +446,12 @@ void* accion(void* socket){
 				}
 			break;
 		}
+
 		free(paquete.Payload);
 	}
+
 	close(socketConectado);
+
 	return NULL;
 
 }
