@@ -214,157 +214,181 @@ void* accion(void* socket){
 
 					if(strcmp(paquete.header.emisor, CPU)==0)
 					{
-							switch ((*(uint32_t*)paquete.Payload))
-							{
-								uint32_t valorADevolver;
-								uint32_t valorAAsignar;
-								char* variableCompartida;
-								uint32_t PID;
-								void* result;
-								void* datos;
-								VariableCompartida var;
-								int tamDatos;
+						switch ((*(uint32_t*)paquete.Payload))
+						{
+							uint32_t valorADevolver;
+							uint32_t valorAAsignar;
+							char* variableCompartida;
+							uint32_t PID;
+							void* result;
+							void* datos;
+							VariableCompartida var;
+							int tamDatos;
 
-								char* nombreSem;
-								uint32_t tamanioAReservar;
+							char* nombreSem;
+							uint32_t tamanioAReservar;
 
-								case PEDIRSHAREDVAR:
-									PID = ((uint32_t*)paquete.Payload)[1];
-									strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t)*2));
-									//Busco la variable compartida
-									result=NULL;
-									result = list_find(VariablesCompartidas,
-										LAMBDA(bool _(void* item) {
-											return strcmp(((VariableCompartida*)item)->nombreVariableGlobal,variableCompartida)==0;
-									}));
-									 var = *(VariableCompartida*)result;
+							case PEDIRSHAREDVAR:
+								PID = ((uint32_t*)paquete.Payload)[1];
+								strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t)*2));
+								//Busco la variable compartida
+								result=NULL;
+								result = list_find(VariablesCompartidas,
+									LAMBDA(bool _(void* item) {
+										return strcmp(((VariableCompartida*)item)->nombreVariableGlobal,variableCompartida)==0;
+								}));
+								 var = *(VariableCompartida*)result;
 
-									//Devuelvo a la cpu el valor de la variable compartida
-									tamDatos = sizeof(uint32_t) * 2;
-									datos = malloc(tamDatos);
-									((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
-									((uint32_t*) datos)[1] = var.valorVariableGlobal;
-									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-									free(datos);
-
-
-								break;
-
-								case ASIGNARSHAREDVAR:
-									PID = ((uint32_t*)paquete.Payload)[1];
-									valorAAsignar = ((uint32_t*)paquete.Payload)[2];
-									strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t)*3));
-									//Busco la variable compartida
-									result=NULL;
-									result = list_find(VariablesCompartidas,
-										LAMBDA(bool _(void* item) {
-											return strcmp(((VariableCompartida*)item)->nombreVariableGlobal,variableCompartida)==0;
-									}));
-									var = *(VariableCompartida*)result;
-									var.valorVariableGlobal = valorAAsignar;
-									//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
-									 tamDatos = sizeof(uint32_t) * 2;
-									 datos = malloc(tamDatos);
-									((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
-									((uint32_t*) datos)[1] = var.valorVariableGlobal;
-									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-									free(datos);
+								//Devuelvo a la cpu el valor de la variable compartida
+								tamDatos = sizeof(uint32_t) * 2;
+								datos = malloc(tamDatos);
+								((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
+								((uint32_t*) datos)[1] = var.valorVariableGlobal;
+								EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+								free(datos);
 
 
+							break;
 
-								break;
-
-								case WAITSEM:
-									PID = ((uint32_t*)paquete.Payload)[sizeof(uint32_t)];
-									strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
-
-									result = NULL;
-
-									result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
-
-									Semaforo* semaf = (Semaforo*)result;
-									semaf->valorSemaforo--;
-
-								break;
-
-								case SIGNALSEM:
-									PID = ((uint32_t*)paquete.Payload)[1];
-									strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t)*2));
-									 result = NULL;
-
-									result = (Semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
-									Semaforo* semaf = (Semaforo*)result;
-									semaf->valorSemaforo++;
-
-								break;
-
-								case RESERVARHEAP:
-									PID = ((uint32_t*)paquete.Payload)[1];
-									tamanioAReservar = ((uint32_t*)paquete.Payload)[2];
-
-									uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
-
-									 tamDatos = sizeof(uint32_t) * 2;
-									 datos = malloc(tamDatos);
-
-									((uint32_t*) datos)[0] = RESERVARHEAP;
-									((uint32_t*) datos)[1] = punteroADevolver;
-
-									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-
-									free(datos);
-
-
-								break;
-
-								case LIBERARHEAP:
-									 PID = ((uint32_t*)paquete.Payload)[1];
-									uint32_t punteroALiberar = ((uint32_t*)paquete.Payload)[2];
-									PosicionDeMemoria pos;
-									pos.NumeroDePagina = punteroALiberar/TamanioPagina;
-									pos.Offset = punteroALiberar % TamanioPagina;
-									SolicitudLiberacionDeBloque(socketConectado, PID, pos);
-
-								break;
-
-								case ABRIRARCHIVO:
-									PID = ((uint32_t*)paquete.Payload)[1];
-									bool* flagCreacion = ((bool*)(paquete.Payload+sizeof(uint32_t) * 2));
-									//Hacer que los permisos sean char[3], hablar con uri
-									char* path = ((char**)paquete.Payload)[sizeof(uint32_t) * 2 + sizeof(bool)];
-
-									abrirArchivo(path, PID, flagCreacion);
+							case ASIGNARSHAREDVAR:
+								PID = ((uint32_t*)paquete.Payload)[1];
+								valorAAsignar = ((uint32_t*)paquete.Payload)[2];
+								strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t)*3));
+								//Busco la variable compartida
+								result=NULL;
+								result = list_find(VariablesCompartidas,
+									LAMBDA(bool _(void* item) {
+										return strcmp(((VariableCompartida*)item)->nombreVariableGlobal,variableCompartida)==0;
+								}));
+								var = *(VariableCompartida*)result;
+								var.valorVariableGlobal = valorAAsignar;
+								//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
+								 tamDatos = sizeof(uint32_t) * 2;
+								 datos = malloc(tamDatos);
+								((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
+								((uint32_t*) datos)[1] = var.valorVariableGlobal;
+								EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+								free(datos);
 
 
 
+							break;
 
-								break;
+							case WAITSEM:
+								PID = ((uint32_t*)paquete.Payload)[sizeof(uint32_t)];
+								strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
 
-								case BORRARARCHIVO:
-									PID = ((int*)paquete.Payload)[1];
+								result = NULL;
 
-								break;
+								result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
 
-								case CERRARARCHIVO:
+								Semaforo* semaf = (Semaforo*)result;
+								semaf->valorSemaforo--;
 
-								break;
+							break;
 
-								case MOVERCURSOSARCHIVO:
+							case SIGNALSEM:
+								PID = ((uint32_t*)paquete.Payload)[1];
+								strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t)*2));
+								 result = NULL;
 
-								break;
+								result = (Semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
+								Semaforo* semaf = (Semaforo*)result;
+								semaf->valorSemaforo++;
 
-								case ESCRIBIRARCHIVO:
+							break;
 
-								break;
+							case RESERVARHEAP:
+								PID = ((uint32_t*)paquete.Payload)[1];
+								tamanioAReservar = ((uint32_t*)paquete.Payload)[2];
 
-								case LEERARCHIVO:
+								uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
 
-								break;
+								 tamDatos = sizeof(uint32_t) * 2;
+								 datos = malloc(tamDatos);
 
-								case FINEJECUCIONPROGRAMA:
+								((uint32_t*) datos)[0] = RESERVARHEAP;
+								((uint32_t*) datos)[1] = punteroADevolver;
 
-								break;
-							}
+								EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
+								free(datos);
+
+
+							break;
+
+							case LIBERARHEAP:
+								 PID = ((uint32_t*)paquete.Payload)[1];
+								uint32_t punteroALiberar = ((uint32_t*)paquete.Payload)[2];
+								PosicionDeMemoria pos;
+								pos.NumeroDePagina = punteroALiberar/TamanioPagina;
+								pos.Offset = punteroALiberar % TamanioPagina;
+								SolicitudLiberacionDeBloque(socketConectado, PID, pos);
+
+							break;
+
+							case ABRIRARCHIVO:
+								PID = ((uint32_t*)paquete.Payload)[1];
+
+								bool permisos[3];
+
+								permisos[0] = ((bool*)paquete.Payload)[sizeof(uint32_t) * 2];
+								permisos[1] = ((bool*)paquete.Payload)[sizeof(uint32_t) * 3];
+								permisos[2] = ((bool*)paquete.Payload)[sizeof(uint32_t) * 4];
+								//Hacer que los permisos sean char[3], hablar con uri
+								char* path = ((char**)paquete.Payload)[sizeof(uint32_t) * 2 + sizeof(bool) * 3];
+
+								abrirArchivo(path, PID, permisos);
+							break;
+
+							case BORRARARCHIVO:
+								PID = ((uint32_t*)paquete.Payload)[1];
+
+								uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+
+								borrarArchivo(FD, PID);
+							break;
+
+							case CERRARARCHIVO:
+								PID = ((uint32_t*)paquete.Payload)[1];
+
+								uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+
+								cerrarArchivo(FD, PID);
+							break;
+
+							case MOVERCURSOSARCHIVO:
+								PID = ((uint32_t*)paquete.Payload)[1];
+
+								uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+
+								uint32_t posicion = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+
+								moverCursor(FD, PID, posicion);
+							break;
+
+							case ESCRIBIRARCHIVO:
+								PID = ((uint32_t*)paquete.Payload)[1];
+
+								uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+
+								uint32_t tamanio = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+
+								bool* flagEscritura = ((bool*)paquete.Payload)[sizeof(uint32_t) * 4];
+
+								void* datos = ((void**)paquete.Payload)[sizeof(uint32_t) * 4 + sizeof(bool)];
+
+								escribirArchivo(FD, PID, tamanio, datos, flagEscritura);
+							break;
+
+							case LEERARCHIVO:
+
+							break;
+
+							case FINEJECUCIONPROGRAMA:
+
+							break;
+						}
 					}
 					break;
 

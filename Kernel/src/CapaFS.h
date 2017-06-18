@@ -7,7 +7,7 @@ typedef struct {
 	uint32_t PID;
 	uint32_t FD; //Empieza a partir de FD = 3. El 0, 1 y 2 estan reservados por convencion.
 	uint32_t offsetArchivo;
-	char* flag;
+	bool flags[3]; //[0] es Creacion, [1] es Escritura, [2] es Lectura
 	uint32_t globalFD;
 } archivoProceso;
 
