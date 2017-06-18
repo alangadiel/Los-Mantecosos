@@ -6,7 +6,7 @@ t_list* PIDsPorSocketConsola;
 t_list* CPUSDisponibles;
 t_list* Semaforos;
 //t_list* Paginas;
-t_list* VariablesGlobales;
+t_list* VariablesCompartidas;
 t_list* PaginasPorProceso;
 t_list* Nuevos;
 t_list* Finalizados;
@@ -75,7 +75,7 @@ void CrearListas() {
 	Estados = list_create();
 	EstadosConProgramasFinalizables = list_create();
 	ArchivosGlobales = list_create();
-	VariablesGlobales = list_create();
+	VariablesCompartidas = list_create();
 	Semaforos = list_create();
 	PIDsPorSocketConsola = list_create();
 	CPUSDisponibles = list_create();
@@ -97,7 +97,7 @@ void LimpiarListas() {
 	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
 	list_destroy_and_destroy_elements(ArchivosGlobales,free);
 	list_destroy_and_destroy_elements(ArchivosProcesos,free);
-	list_destroy_and_destroy_elements(VariablesGlobales,free);
+	list_destroy_and_destroy_elements(VariablesCompartidas,free);
 	list_destroy_and_destroy_elements(Semaforos,free);
 	list_destroy_and_destroy_elements(PIDsPorSocketConsola, free);
 	list_destroy_and_destroy_elements(CPUSDisponibles, free);

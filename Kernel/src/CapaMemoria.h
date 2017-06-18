@@ -12,12 +12,12 @@ typedef struct {
 typedef struct {
 	char* nombreVariableGlobal;
 	uint32_t valorVariableGlobal;
-} variableGlobal;
+} VariableCompartida;
 
 typedef struct {
 	char* nombreSemaforo;
 	uint32_t valorSemaforo;
-} semaforo;
+} Semaforo;
 
 
 uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantAReservar, int socketFD);

@@ -47,7 +47,7 @@ extern t_list* ArchivosProcesos;
 extern t_list* PIDsPorSocketConsola;
 extern t_list* CPUSDisponibles;
 extern t_list* Semaforos;
-extern t_list* VariablesGlobales;
+extern t_list* VariablesCompartidas;
 extern t_list* PaginasPorProceso;
 extern t_list* Nuevos;
 extern t_list* Finalizados;

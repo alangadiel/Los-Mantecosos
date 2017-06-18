@@ -50,6 +50,11 @@ void obtenerValoresArchivoConfiguracion() {
 					{
 						SHARED_VARS[i] = texto;
 						texto = strtok (NULL, ",");
+						//Inicializo las variables compartidas
+						VariableCompartida nuevaVar;
+						nuevaVar.nombreVariableGlobal = texto;
+						nuevaVar.valorVariableGlobal=0;
+						list_add(VariablesCompartidas,&nuevaVar);
 						i++;
 					}
 
