@@ -149,6 +149,7 @@ t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 
 	return val;
 }
+
 void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
 	t_valor_variable val = variable;
 	int nroPag = puntero/TamanioPaginaMemoria;
@@ -158,6 +159,7 @@ void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
 
 
 }
+
 t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
 	t_valor_variable result = PedirValorVariableCompartida(variable);
 	t_valor_variable val = *(t_valor_variable*)result;
@@ -165,6 +167,7 @@ t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
 
 	return val;
 }
+
 t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
 	t_valor_variable result = AsignarValorVariableCompartida(variable,valor);
 	t_valor_variable val = *(t_valor_variable*)result;
@@ -172,6 +175,7 @@ t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, 
 
 	return val;
 }
+
 void primitiva_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
 	//La proxima instruccion a ejecutar es la de la linea donde esta la etiqueta
 	pcb.ProgramCounter = *(int*)dictionary_get(pcb.IndiceDeEtiquetas,t_nombre_etiqueta);
@@ -198,6 +202,7 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 	//La proxima instruccion a ejecutar es la de la funcion en cuestion
 	primitiva_irAlLabel(etiqueta);
 }
+
 //TODAS LAS FUNCIONES RETORNAR UN VALOR, NO EXISTE EL CONCEPTO DE PROCEDIMIENTO: LO DICE EL TP
 void primitiva_finalizar(void){
 	//Si hay un solo registro de stack y se llama esta funcion, hay que finalizar el programa
@@ -252,7 +257,7 @@ void primitiva_wait(t_nombre_semaforo identificador_semaforo){
 		((uint32_t*) datos)[0] = WAITSEM;
 		((uint32_t*) datos)[1] = pcb.PID;
 		memcpy(datos+sizeof(uint32_t)*2, identificador_semaforo, string_length(identificador_semaforo)+1);
-		t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+		EnviarDatos(socketKernel,CPU,datos,tamDatos);
 		free(datos);
 		pcb.ProgramCounter++;
 
@@ -264,7 +269,7 @@ void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 		((uint32_t*) datos)[0] = SIGNALSEM;
 		((uint32_t*) datos)[1] = pcb.PID;
 		memcpy(datos+sizeof(uint32_t)*2, identificador_semaforo, string_length(identificador_semaforo)+1);
-		uint32_t* result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+		EnviarDatos(socketKernel,CPU,datos,tamDatos);
 		free(datos);
 		pcb.ProgramCounter++;
 
@@ -272,7 +277,6 @@ void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 t_puntero primitiva_reservar(t_valor_variable espacio){
 	t_puntero pointer = *(t_puntero*)ReservarBloqueMemoriaDinamica(espacio);
 	pcb.ProgramCounter++;
-
 	return pointer;
 }
 void primitiva_liberar(t_puntero puntero){
@@ -282,15 +286,13 @@ void primitiva_liberar(t_puntero puntero){
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = puntero;
 	//Este result es para indicar si salio todo bien o no,pero no seria necesario
-	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.ProgramCounter++;
-
 }
 t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
 	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags);
 	pcb.ProgramCounter++;
-
 	return fd;
 }
 void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
@@ -299,8 +301,7 @@ void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
 	((uint32_t*) datos)[0] = BORRARARCHIVO;
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = descriptor_archivo;
-	//Este result es para indicar si salio todo bien o no,pero no seria necesario
-	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.ProgramCounter++;
 
@@ -311,8 +312,7 @@ void primitiva_cerrar(t_descriptor_archivo descriptor_archivo){
 	((uint32_t*) datos)[0] = CERRARARCHIVO;
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = descriptor_archivo;
-	//Este result es para indicar si salio todo bien o no,pero no seria necesario
-	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.ProgramCounter++;
 
@@ -325,8 +325,7 @@ void primitiva_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_vari
 	((uint32_t*) datos)[2] = descriptor_archivo;
 	//Posicion a donde mover el cursor
 	((uint32_t*) datos)[3] = posicion;
-	//Este result es para indicar si salio todo bien o no,pero no seria necesario
-	uint32_t result = *(uint32_t*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.ProgramCounter++;
 
@@ -339,7 +338,8 @@ void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informaci
 	((uint32_t*) datos)[2] = descriptor_archivo;
 	((uint32_t*) datos)[3] = tamanio;
 	memcpy(datos+sizeof(uint32_t)*4,informacion,tamanio);
-	uint32_t result = EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	free(datos);
 	pcb.ProgramCounter++;
 
 }
@@ -350,7 +350,8 @@ void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informaci
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = descriptor_archivo;
 	((uint32_t*) datos)[3] = tamanio;
-	uint32_t result = EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	free(datos);
 	pcb.ProgramCounter++;
 }
 
