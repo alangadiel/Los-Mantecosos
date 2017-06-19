@@ -350,3 +350,41 @@ uint32_t IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog) {
 	free(paquete);
 	return r;
 }
+
+void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe) {
+
+	int tamIndiceCodigo = list_size(pecebe->IndiceDeCodigo) * sizeof(uint32_t) * 2; //IndiceDeCodigo
+
+	int tamIndiceEtiquetas = 0; //IndiceDeEtiquetas
+
+	for (int i = 0; i < dictionary_size(pecebe->IndiceDeEtiquetas); i++){
+		tamIndiceEtiquetas += sizeof(uint32_t);
+	}
+
+	int tamIndiceStack = 0; //IndiceDelStack
+
+	for (int i = 0; i < list_size(pecebe->IndiceDelStack); i++){
+		tamIndiceStack += sizeof(uint32_t) * 4 //DireccionDeRetorno y PosicionDeMemoria(struct con 3 uint32_t)
+					+ list_size(((IndiceStack)pecebe->IndiceDelStack).Argumentos) * sizeof(uint32_t) //Argumentos
+					+ list_size(((IndiceStack)pecebe->IndiceDelStack).Variables) * sizeof(uint32_t); //Variables
+	}
+
+	int tamDatos = sizeof(uint32_t) * 4 //PID, ProgramCounter, PaginasDeCodigo, ExitCode
+						+ tamIndiceCodigo //IndiceDeCodigo
+						+ tamIndiceEtiquetas //IndiceDeEtiquetas
+						+ tamIndiceStack; //IndiceDelStack
+
+	void* pcbSerializado = malloc(tamDatos);
+
+	((uint32_t*) pcbSerializado)[0] = pecebe->PID;
+	((uint32_t*) pcbSerializado)[1] = pecebe->ProgramCounter;
+	((uint32_t*) pcbSerializado)[2] = pecebe->PaginasDeCodigo;
+	((uint32_t*) pcbSerializado)[3] = pecebe->ExitCode;
+	((uint32_t*) pcbSerializado)[4] = list_size(pecebe->IndiceDeCodigo); //cantElementosIndiceDeCodigo
+	((uint32_t*) pcbSerializado)[5] = dictionary_size(pecebe->IndiceDeEtiquetas); //cantElementosIndiceDeEtiquetas
+	((uint32_t*) pcbSerializado)[6] = list_size(pecebe->IndiceDelStack); //cantElementosIndiceDelStack
+	memcpy(pcbSerializado+sizeof(uint32_t) * 7, pecebe->IndiceDeCodigo, tamIndiceCodigo);
+	memcpy(pcbSerializado+sizeof(uint32_t) * 7 + tamIndiceCodigo, pecebe->IndiceDeEtiquetas, tamIndiceEtiquetas);
+	memcpy(pcbSerializado+sizeof(uint32_t) * 7 + tamIndiceCodigo + tamIndiceEtiquetas, pecebe->IndiceDelStack, tamIndiceStack);
+	pcb_Destroy(pecebe);
+}

@@ -43,7 +43,7 @@ typedef struct {
 	t_list* IndiceDeCodigo;    //Cada elemento seria un array de 2 ints
 	t_dictionary* IndiceDeEtiquetas;
 	t_list* IndiceDelStack; //lista de IndiceStack
-	int ExitCode;
+	uint32_t ExitCode;
 }__attribute__((packed)) BloqueControlProceso;
 
 typedef struct {
@@ -56,7 +56,7 @@ char* integer_to_string(int x);
 char* obtenerTiempoString(time_t t);
 int GetTamanioArchivo(FILE * f);
 
-void pcb_Create(BloqueControlProceso*, int*);
-void pcb_Destroy(BloqueControlProceso* pcb);
+void pcb_Create(BloqueControlProceso* pecebe, int*);
+void pcb_Destroy(BloqueControlProceso* pecebe);
 
 #endif /* HELPER_*/
