@@ -210,208 +210,209 @@ void* accion(void* socket){
 
 					}
 					break;
+
 					case ESDATOS:
-
-					if(strcmp(paquete.header.emisor, CPU)==0)
-					{
-						switch ((*(uint32_t*)paquete.Payload))
+						if(strcmp(paquete.header.emisor, CPU) == 0)
 						{
-							uint32_t valorADevolver;
-							uint32_t valorAAsignar;
-							char* variableCompartida;
-							uint32_t PID;
-							void* result;
-							void* datos;
-							VariableCompartida var;
-							int tamDatos;
+							switch ((*(uint32_t*)paquete.Payload))
+							{
+								uint32_t valorADevolver;
+								uint32_t valorAAsignar;
+								char* variableCompartida;
+								uint32_t PID;
+								void* result;
+								void* datos;
+								VariableCompartida var;
+								int tamDatos;
 
-							char* nombreSem;
-							uint32_t tamanioAReservar;
+								char* nombreSem;
+								uint32_t tamanioAReservar;
 
-							case PEDIRSHAREDVAR:
-								PID = ((uint32_t*)paquete.Payload)[1];
-								strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t)*2));
-								//Busco la variable compartida
-								result=NULL;
-								result = list_find(VariablesCompartidas,
-									LAMBDA(bool _(void* item) {
-										return strcmp(((VariableCompartida*)item)->nombreVariableGlobal,variableCompartida)==0;
-								}));
-								 var = *(VariableCompartida*)result;
+								case PEDIRSHAREDVAR:
+									PID = ((uint32_t*)paquete.Payload)[1];
+									strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t)*2));
+									//Busco la variable compartida
+									result=NULL;
+									result = list_find(VariablesCompartidas,
+										LAMBDA(bool _(void* item) {
+											return strcmp(((VariableCompartida*)item)->nombreVariableGlobal,variableCompartida)==0;
+									}));
+									 var = *(VariableCompartida*)result;
 
-								//Devuelvo a la cpu el valor de la variable compartida
-								tamDatos = sizeof(uint32_t) * 2;
-								datos = malloc(tamDatos);
-								((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
-								((uint32_t*) datos)[1] = var.valorVariableGlobal;
-								EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-								free(datos);
-
-
-							break;
-
-							case ASIGNARSHAREDVAR:
-								PID = ((uint32_t*)paquete.Payload)[1];
-								valorAAsignar = ((uint32_t*)paquete.Payload)[2];
-								strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t)*3));
-								//Busco la variable compartida
-								result=NULL;
-								result = list_find(VariablesCompartidas,
-									LAMBDA(bool _(void* item) {
-										return strcmp(((VariableCompartida*)item)->nombreVariableGlobal,variableCompartida)==0;
-								}));
-								var = *(VariableCompartida*)result;
-								var.valorVariableGlobal = valorAAsignar;
-								//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
-								 tamDatos = sizeof(uint32_t) * 2;
-								 datos = malloc(tamDatos);
-								((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
-								((uint32_t*) datos)[1] = var.valorVariableGlobal;
-								EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-								free(datos);
+									//Devuelvo a la cpu el valor de la variable compartida
+									tamDatos = sizeof(uint32_t) * 2;
+									datos = malloc(tamDatos);
+									((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
+									((uint32_t*) datos)[1] = var.valorVariableGlobal;
+									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+									free(datos);
 
 
+								break;
 
-							break;
-
-							case WAITSEM:
-								PID = ((uint32_t*)paquete.Payload)[sizeof(uint32_t)];
-								strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
-
-								result = NULL;
-
-								result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
-
-								Semaforo* semaf = (Semaforo*)result;
-								semaf->valorSemaforo--;
-
-							break;
-
-							case SIGNALSEM:
-								PID = ((uint32_t*)paquete.Payload)[1];
-								strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t)*2));
-								 result = NULL;
-
-								result = (Semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
-								Semaforo* semaf = (Semaforo*)result;
-								semaf->valorSemaforo++;
-
-							break;
-
-							case RESERVARHEAP:
-								PID = ((uint32_t*)paquete.Payload)[1];
-								tamanioAReservar = ((uint32_t*)paquete.Payload)[2];
-
-								uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
-
-								 tamDatos = sizeof(uint32_t) * 2;
-								 datos = malloc(tamDatos);
-
-								((uint32_t*) datos)[0] = RESERVARHEAP;
-								((uint32_t*) datos)[1] = punteroADevolver;
-
-								EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-
-								free(datos);
+								case ASIGNARSHAREDVAR:
+									PID = ((uint32_t*)paquete.Payload)[1];
+									valorAAsignar = ((uint32_t*)paquete.Payload)[2];
+									strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t)*3));
+									//Busco la variable compartida
+									result=NULL;
+									result = list_find(VariablesCompartidas,
+										LAMBDA(bool _(void* item) {
+											return strcmp(((VariableCompartida*)item)->nombreVariableGlobal,variableCompartida)==0;
+									}));
+									var = *(VariableCompartida*)result;
+									var.valorVariableGlobal = valorAAsignar;
+									//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
+									 tamDatos = sizeof(uint32_t) * 2;
+									 datos = malloc(tamDatos);
+									((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
+									((uint32_t*) datos)[1] = var.valorVariableGlobal;
+									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+									free(datos);
 
 
-							break;
 
-							case LIBERARHEAP:
-								 PID = ((uint32_t*)paquete.Payload)[1];
-								uint32_t punteroALiberar = ((uint32_t*)paquete.Payload)[2];
-								PosicionDeMemoria pos;
-								pos.NumeroDePagina = punteroALiberar/TamanioPagina;
-								pos.Offset = punteroALiberar % TamanioPagina;
-								SolicitudLiberacionDeBloque(socketConectado, PID, pos);
+								break;
 
-							break;
+								case WAITSEM:
+									PID = ((uint32_t*)paquete.Payload)[sizeof(uint32_t)];
+									strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
 
-							case ABRIRARCHIVO:
-								PID = ((uint32_t*)paquete.Payload)[1];
+									result = NULL;
 
-								bool permisos[3];
+									result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
 
-								permisos[0] = ((bool*)paquete.Payload)[sizeof(uint32_t) * 2];
-								permisos[1] = ((bool*)paquete.Payload)[sizeof(uint32_t) * 3];
-								permisos[2] = ((bool*)paquete.Payload)[sizeof(uint32_t) * 4];
-								//Hacer que los permisos sean char[3], hablar con uri
-								char* path = ((char**)paquete.Payload)[sizeof(uint32_t) * 2 + sizeof(bool) * 3];
+									Semaforo* semaf = (Semaforo*)result;
+									semaf->valorSemaforo--;
 
-								abrirArchivo(path, PID, permisos);
-							break;
+								break;
 
-							case BORRARARCHIVO:
-								PID = ((uint32_t*)paquete.Payload)[1];
+								case SIGNALSEM:
+									PID = ((uint32_t*)paquete.Payload)[1];
+									strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t)*2));
+									 result = NULL;
 
-								uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+									result = (Semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
+									Semaforo* semaf = (Semaforo*)result;
+									semaf->valorSemaforo++;
 
-								borrarArchivo(FD, PID);
-							break;
+								break;
 
-							case CERRARARCHIVO:
-								PID = ((uint32_t*)paquete.Payload)[1];
+								case RESERVARHEAP:
+									PID = ((uint32_t*)paquete.Payload)[1];
+									tamanioAReservar = ((uint32_t*)paquete.Payload)[2];
 
-								uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+									uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
 
-								cerrarArchivo(FD, PID);
-							break;
+									 tamDatos = sizeof(uint32_t) * 2;
+									 datos = malloc(tamDatos);
 
-							case MOVERCURSOSARCHIVO:
-								PID = ((uint32_t*)paquete.Payload)[1];
+									((uint32_t*) datos)[0] = RESERVARHEAP;
+									((uint32_t*) datos)[1] = punteroADevolver;
 
-								uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
-								uint32_t posicion = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+									free(datos);
 
-								moverCursor(FD, PID, posicion);
-							break;
 
-							case ESCRIBIRARCHIVO:
-								PID = ((uint32_t*)paquete.Payload)[1];
+								break;
 
-								uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+								case LIBERARHEAP:
+									 PID = ((uint32_t*)paquete.Payload)[1];
+									uint32_t punteroALiberar = ((uint32_t*)paquete.Payload)[2];
+									PosicionDeMemoria pos;
+									pos.NumeroDePagina = punteroALiberar/TamanioPagina;
+									pos.Offset = punteroALiberar % TamanioPagina;
+									SolicitudLiberacionDeBloque(socketConectado, PID, pos);
 
-								uint32_t tamanio = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+								break;
 
-								bool* flagEscritura = ((bool*)paquete.Payload)[sizeof(uint32_t) * 4];
+								case ABRIRARCHIVO:
+									PID = ((uint32_t*)paquete.Payload)[1];
 
-								void* datos = ((void**)paquete.Payload)[sizeof(uint32_t) * 4 + sizeof(bool)];
+									permisosArchivo permisos;
 
-								escribirArchivo(FD, PID, tamanio, datos, flagEscritura);
-							break;
+									permisos.creacion = ((bool*)paquete.Payload)[sizeof(uint32_t) * 2];
+									permisos.escritura = ((bool*)paquete.Payload)[sizeof(uint32_t) * 3];
+									permisos.lectura = ((bool*)paquete.Payload)[sizeof(uint32_t) * 4];
+									char* path = ((char**)paquete.Payload)[sizeof(uint32_t) * 2 + sizeof(bool) * 3];
 
-							case LEERARCHIVO:
+									abrirArchivo(path, PID, permisos);
+								break;
 
-							break;
+								case BORRARARCHIVO:
+									PID = ((uint32_t*)paquete.Payload)[1];
 
-							case FINEJECUCIONPROGRAMA:
+									uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
 
-							break;
+									borrarArchivo(FD, PID);
+								break;
+
+								case CERRARARCHIVO:
+									PID = ((uint32_t*)paquete.Payload)[1];
+
+									uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+
+									cerrarArchivo(FD, PID);
+								break;
+
+								case MOVERCURSOSARCHIVO:
+									PID = ((uint32_t*)paquete.Payload)[1];
+
+									uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+
+									uint32_t posicion = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+
+									moverCursor(FD, PID, posicion);
+								break;
+
+								case ESCRIBIRARCHIVO:
+									PID = ((uint32_t*)paquete.Payload)[1];
+
+									uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+
+									uint32_t tamanioArchivo = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+
+									char* datosAEscribir = ((char**)paquete.Payload)[sizeof(uint32_t) * 4];
+
+									escribirArchivo(FD, PID, tamanioArchivo, datosAEscribir);
+								break;
+
+								case LEERARCHIVO:
+									PID = ((uint32_t*)paquete.Payload)[1];
+
+									uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+
+									uint32_t tamanioArchivo = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+
+									leerArchivo(FD, PID, tamanioArchivo);
+								break;
+
+								case FINEJECUCIONPROGRAMA:
+
+								break;
+							}
 						}
-					}
 					break;
 
-
-
-			case KILLPROGRAM:
-				if(strcmp(paquete.header.emisor, CONSOLA) == 0)
-				{
-					pidAFinalizar = *(uint32_t*)paquete.Payload;
-					bool finalizadoConExito = KillProgram(pidAFinalizar, DESCONECTADODESDECOMANDOCONSOLA, socketConectado);
-
-					if(finalizadoConExito == true)
+				case KILLPROGRAM:
+					if(strcmp(paquete.header.emisor, CONSOLA) == 0)
 					{
-						printf("El programa %d fue finalizado\n", pidAFinalizar);
-						EnviarMensaje(socketConectado,"KILLEADO",KERNEL);
+						pidAFinalizar = *(uint32_t*)paquete.Payload;
+						bool finalizadoConExito = KillProgram(pidAFinalizar, DESCONECTADODESDECOMANDOCONSOLA, socketConectado);
+
+						if(finalizadoConExito == true)
+						{
+							printf("El programa %d fue finalizado\n", pidAFinalizar);
+							EnviarMensaje(socketConectado,"KILLEADO",KERNEL);
+						}
+						else
+						{
+							printf("Error al finalizar programa %d\n", pidAFinalizar);
+							EnviarMensaje(socketConectado, "Error al finalizar programa", KERNEL);
+						}
 					}
-					else
-					{
-						printf("Error al finalizar programa %d\n", pidAFinalizar);
-						EnviarMensaje(socketConectado, "Error al finalizar programa", KERNEL);
-					}
-				}
-			break;
+				break;
 		}
 
 		free(paquete.Payload);

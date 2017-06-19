@@ -1,7 +1,7 @@
 #include "CapaFS.h"
 int ultimoFD = 3;
 
-void cargarEnTablasArchivos(char* path, uint32_t PID, bool permisos[3])
+void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 {
 	void* result = NULL;
 
@@ -24,7 +24,8 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, bool permisos[3])
 
 		int index = 0;
 		int i;
-		for(i= 0; i < list_size(ArchivosGlobales); i++)
+
+		for(i = 0; i < list_size(ArchivosGlobales); i++)
 		{
 			archivoGlobal* arch = (archivoGlobal*)list_get(ArchivosGlobales, i);
 
@@ -69,7 +70,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, bool permisos[3])
 	{
 		archivoProc->PID = PID;
 		archivoProc->FD = ultimoFD;
-		archivoProc->flag = permisos;
+		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
 		archivoProc->globalFD = index;
 
@@ -85,7 +86,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, bool permisos[3])
 	{
 		archivoProc->PID = PID;
 		archivoProc->FD = ultimoFD;
-		archivoProc->flag = permisos;
+		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
 		archivoProc->globalFD = index;
 
@@ -99,7 +100,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, bool permisos[3])
 	}
 }
 
-uint32_t abrirArchivo(char* path, uint32_t PID, bool permisos[3])
+uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos)
 {
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
 
@@ -109,7 +110,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, bool permisos[3])
 	}
 	else
 	{
-		if(permisos[0] == true)
+		if(permisos.creacion == true)
 		{
 			FS_CrearPrograma(socketConFS, KERNEL, path);
 			cargarEnTablasArchivos(path, PID, permisos);
@@ -129,87 +130,88 @@ uint32_t leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 {
 	void* result = NULL;
 	int i = 0;
+	t_list* listaProceso;
 
 	while(i < list_size(ArchivosProcesos) && result == NULL)
 	{
-		t_list* listaProceso = list_get(ArchivosProcesos, i);
+		listaProceso = (t_list*)list_get(ArchivosProcesos, i);
 
-		result = (archivoProceso*) list_find(listaProceso, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+		result = (archivoProceso*)list_find(listaProceso, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
 
 		i++;
 	}
 
-	archivoProceso* archivoProc = malloc(sizeof(archivoProceso));
-
-	archivoProc = (archivoProceso*)result;
-
-	if(archivoProc->flag[2] == true) //Tiene permisos de lectura
+	if(result != NULL)
 	{
-		if(result != NULL)
+		archivoProceso* archivoProc = malloc(sizeof(archivoProceso));
+
+		archivoProc = (archivoProceso*)result;
+
+		if(archivoProc->flags.lectura == true)
 		{
-			archivoProceso* archProc = malloc(sizeof(archivoProceso));
+			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->FD - 3); //El -3 es porque los FD empiezan desde 3
 
-			archProc = (archivoProceso*)result;
+			uint32_t archivoFueLeido = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo);
 
-			archivoGlobal* archGlob = list_get(ArchivosGlobales, archProc->FD - 3); //El -3 es porque los FD empiezan desde 3
+			archivoProc->offsetArchivo += sizeArchivo;
 
-			uint32_t archivoFueLeido = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, archProc->offsetArchivo, sizeArchivo);
-
-			archProc->offsetArchivo += sizeArchivo;
-
-			free(archProc);
+			list_replace(ArchivosProcesos, FD - 3, archivoProc);
 
 			return archivoFueLeido;
 		}
 		else
 		{
-			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
+			free(archivoProc);
+			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -3
 		}
 	}
 	else
 	{
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -3
+		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
 
-uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t datosAGrabar, char* permisos)
+uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* datosAGrabar)
 {
-	if(strstr(*permisos, "w") != NULL)
+	void* result = NULL;
+	int i = 0;
+
+	while(i < list_size(ArchivosProcesos) && result == NULL)
 	{
-		void* result = NULL;
-		int i = 0;
+		t_list* listaProceso = (t_list*)list_get(ArchivosProcesos, i);
 
-		while(i < list_size(ArchivosProcesos) && result == NULL)
+		result = (archivoProceso*)list_find(listaProceso, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+
+		i++;
+	}
+
+	if(result != NULL)
+	{
+		archivoProceso* archivoProc = malloc(sizeof(archivoProceso));
+
+		archivoProc = (archivoProceso*)result;
+
+		if(archivoProc->flags.escritura == true)
 		{
-			t_list* lista = list_get(ArchivosProcesos, i);
+			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->FD - 3); //El -3 es porque los FD empiezan desde 3
 
-			result = (archivoProceso*) list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+			uint32_t archivoFueEscrito = FS_GuardarDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo, datosAGrabar);
 
-			i++;
-		}
+			archivoProc->offsetArchivo += sizeArchivo;
 
-		if(result != NULL)
-		{
-			archivoProceso* archProc = malloc(sizeof(archivoProceso));
-
-			archProc = (archivoProceso*)result;
-
-			archivoGlobal* archGlob = list_get(ArchivosGlobales, archProc->globalFD);
-
-			uint32_t archivoFueEscrito = FS_GuardarDatos(socketConFS, KERNEL, archGlob->pathArchivo, archProc->offsetArchivo, sizeArchivo, datosAGrabar);
-
-			free(archProc);
+			list_replace(ArchivosProcesos, FD - 3, archivoProc);
 
 			return archivoFueEscrito;
 		}
 		else
 		{
-			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
+			free(archivoProc);
+			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -4
 		}
 	}
 	else
 	{
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -4
+		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
 
@@ -219,26 +221,22 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 	int i = 0;
 	t_list* listaProcesoACerrar;
 
-	list_create(listaProcesoACerrar);
-
 	while(i < list_size(ArchivosProcesos) && result == NULL)
 	{
-		listaProcesoACerrar = list_get(ArchivosProcesos, i);
+		listaProcesoACerrar = (t_list*)list_get(ArchivosProcesos, i);
 
-		result = (archivoProceso*) list_find(listaProcesoACerrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+		result = (archivoProceso*)list_find(listaProcesoACerrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
 
 		i++;
 	}
 
 	if(result != NULL)
 	{
-		listaProcesoACerrar = list_get(ArchivosProcesos, i-1); //El indice que me habia quedado del while anterior
-
 		archivoProceso* procesoACerrar = (archivoProceso*)result;
 
 		archivoGlobal* archivoGlob = malloc(sizeof(archivoGlobal));
 
-		archivoGlob = list_get(ArchivosGlobales, procesoACerrar->globalFD);
+		archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, procesoACerrar->globalFD);
 
 		list_remove_and_destroy_by_condition(listaProcesoACerrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
@@ -264,8 +262,6 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
 	void* result = NULL;
 	int i = 0;
 	t_list* listaProcesoABorrar;
-
-	list_create(listaProcesoABorrar);
 
 	while(i < list_size(ArchivosProcesos) && result == NULL)
 	{
@@ -309,8 +305,6 @@ uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 	void* result = NULL;
 	int i = 0;
 	t_list* listaProceso;
-
-	list_create(listaProceso);
 
 	while(i < list_size(ArchivosProcesos) && result == NULL)
 	{
