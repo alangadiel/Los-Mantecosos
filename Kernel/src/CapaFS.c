@@ -49,7 +49,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 	{
 		t_list* lista = (t_list*)list_get(ArchivosProcesos, i);
 
-		result = (archivoProceso*) list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
+		result = (archivoProceso*)list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
 
 		i++;
 	}
@@ -59,7 +59,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 	int index;
 	int j;
 
-	for(j= 0; j < list_size(ArchivosGlobales); j++)
+	for(j = 0; j < list_size(ArchivosGlobales); j++)
 	{
 		archivoGlobal* arch = list_get(ArchivosGlobales, j);
 
@@ -100,6 +100,46 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 		list_add(listaArchivoProceso, archivoProc);
 
 		list_replace(ArchivosProcesos, i-1, listaArchivoProceso);
+	}
+}
+
+
+void finalizarProgramaCapaFS(int PID)
+{
+	void* result = NULL;
+	int i = 0;
+	t_list* listaProcesoAFinalizar;
+
+	while(i < list_size(ArchivosProcesos) && result == NULL)
+	{
+		listaProcesoAFinalizar = (t_list*)list_get(ArchivosProcesos, i);
+
+		result = (archivoProceso*)list_find(listaProcesoAFinalizar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
+
+		i++;
+	}
+
+	if(result != NULL)
+	{
+		for(int j = 0; j < list_size(listaProcesoAFinalizar); j++)
+		{
+			archivoProceso* archivoProc = (archivoProceso*)list_get(listaProcesoAFinalizar, j);
+
+			archivoGlobal* archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD - 3);
+
+			archivoGlob->cantAperturas--;
+
+			if(archivoGlob->cantAperturas == 0)
+			{
+				list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }), free);
+			}
+			else
+			{
+				list_replace(ArchivosGlobales, archivoProc->globalFD - 3, archivoGlob);
+			}
+		}
+
+		list_remove_and_destroy_element(ArchivosProcesos, i-1, free);
 	}
 }
 
@@ -251,7 +291,7 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 
 		if(archivoGlob->cantAperturas == 0)
 		{
-			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }),free);
+			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }), free);
 		}
 		else
 		{

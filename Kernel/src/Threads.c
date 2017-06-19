@@ -56,37 +56,59 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	}
 }
 
-BloqueControlProceso* FinalizarPrograma(t_list* lista,int pid,int tipoFinalizacion, int index, int socketFD)
+BloqueControlProceso* FinalizarPrograma(int PIDAFinalizar, int tipoFinalizacion, int index, int socketFD)
 {
 	BloqueControlProceso* pcbRemovido = NULL;
-	bool hayEstructurasNoLiberadas=false;
+	bool hayEstructurasNoLiberadas = false;
+
+	finalizarProgramaCapaFS(PIDAFinalizar);
+
+	//Aca hace la liberacion de memoria uri, fijate si podes hacer una funcion finalizarProgramaCapaMemoria, sino hace aca normal
+
+
 	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid; }));
+
 	if(pcbRemovido!=NULL) {
-		pcbRemovido->ExitCode=tipoFinalizacion;
-		list_add(Finalizados,pcbRemovido);
+		pcbRemovido->ExitCode = tipoFinalizacion;
+
+		list_add(Finalizados, pcbRemovido);
+
 		//Analizo si el proceso tiene Memory Leaks o no
 		t_list* pagesProcess= list_filter(PaginasPorProceso,
-							LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == pid;}));
-		if(list_size(pagesProcess)>0){
-			int i=0;
-			while(i < list_size(pagesProcess) && hayEstructurasNoLiberadas==false){
-				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso,i);
+							LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == PIDAFinalizar;}));
+
+		if(list_size(pagesProcess) > 0)
+		{
+			int i = 0;
+
+			while(i < list_size(pagesProcess) && hayEstructurasNoLiberadas == false)
+			{
+				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso, i);
+
 				//Me fijo si hay metadatas en estado "used" en cada pagina
-				void* datosPagina = IM_LeerDatos(socketFD,KERNEL,elem->pid,elem->nroPagina,0,TamanioPagina);
+				void* datosPagina = IM_LeerDatos(socketFD, KERNEL, elem->pid, elem->nroPagina, 0, TamanioPagina);
 				int result = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-				if(result>=0){
+
+				if(result >= 0)
+				{
 					//Hay algun metadata que no se libero
 					hayEstructurasNoLiberadas=true;
 				}
 			}
-			if(hayEstructurasNoLiberadas==true)
-				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó",pid);
+
+			if(hayEstructurasNoLiberadas == true)
+			{
+				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó", PIDAFinalizar);
+			}
 			else
-				printf("El proceso %d liberó todas las estructuras de memoria dinamica",pid);
+			{
+				printf("El proceso %d liberó todas las estructuras de memoria dinamica", PIDAFinalizar);
+			}
 		}
 
-		if(index == INDEX_LISTOS) {
-			IM_FinalizarPrograma(socketFD, KERNEL, pid);
+		if(index == INDEX_LISTOS)
+		{
+			IM_FinalizarPrograma(socketFD, KERNEL, PIDAFinalizar);
 		}
 	}
 	return pcbRemovido;
@@ -96,7 +118,7 @@ bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket)
 { //TODO: hacer de nuevo. sin usar una lista EstadosConProgramasFinalizables
 	int i =0;
 	void* result = NULL;
-	while(i<list_size(EstadosConProgramasFinalizables) && result==NULL){
+	while(i<list_size(EstadosConProgramasFinalizables) && result == NULL){
 		t_list* lista = list_get(EstadosConProgramasFinalizables,i);
 		//TODO: Ver como eliminar un programa en estado ejecutando
 		if(i!=2)  //2 == EJECUTANDO
@@ -287,19 +309,34 @@ void* accion(void* socket){
 
 									result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
 
-									Semaforo* semaf = (Semaforo*)result;
-									semaf->valorSemaforo--;
+									if(result != NULL)
+									{
+										Semaforo* semaf = (Semaforo*)result;
+										semaf->valorSemaforo--;
+									}
+									else
+									{
+										//Finalizar programa
+									}
 								break;
 
 								case SIGNALSEM:
 									PID = ((uint32_t*)paquete.Payload)[1];
 									strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t)*2));
-									 result = NULL;
+									result = NULL;
 
 									result = (Semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
 
-									Semaforo* semaf = (Semaforo*)result;
-									semaf->valorSemaforo++;
+									if(result != NULL)
+									{
+										Semaforo* semaf = (Semaforo*)result;
+										semaf->valorSemaforo++;
+									}
+									else
+									{
+										//Finalizar programa
+									}
+
 								break;
 
 								case RESERVARHEAP:
