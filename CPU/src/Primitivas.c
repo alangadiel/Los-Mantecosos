@@ -30,7 +30,7 @@ t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valo
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
 	((uint32_t*) datos)[1] = pcb.PID;
-	((uint32_t*) datos)[2] = valor;
+	((int32_t*) datos)[2] = valor;
 	memcpy(datos+sizeof(uint32_t)*3, nombre, string_length(nombre)+1);
 	t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
@@ -65,9 +65,9 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] =ABRIRARCHIVO;
 	((uint32_t*) datos)[1] = pcb.PID;
-	((bool*) datos)[sizeof(uint32_t)*2] =flags.creacion;
-	((bool*) datos)[sizeof(uint32_t)*2+sizeof(bool)] =flags.escritura;
-	((bool*) datos)[sizeof(uint32_t)*2+sizeof(bool)*2] =flags.lectura;
+	((bool*) datos)[2] =flags.creacion;
+	((bool*) datos)[3] =flags.escritura;
+	((bool*) datos)[4] =flags.lectura;
 	memcpy(datos+sizeof(uint32_t)*2+sizeof(t_banderas), direccion, string_length(direccion)+1);
 	t_descriptor_archivo result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
