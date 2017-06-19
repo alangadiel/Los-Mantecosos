@@ -36,7 +36,7 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	int i=0;
 
 	while(i<metaProgram->instrucciones_size){
-		int *registroIndice;
+		int *registroIndice = malloc(sizeof(uint32_t)*2);
 		registroIndice[0]= metaProgram->instrucciones_serializado[i].start;
 		registroIndice[1]= metaProgram->instrucciones_serializado[i].offset;
 		list_add(pcb->IndiceDeCodigo,registroIndice);
