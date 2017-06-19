@@ -1,5 +1,8 @@
 #include "CapaFS.h"
+
+
 int ultimoFD = 3;
+
 
 void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 {
@@ -100,6 +103,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 	}
 }
 
+
 uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos)
 {
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
@@ -125,6 +129,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos)
 
 	return archivoEstaCreado;
 }
+
 
 uint32_t leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 {
@@ -171,6 +176,7 @@ uint32_t leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 	}
 }
 
+
 uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* datosAGrabar)
 {
 	void* result = NULL;
@@ -215,6 +221,7 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* 
 	}
 }
 
+
 uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 {
 	void* result = NULL;
@@ -256,6 +263,7 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -20 (El programa intentó cerrar un archivo que no existe)
 	}
 }
+
 
 uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
 {
@@ -299,6 +307,7 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
 		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -20 (El programa intentó borrar un archivo que no existe)
 	}
 }
+
 
 uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 {
