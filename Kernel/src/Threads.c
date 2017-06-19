@@ -35,7 +35,7 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	t_metadata_program* metaProgram = metadata_desde_literal((char*)paquete->Payload);
 	int i=0;
 
-	while(i<metaProgram->instrucciones_size){
+	while(i<string_length(metaProgram->etiquetas)){
 		int *registroIndice = malloc(sizeof(uint32_t)*2);
 		registroIndice[0]= metaProgram->instrucciones_serializado[i].start;
 		registroIndice[1]= metaProgram->instrucciones_serializado[i].offset;
@@ -216,8 +216,8 @@ void* accion(void* socket){
 						{
 							switch ((*(uint32_t*)paquete.Payload))
 							{
-								uint32_t valorADevolver;
-								uint32_t valorAAsignar;
+								int32_t valorADevolver;
+								int32_t valorAAsignar;
 								char* variableCompartida;
 								uint32_t PID;
 								void* result;
@@ -246,7 +246,7 @@ void* accion(void* socket){
 									datos = malloc(tamDatos);
 
 									((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
-									((uint32_t*) datos)[1] = var.valorVariableGlobal;
+									((int32_t*) datos)[1] = var.valorVariableGlobal;
 
 									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
@@ -255,7 +255,7 @@ void* accion(void* socket){
 
 								case ASIGNARSHAREDVAR:
 									PID = ((uint32_t*)paquete.Payload)[1];
-									valorAAsignar = ((uint32_t*)paquete.Payload)[2];
+									valorAAsignar = ((int32_t*)paquete.Payload)[2];
 									strcpy(variableCompartida, (char*)(paquete.Payload + sizeof(uint32_t) * 3));
 
 									//Busco la variable compartida
@@ -280,7 +280,7 @@ void* accion(void* socket){
 								break;
 
 								case WAITSEM:
-									PID = ((uint32_t*)paquete.Payload)[sizeof(uint32_t)];
+									PID = ((uint32_t*)paquete.Payload)[1];
 									strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
 
 									result = NULL;
