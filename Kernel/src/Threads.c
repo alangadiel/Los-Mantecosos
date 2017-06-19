@@ -230,48 +230,53 @@ void* accion(void* socket){
 
 								case PEDIRSHAREDVAR:
 									PID = ((uint32_t*)paquete.Payload)[1];
-									strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t)*2));
+									strcpy(variableCompartida, (char*)(paquete.Payload + sizeof(uint32_t) * 2));
+
 									//Busco la variable compartida
-									result=NULL;
+									result = NULL;
 									result = list_find(VariablesCompartidas,
 										LAMBDA(bool _(void* item) {
-											return strcmp(((VariableCompartida*)item)->nombreVariableGlobal,variableCompartida)==0;
+											return strcmp(((VariableCompartida*)item)->nombreVariableGlobal, variableCompartida) == 0;
 									}));
+
 									 var = *(VariableCompartida*)result;
 
 									//Devuelvo a la cpu el valor de la variable compartida
 									tamDatos = sizeof(uint32_t) * 2;
 									datos = malloc(tamDatos);
+
 									((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
 									((uint32_t*) datos)[1] = var.valorVariableGlobal;
+
 									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
 									free(datos);
-
-
 								break;
 
 								case ASIGNARSHAREDVAR:
 									PID = ((uint32_t*)paquete.Payload)[1];
 									valorAAsignar = ((uint32_t*)paquete.Payload)[2];
-									strcpy(variableCompartida, (char*)(paquete.Payload+sizeof(uint32_t)*3));
+									strcpy(variableCompartida, (char*)(paquete.Payload + sizeof(uint32_t) * 3));
+
 									//Busco la variable compartida
-									result=NULL;
+									result = NULL;
 									result = list_find(VariablesCompartidas,
 										LAMBDA(bool _(void* item) {
-											return strcmp(((VariableCompartida*)item)->nombreVariableGlobal,variableCompartida)==0;
-									}));
+											return strcmp(((VariableCompartida*)item)->nombreVariableGlobal, variableCompartida) == 0; }));
+
 									var = *(VariableCompartida*)result;
 									var.valorVariableGlobal = valorAAsignar;
+
 									//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
-									 tamDatos = sizeof(uint32_t) * 2;
-									 datos = malloc(tamDatos);
+									tamDatos = sizeof(uint32_t) * 2;
+									datos = malloc(tamDatos);
+
 									((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
 									((uint32_t*) datos)[1] = var.valorVariableGlobal;
+
 									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+
 									free(datos);
-
-
-
 								break;
 
 								case WAITSEM:
@@ -284,7 +289,6 @@ void* accion(void* socket){
 
 									Semaforo* semaf = (Semaforo*)result;
 									semaf->valorSemaforo--;
-
 								break;
 
 								case SIGNALSEM:
@@ -293,9 +297,9 @@ void* accion(void* socket){
 									 result = NULL;
 
 									result = (Semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
+
 									Semaforo* semaf = (Semaforo*)result;
 									semaf->valorSemaforo++;
-
 								break;
 
 								case RESERVARHEAP:
@@ -304,8 +308,8 @@ void* accion(void* socket){
 
 									uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
 
-									 tamDatos = sizeof(uint32_t) * 2;
-									 datos = malloc(tamDatos);
+									tamDatos = sizeof(uint32_t) * 2;
+									datos = malloc(tamDatos);
 
 									((uint32_t*) datos)[0] = RESERVARHEAP;
 									((uint32_t*) datos)[1] = punteroADevolver;
@@ -313,18 +317,18 @@ void* accion(void* socket){
 									EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
 									free(datos);
-
-
 								break;
 
 								case LIBERARHEAP:
-									 PID = ((uint32_t*)paquete.Payload)[1];
+									PID = ((uint32_t*)paquete.Payload)[1];
 									uint32_t punteroALiberar = ((uint32_t*)paquete.Payload)[2];
-									PosicionDeMemoria pos;
-									pos.NumeroDePagina = punteroALiberar/TamanioPagina;
-									pos.Offset = punteroALiberar % TamanioPagina;
-									SolicitudLiberacionDeBloque(socketConectado, PID, pos);
 
+									PosicionDeMemoria pos;
+
+									pos.NumeroDePagina = punteroALiberar / TamanioPagina;
+									pos.Offset = punteroALiberar % TamanioPagina;
+
+									SolicitudLiberacionDeBloque(socketConectado, PID, pos);
 								break;
 
 								case ABRIRARCHIVO:
@@ -389,7 +393,9 @@ void* accion(void* socket){
 								break;
 
 								case FINEJECUCIONPROGRAMA:
+									PID = ((uint32_t*)paquete.Payload)[1];
 
+									//Finalizar programa
 								break;
 							}
 						}
