@@ -133,28 +133,20 @@ bool terminoElPrograma(void){
 
 void informadorDeUsoDeCpu() {
 	Paquete* paquete;
-	RecibirPaqueteServidor(socketKernel, CPU, paquete);
-	while (paquete == NULL) {
+	while (true) {
 		RecibirPaqueteServidor(socketKernel, CPU, paquete);
-	}
-	if (paquete->header.tipoMensaje == ESTAEJECUTANDO) {
-		int tamDatos = sizeof(uint32_t) * 2;
-		void* datos = malloc(tamDatos);
+		while (paquete == NULL) {
+			RecibirPaqueteServidor(socketKernel, CPU, paquete);
+		}
+		if (paquete->header.tipoMensaje == ESTAEJECUTANDO) {
+			int tamDatos = sizeof(uint32_t) * 2;
+			void* datos = malloc(tamDatos);
 
-		((uint32_t*) datos)[0] = terminoElPrograma();
-		((uint32_t*) datos)[1] = estadoActual.pcb.PID;
+			((uint32_t*) datos)[0] = terminoElPrograma();
+			((uint32_t*) datos)[1] = estadoActual.pcb.PID;
 
-		EnviarDatos(socketKernel, CPU, datos, tamDatos);
-	}
-}
-
-void crearIndiceDeCodigo(t_metadata_program* metaProgram){
-	int i;
-	for (i = 0; i < metaProgram->instrucciones_size; i++) {
-		Instruccion instruccion;
-		instruccion.longitud = metaProgram->instrucciones_serializado[i*sizeof(t_intructions)]->offset;
-		instruccion.byteComienzo = metaProgram->instrucciones_serializado[i*sizeof(t_intructions)]->start;
-		list_add(indiceDeCodigo, instruccion);
+			EnviarDatos(socketKernel, CPU, datos, tamDatos);
+		}
 	}
 }
 
@@ -171,7 +163,7 @@ int main(void) {
 
 	pthread_t userInterface;
 	pthread_create(&userInterface, NULL, (void*)informadorDeUsoDeCpu, NULL);
-	pthread_join(userInterface, NULL);
+
 
 	while(!DesconectarCPU) {
 		Paquete paquete;
@@ -227,7 +219,6 @@ int main(void) {
 			//Parseo el codigo
 			t_metadata_program* metaProgram = metadata_desde_literal(programa);
 			//Convertir el instrucciones_Serializer en la lista del indice de codigo
-			crearIndiceDeCodigo(metaProgram);
 			//enviar PCB lleno a kernel
 			pcb_Send(socketKernel, CPU, &pcb);
 		}
@@ -236,6 +227,6 @@ int main(void) {
 		}
 	}
 	pcb_Destroy(&pcb);
-
+	pthread_join(userInterface, NULL);
 	return 0;
 }
