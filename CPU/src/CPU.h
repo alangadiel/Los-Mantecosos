@@ -40,8 +40,4 @@ void SolicitarMoverCursor(t_descriptor_archivo descriptor_archivo, t_valor_varia
 void imprimirArchivoConfiguracion();
 int main(void);
 
-
-
-
-
 #endif /* CPU_H_ */

@@ -2,7 +2,7 @@
 
 
 BloqueControlProceso pcb;
-
+bool ejecutando;
 
 static const char* PROGRAMA =
 		"begin\n"
@@ -116,13 +116,34 @@ void obtenerLinea(char** instruccion, uint32_t* registro){
 	for (i = 0; i < cantPaginasALeer; ++i) {
 		datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,i, offset, cantQueFaltaLeer);
 		string_append(instruccion, datos);
-		//cantQueFaltaLeer-=
+		cantQueFaltaLeer-=TamanioPaginaMemoria;
 	}
 	free(datos);
 }
 
+bool terminoElPrograma(void){
+	return !ejecutando;
+}
+
+void informadorDeUsoDeCpu() {
+	Paquete* paquete;
+	RecibirPaqueteServidor(socketKernel, CPU, paquete);
+	while (paquete == NULL) {
+		RecibirPaqueteServidor(socketKernel, CPU, paquete);
+	}
+	if (paquete->header.tipoMensaje == ESTAEJECUTANDO) {
+		EnviarDatos(socketKernel, CPU, terminoElPrograma(), sizeof(bool));
+	}
+}
+
 void crearIndiceDeCodigo(t_metadata_program* metaProgram){
-//TODO
+	int i;
+	for (i = 0; i < metaProgram->instrucciones_size; i++) {
+		Instruccion instruccion;
+		instruccion.longitud = metaProgram->instrucciones_serializado[i*sizeof(t_intructions)]->offset;
+		instruccion.byteComienzo = metaProgram->instrucciones_serializado[i*sizeof(t_intructions)]->start;
+		list_add(indiceDeCodigo, instruccion);
+	}
 }
 
 int main(void) {
@@ -136,6 +157,10 @@ int main(void) {
 	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake); //TODO: Recibir datos
 	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake_DeMemoria);
 
+	pthread_t userInterface;
+	pthread_create(&userInterface, NULL, (void*)informadorDeUsoDeCpu, NULL);
+	pthread_join(userInterface, NULL);
+
 	while(!DesconectarCPU) {
 		Paquete paquete;
 		while (RecibirPaqueteCliente(socketKernel, CPU, &paquete)<=0);
@@ -144,6 +169,7 @@ int main(void) {
 			DesconectarCPU = true;
 			break;
 		case ESPCB:	{
+			ejecutando = true;
 			//Ejecutar linea:
 			/*if (QUANTUM==0){ //FIFO
 			 * while(!end of codigo){
@@ -166,6 +192,7 @@ int main(void) {
 			//pc++
 			// Avisar al kernel que terminaste de ejecutar la instruccion
 			pcb_Send(socketKernel, CPU, &pcb);
+			ejecutando = false;
 		}
 			break;
 

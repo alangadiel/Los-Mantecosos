@@ -356,15 +356,12 @@ void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informaci
 }
 
 
-/*
 void primitiva_finalizar(void){
-	termino = true;
-	printf("Finalizar\n");
+	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo) +sizeof(t_puntero);
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = FINEJECUCIONPROGRAMA;
+	((uint32_t*) datos)[1] = pcb.PID;
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	free(datos);
+	pcb.ProgramCounter++;
 }
-
-bool terminoElPrograma(void){
-	return termino;
-}
-
-
-*/
