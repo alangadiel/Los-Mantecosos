@@ -109,15 +109,38 @@ BloqueControlProceso* FinalizarPrograma(int PIDAFinalizar, int tipoFinalizacion,
 	return pcbRemovido;
 }
 
+uint32_t informarSiPidestaEjecutandose(int pidAFinalizar) {
+	int i;
+	for (i = 0; i < list_size(CPUsConectadas); i++) {
+		DatosCPU* cpu = (DatosCPU*) list_get(CPUsConectadas, i);
+		Paquete* paquete = malloc(sizeof(Paquete));
+		paquete->header->tipoMensaje = ESTAEJECUTANDO;
+		EnviarPaquete(cpu->socketCPU, paquete);
+		free(paquete);
+		Paquete* paquete = malloc(sizeof(Paquete));
+		RecibirPaqueteCliente(cpu->socketCPU, KERNEL, paquete);
+		uint32_t termino = ((uint32_t*) paquete->Payload)[0];
+		uint32_t PID = ((uint32_t*) paquete->Payload)[1];
+		if (PID == pidAFinalizar) {
+			return termino;
+		}
+	}
+}
+
 bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket)
 { //TODO: hacer de nuevo. sin usar una lista EstadosConProgramasFinalizables
 	int i =0;
 	void* result = NULL;
 	while(i<list_size(EstadosConProgramasFinalizables) && result == NULL){
 		t_list* lista = list_get(EstadosConProgramasFinalizables,i);
-		//TODO: Ver como eliminar un programa en estado ejecutando
-		if(i!=2)  //2 == EJECUTANDO
+		if(i!=INDEX_EJECUTANDO) {
 			result = FinalizarPrograma(lista,pidAFinalizar,tipoFinalizacion, i, socket);
+		}
+		else {
+			if (informarSiPIDestaEjecutandose(pidAFinalizar)) {
+				result = FinalizarPrograma(lista,pidAFinalizar,tipoFinalizacion, i, socket);
+			}
+		}
 		i++;
 	}
 	if(result==NULL){
@@ -166,18 +189,7 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 	return resul;
 }
 
-void mandarAEjecutar(uint32_t cantidadDeRafagas) {
-
-
-}
-
 void dispatcher() {
-	/*Bloqueados;
-	Ejecutando;
-	Listos;
-	CPUSDisponibles;
-	disp->isFree = true;
-	disp->socketCPU = socketFD;*/
 	while (true) {
 		t_list listCPUsLibres = list_filter(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
 		int i;
