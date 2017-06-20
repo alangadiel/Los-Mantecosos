@@ -354,14 +354,3 @@ void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informaci
 	free(datos);
 	pcb.ProgramCounter++;
 }
-
-
-void primitiva_finalizar(void){
-	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo) +sizeof(t_puntero);
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = FINEJECUCIONPROGRAMA;
-	((uint32_t*) datos)[1] = pcb.PID;
-	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	free(datos);
-	pcb.ProgramCounter++;
-}
