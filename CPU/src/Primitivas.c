@@ -260,6 +260,7 @@ void primitiva_wait(t_nombre_semaforo identificador_semaforo){
 		EnviarDatos(socketKernel,CPU,datos,tamDatos);
 		free(datos);
 		pcb.ProgramCounter++;
+		pcb_Send(datosCpu,pcb,socketKernel,cantRafagasEjecutadas);
 
 }
 void primitiva_signal(t_nombre_semaforo identificador_semaforo){
@@ -272,6 +273,7 @@ void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 		EnviarDatos(socketKernel,CPU,datos,tamDatos);
 		free(datos);
 		pcb.ProgramCounter++;
+		pcb_Send(datosCpu,pcb,socketKernel,cantRafagasEjecutadas);
 
 }
 t_puntero primitiva_reservar(t_valor_variable espacio){

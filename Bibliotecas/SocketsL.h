@@ -143,9 +143,14 @@ estructuras usadas para administrar la memoria.
 uint32_t IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog);
 //Borra las paginas de ese programa. devuelve 0 si hay error, 1 sino.
 
-void pcb_Send(int socketCliente, char emisor[11], BloqueControlProceso* pcb);
 
-void pcb_Receive(BloqueControlProceso* pcb, int socketFD);
+
+//SI LO MANDA KERNEL, CANTIDADRAFAGAS = CANTIDADRAFAGAS A EJECUTAR!!!
+//SI LO MANDA CPU, CANTIDADRAFAGAS = CANTIDADRAFAGAS QUE SE EJECUTARON!!!!!
+void pcb_Send(DatosCPU* cpu, char emisor[11], BloqueControlProceso* pcb,uint32_t socketFD, uint32_t cantidadRafagas);
+
+//cambiar cpu->isFree a true
+void pcb_Receive(DatosCPU* cpu,BloqueControlProceso* pcb, uint32_t socketFD,uint32_t cantidadRafagas);
 
 
 

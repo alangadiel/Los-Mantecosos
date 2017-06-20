@@ -2,6 +2,10 @@
 
 
 BloqueControlProceso pcb;
+DatosCPU datosCpu;
+uint32_t cantRafagasAEjecutar;
+uint32_t cantRafagasEjecutadas=0;;
+
 bool ejecutando;
 typedef struct {
 	uint32_t ejecutando;
@@ -174,54 +178,24 @@ int main(void) {
 			break;
 		case ESPCB:	{
 
-			//Ejecutar linea:
-			/*if (QUANTUM==0){ //FIFO
-			 * while(!end of codigo){
-			 * }
-			 *
-			} else { //RR
-			while(!end of codigo && !end of quantum){
+				pcb_Receive(&datosCpu,&pcb, socketKernel,cantRafagasAEjecutar);
+				estadoActual.pcb = pcb;
+				estadoActual.ejecutando = true;
+				int i=0;
+				while(i< cantRafagasAEjecutar){
+					uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
+					char instruccion[registro[1]];
+					obtenerLinea(&instruccion, registro);
+					analizadorLinea(instruccion,&functions,&kernel_functions);
+					pcb.cantidadDeRafagasEjecutadas++;
+					cantRafagasEjecutadas++;
+					i++;
+				}
+				// Avisar al kernel que terminaste de ejecutar la instruccion
+				pcb_Send(CPU, &pcb,socketKernel,cantRafagasEjecutadas);
+				estadoActual.pcb = pcb;
+				estadoActual.ejecutando = false;
 			}
-			}
-			*/
-			//Recibo el PCB del Kernel
-			pcb_Receive(&pcb, socketKernel);
-			estadoActual.pcb = pcb;
-			estadoActual.ejecutando = true;
-
-			uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
-
-			char instruccion[registro[1]];
-			obtenerLinea(&instruccion, registro);
-
-			analizadorLinea(instruccion,&functions,&kernel_functions);
-			//pc++
-			// Avisar al kernel que terminaste de ejecutar la instruccion
-			pcb_Send(socketKernel, CPU, &pcb);
-			estadoActual.pcb = pcb;
-			estadoActual.ejecutando = false;
-		}
-			break;
-
-		case ESARCHIVO: {//reemplazar ESARCHIVO por algo acorde, porque en realidad manda un PCB.
-
-			//Iniciar el programa:
-			//Recibo el PCB del Kernel
-			pcb_Receive(&pcb, socketKernel);
-			//Leo el codigo de la Memoria
-			char programa[pcb.PaginasDeCodigo * TamanioPaginaMemoria];
-			int i;
-			for (i=0; i < pcb.PaginasDeCodigo; i++){
-				char* datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,i,0,TamanioPaginaMemoria);
-				memccpy(&programa[i*TamanioPaginaMemoria], datos, '\0', TamanioPaginaMemoria); //tal vez hay que usar una funcion diferente para copiarlo
-				free(datos);
-			}
-			//Parseo el codigo
-			t_metadata_program* metaProgram = metadata_desde_literal(programa);
-			//Convertir el instrucciones_Serializer en la lista del indice de codigo
-			//enviar PCB lleno a kernel
-			pcb_Send(socketKernel, CPU, &pcb);
-		}
 			break;
 
 		}
