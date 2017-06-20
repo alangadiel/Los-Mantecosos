@@ -3,6 +3,12 @@
 
 BloqueControlProceso pcb;
 bool ejecutando;
+typedef struct {
+	uint32_t ejecutando;
+	BloqueControlProceso pcb;
+} EstadoActualDeLaCpu;
+
+EstadoActualDeLaCpu estadoActual;
 
 static const char* PROGRAMA =
 		"begin\n"
@@ -122,7 +128,7 @@ void obtenerLinea(char** instruccion, uint32_t* registro){
 }
 
 bool terminoElPrograma(void){
-	return !ejecutando;
+	return !estadoActual.ejecutando;
 }
 
 void informadorDeUsoDeCpu() {
@@ -132,7 +138,13 @@ void informadorDeUsoDeCpu() {
 		RecibirPaqueteServidor(socketKernel, CPU, paquete);
 	}
 	if (paquete->header.tipoMensaje == ESTAEJECUTANDO) {
-		EnviarDatos(socketKernel, CPU, terminoElPrograma(), sizeof(bool));
+		int tamDatos = sizeof(uint32_t) * 2;
+		void* datos = malloc(tamDatos);
+
+		((uint32_t*) datos)[0] = terminoElPrograma();
+		((uint32_t*) datos)[1] = estadoActual.pcb.PID;
+
+		EnviarDatos(socketKernel, CPU, datos, tamDatos);
 	}
 }
 
@@ -169,7 +181,7 @@ int main(void) {
 			DesconectarCPU = true;
 			break;
 		case ESPCB:	{
-			ejecutando = true;
+
 			//Ejecutar linea:
 			/*if (QUANTUM==0){ //FIFO
 			 * while(!end of codigo){
@@ -182,6 +194,8 @@ int main(void) {
 			*/
 			//Recibo el PCB del Kernel
 			pcb_Receive(&pcb, socketKernel);
+			estadoActual.pcb = pcb;
+			estadoActual.ejecutando = true;
 
 			uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 
@@ -192,7 +206,8 @@ int main(void) {
 			//pc++
 			// Avisar al kernel que terminaste de ejecutar la instruccion
 			pcb_Send(socketKernel, CPU, &pcb);
-			ejecutando = false;
+			estadoActual.pcb = pcb;
+			estadoActual.ejecutando = false;
 		}
 			break;
 
