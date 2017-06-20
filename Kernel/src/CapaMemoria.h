@@ -17,8 +17,8 @@ typedef struct {
 typedef struct {
 	char* nombreSemaforo;
 	uint32_t valorSemaforo;
+	t_list* listaDeProcesos;
 } Semaforo;
-
 
 uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantAReservar, int socketFD);
 uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket);

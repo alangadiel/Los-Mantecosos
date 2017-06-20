@@ -11,6 +11,7 @@
 #include <commons/log.h>
 #include <commons/collections/list.h>
 #include <commons/collections/dictionary.h>
+#include <commons/collections/queue.h>
 #include <commons/string.h>
 #include <commons/txt.h>
 #include <commons/bitarray.h>
@@ -22,6 +23,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
+
 
 
 
@@ -51,7 +53,13 @@ typedef struct {
 	t_dictionary* IndiceDeEtiquetas;
 	t_list* IndiceDelStack; //lista de IndiceStack
 	int ExitCode;
+	uint32_t cantidadDeRafagasEjecutadas;
 }__attribute__((packed)) BloqueControlProceso;
+
+typedef struct {
+	int socketCPU;
+	bool isFree;
+} DatosCPU;
 
 typedef struct {
 	uint32_t* Atributos;

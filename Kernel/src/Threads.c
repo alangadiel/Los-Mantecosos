@@ -1,15 +1,10 @@
 #include "Threads.h"
 
 //Tipos de ExitCode
-#define FINALIZACIONNORMAL
+#define FINALIZACIONNORMAL 0
 #define NOSEPUDIERONRESERVARRECURSOS -1
 #define DESCONECTADODESDECOMANDOCONSOLA -7
 #define SOLICITUDMASGRANDEQUETAMANIOPAGINA -8
-
-typedef struct {
-	int socketCPU;
-	bool isFree;
-} DisponibilidadCPU;
 
 int ultimoPID = 0;
 
@@ -151,12 +146,12 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 
 			if(strcmp(paquete->header.emisor, CPU) == 0)
 			{
-				DisponibilidadCPU* disp = malloc(sizeof(DisponibilidadCPU));
+				DatosCPU* disp = malloc(sizeof(DatosCPU));
 
 				disp->isFree = true;
 				disp->socketCPU = socketFD;
 
-				list_add(CPUSDisponibles, disp);
+				list_add(CPUsConectadas, disp);
 			}
 
 			EnviarHandshake(socketFD, receptor); // paquete->header.emisor
@@ -169,6 +164,39 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 	}
 
 	return resul;
+}
+
+void mandarAEjecutar(uint32_t cantidadDeRafagas) {
+
+
+}
+
+void dispatcher() {
+	/*Bloqueados;
+	Ejecutando;
+	Listos;
+	CPUSDisponibles;
+	disp->isFree = true;
+	disp->socketCPU = socketFD;*/
+	while (true) {
+		t_list listCPUsLibres = list_filter(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
+		int i;
+		for (i = 0; i < list_size(listCPUsLibres); i++) {
+			BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
+			DatosCPU* cpuAUsar = (DatosCPU*)list_get(listCPUsLibres, 0);
+			uint32_t cantidadDeRafagas;
+			if (strcmp(ALGORITMO, "FIFO") == 0) {
+				cantidadDeRafagas = PCBAMandar->IndiceDeCodigo->elements_count - PCBAMandar->cantidadDeRafagasEjecutadas;
+			}
+			else if (strcmp(ALGORITMO, "RR") == 0){
+				cantidadDeRafagas = QUANTUM;
+			}
+			pcb_Send(cpuAUsar, KERNEL, PCBAMandar, cantidadDeRafagas);
+			cpuAUsar->isFree = false;
+			queue_push(Ejecutando, PCBAMandar);
+			//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
+		}
+	}
 }
 
 void AgregarAListadePidsPorSocket(uint32_t PID, int socket)
@@ -313,11 +341,22 @@ void* accion(void* socket){
 									{
 										Semaforo* semaf = (Semaforo*)result;
 										semaf->valorSemaforo--;
+										list_add(semaf->listaDeProcesos, &PID);
+										BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
+										DatosCPU* cpu = list_find(CPUsConectadas, LAMBDA(bool _(void* item) {
+											return ((DatosCPU*)item)->socketCPU == socketConectado;
+										}));
+										pcb_Receive(pcb, socketConectado, cpu);
+										list_remove_by_condition(Ejecutando,  LAMBDA(bool _(void* item) {
+											return ((BloqueControlProceso*)item)->PID == pcb->PID;
+										}));
+										queue_push(Bloqueados, pcb);
 									}
 									else
 									{
-										//Finalizar programa
+										FinalizarPrograma(PID, ERRORSINDEFINIR, INDEX_EJECUTANDO, socketConMemoria);
 									}
+
 								break;
 
 								case SIGNALSEM:
@@ -331,10 +370,12 @@ void* accion(void* socket){
 									{
 										Semaforo* semaf = (Semaforo*)result;
 										semaf->valorSemaforo++;
+										list_remove_by_condition(semaf->listaDeProcesos, LAMBDA(bool _(void* item) { return ((uint32_t*) item) == PID; }));
+										list_remove_by_condition(Bloqueados, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
 									}
 									else
 									{
-										//Finalizar programa
+										FinalizarPrograma(PID, ERRORSINDEFINIR, INDEX_EJECUTANDO, socketConMemoria);
 									}
 
 								break;
@@ -456,6 +497,27 @@ void* accion(void* socket){
 						}
 					}
 				break;
+
+				case ESPCB:
+					//termino la rafaga normalmente sin bloquearse
+					if(strcmp(paquete.header.emisor, CPU) == 0)
+					{
+						BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
+						DatosCPU* cpu = list_find(CPUsConectadas, LAMBDA(bool _(void* item) {
+							return ((DatosCPU*)item)->socketCPU == socketConectado;
+						}));
+						pcb_Receive(pcb, socketConectado, cpu);
+						list_remove_by_condition(Ejecutando,  LAMBDA(bool _(void* item) {
+							return ((BloqueControlProceso*)item)->PID == pcb->PID;
+						}));
+						if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas) {
+							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL, INDEX_EJECUTANDO, socketConMemoria);
+						}
+						else {
+							queue_push(Listos, pcb);
+						}
+
+					}
 		}
 
 		free(paquete.Payload);

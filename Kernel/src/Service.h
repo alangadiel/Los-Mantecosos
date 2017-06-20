@@ -15,6 +15,7 @@
 #define NOSEPUDIERONRESERVARRECURSOS -1
 #define DESCONECTADODESDECOMANDOCONSOLA -7
 #define SOLICITUDMASGRANDEQUETAMANIOPAGINA -8
+#define ERRORSINDEFINIR -20
 
 #define INDEX_NUEVOS 0
 #define INDEX_LISTOS 1
@@ -45,7 +46,7 @@ typedef struct {
 extern t_list* ArchivosGlobales;
 extern t_list* ArchivosProcesos;
 extern t_list* PIDsPorSocketConsola;
-extern t_list* CPUSDisponibles;
+extern t_list* CPUsConectadas;
 extern t_list* Semaforos;
 extern t_list* VariablesCompartidas;
 extern t_list* PaginasPorProceso;

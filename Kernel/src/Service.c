@@ -3,16 +3,16 @@
 t_list* ArchivosGlobales;
 t_list* ArchivosProcesos;
 t_list* PIDsPorSocketConsola;
-t_list* CPUSDisponibles;
+t_list* CPUsConectadas;
 t_list* Semaforos;
 //t_list* Paginas;
 t_list* VariablesCompartidas;
 t_list* PaginasPorProceso;
-t_list* Nuevos;
-t_list* Finalizados;
-t_list* Bloqueados;
-t_list* Ejecutando;
-t_list* Listos;
+t_queue* Nuevos;
+t_queue* Finalizados;
+t_queue* Bloqueados;
+t_queue* Ejecutando;
+t_queue* Listos;
 t_list* Estados;
 t_list* ListaPCB;
 t_list* EstadosConProgramasFinalizables;
@@ -66,11 +66,11 @@ void imprimirArchivoConfiguracion()
 }
 
 void CrearListas() {
-	Nuevos = list_create();
-	Finalizados= list_create();
-	Bloqueados= list_create();
-	Ejecutando= list_create();
-	Listos= list_create();
+	Nuevos = queue_create();
+	Finalizados= queue_create();
+	Bloqueados= queue_create();
+	Ejecutando= queue_create();
+	Listos= queue_create();
 	//Creo una lista de listas
 	Estados = list_create();
 	EstadosConProgramasFinalizables = list_create();
@@ -78,7 +78,7 @@ void CrearListas() {
 	VariablesCompartidas = list_create();
 	Semaforos = list_create();
 	PIDsPorSocketConsola = list_create();
-	CPUSDisponibles = list_create();
+	CPUsConectadas = list_create();
 
 	list_add(EstadosConProgramasFinalizables,Nuevos);
 	list_add(EstadosConProgramasFinalizables,Listos);
@@ -88,11 +88,11 @@ void CrearListas() {
 	list_add(Estados,Finalizados);
 }
 void LimpiarListas() {
-	list_destroy_and_destroy_elements(Nuevos,free);
-	list_destroy_and_destroy_elements(Listos,free);
-	list_destroy_and_destroy_elements(Ejecutando,free);
-	list_destroy_and_destroy_elements(Bloqueados,free);
-	list_destroy_and_destroy_elements(Finalizados,free);
+	queue_destroy_and_destroy_elements(Nuevos,free);
+	queue_destroy_and_destroy_elements(Listos,free);
+	queue_destroy_and_destroy_elements(Ejecutando,free);
+	queue_destroy_and_destroy_elements(Bloqueados,free);
+	queue_destroy_and_destroy_elements(Finalizados,free);
 	list_destroy_and_destroy_elements(Estados,free);
 	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
 	list_destroy_and_destroy_elements(ArchivosGlobales,free);
@@ -100,7 +100,7 @@ void LimpiarListas() {
 	list_destroy_and_destroy_elements(VariablesCompartidas,free);
 	list_destroy_and_destroy_elements(Semaforos,free);
 	list_destroy_and_destroy_elements(PIDsPorSocketConsola, free);
-	list_destroy_and_destroy_elements(CPUSDisponibles, free);
+	list_destroy_and_destroy_elements(CPUsConectadas, free);
 }
 
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos){
@@ -110,7 +110,7 @@ void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos){
 	pcb->PaginasDeCodigo=0;
 	pcb->ProgramCounter = 0;
 	(*ultimoPid)++;
-	list_add(nuevos,pcb);
+	queue_push(nuevos,pcb);
 	//list_add(ListaPCB,pcb);
 }
 

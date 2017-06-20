@@ -11,6 +11,7 @@ int PUERTO_MEMORIA;
 char* IP_FS;
 int PUERTO_FS;
 
+
 t_list* HilosDeConexiones;
 
 void obtenerValoresArchivoConfiguracion() {
@@ -202,6 +203,8 @@ int main(void)
 	pthread_t hiloConsola;
 	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, &socketConMemoria);
 
+	pthread_t hiloDispatcher;
+	pthread_create(&hiloDispatcher, NULL, (void*)dispatcher, NULL);
 	ServidorConcuerrente(IP_PROG, PUERTO_PROG, KERNEL,&HilosDeConexiones, &end, accion);
 
 	pthread_join(hiloConsola, NULL);

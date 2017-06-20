@@ -177,7 +177,11 @@ uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path);
 uint32_t FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset, uint32_t size);
 uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, char* buffer);
 
-void pcb_Send(int socketCliente, char emisor[11], BloqueControlProceso* pcb);
-void pcb_Receive(BloqueControlProceso* pcb, int socketFD);
+//SI LO MANDA KERNEL, CANTIDADRAFAGAS = CANTIDADRAFAGAS A EJECUTAR!!!
+//SI LO MANDA CPU, CANTIDADRAFAGAS = CANTIDADRAFAGAS QUE SE EJECUTARON!!!!!
+void pcb_Send(DatosCPU* cpu, char emisor[11], BloqueControlProceso* pcb, uint32_t cantidadRafagas);
+
+//cambiar cpu->isFree a true
+void pcb_Receive(BloqueControlProceso* pcb, int socketFD, DatosCPU* cpu);
 
 #endif //SOCKETS_H_
