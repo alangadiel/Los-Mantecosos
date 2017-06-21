@@ -105,8 +105,13 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 			nuevaPPP.pid = PID;
 			list_add(PaginasPorProceso,&nuevaPPP);
 			//Le pido al Proceso Memoria que me guarde esta pagina para el proceso en cuestion
-			IM_AsignarPaginas(socket,KERNEL,PID,1);
-			punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP.nroPagina,cantTotal,socket);
+			bool resultado = IM_AsignarPaginas(socket,KERNEL,PID,1);
+			if(resultado==true){
+				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP.nroPagina,cantTotal,socket);
+			}
+			else{
+				FinalizarPrograma(PID,NOSEPUEDENASIGNARMASPAGINAS,INDEX_EJECUTANDO);
+			}
 			//Destruyo la lista PagesProcess
 			list_destroy_and_destroy_elements(pagesProcess,free);
 		}
@@ -131,24 +136,28 @@ void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos
 	//Me fijo el estado del siguiente Metadata(si esta Free o Used)
 	uint32_t offsetMetadataSiguiente = pos.Offset+sizeBloqueALiberar;
 	HeapMetadata heapMetedataSiguiente =*(HeapMetadata*)(datosPagina+offsetMetadataSiguiente);
+	bool resultado;
 
-
-	if(heapMetedataSiguiente.isFree==false) {
-		//Esta ocupado: solo actualizo el metadata del bloque que me liberaron
-		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
-	}
-	else {
-		//Esta libre: puedo compactarlos como un metadata solo
+	if(heapMetedataSiguiente.isFree==true) {
+		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
+		//Si esta libre: puedo compactarlos como un metadata solo
 		heapMetaAActualizar.size += heapMetedataSiguiente.size;
-		IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
+	}
+	resultado = IM_GuardarDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
+	if(resultado==true){
+		//Si estan todos los bloques de la pagina libres, hay que liberar la pagina entera
+		bool hayAlgunBloqueUsado= RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
+		if(hayAlgunBloqueUsado==false){
+			//No se encontro algun bloque ocupado: Hay que liberar la pagina
+			if(IM_LiberarPagina(socketFD,KERNEL,pid,pos.NumeroDePagina)==false){
+				FinalizarPrograma(pid,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+			}
+		}
+	}
+	else{
+		FinalizarPrograma(pid,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+	}
 
-	}
-	//Si estan todos los bloques de la pagina libres, hay que liberar la pagina entera
-	bool hayAlgunBloqueUsado= RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-	if(hayAlgunBloqueUsado==false){
-		//No se encontro algun bloque ocupado: Hay que liberar la pagina
-		IM_LiberarPagina(socketFD,KERNEL,pid,pos.NumeroDePagina);
-	}
 }
 
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)

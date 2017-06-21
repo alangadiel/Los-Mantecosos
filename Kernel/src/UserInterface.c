@@ -96,7 +96,7 @@ void userInterfaceHandler(uint32_t* socketFD) {
 		}
 		else if (strcmp(command, "kill_program") == 0){
 			scanf("%d", &pidConsulta);
-			bool finalizadoOK = KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA, *socketFD);
+			bool finalizadoOK = KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA);
 			if(finalizadoOK == true)
 			{
 				printf("El programa %d fue finalizado\n", pidAFinalizar);

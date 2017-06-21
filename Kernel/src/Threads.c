@@ -10,20 +10,23 @@ int ultimoPID = 0;
 
 void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp,Paquete* paquete){
 	int i,j=0;
-	for (i = 0; i < bcp->PaginasDeCodigo; i++) {
-		char* str;
-		if(i+1 != bcp->PaginasDeCodigo){
-			str = string_substring((char*)paquete->Payload,j,TamanioPagina);
-			j+=TamanioPagina;
+	bool salioTodoBien = true;
+		while(i< bcp->PaginasDeCodigo && salioTodoBien==false){
+			char* str;
+			if(i+1 != bcp->PaginasDeCodigo){
+				str = string_substring((char*)paquete->Payload,j,TamanioPagina);
+				j+=TamanioPagina;
+			}
+			else
+			{
+				//Ultima pagina de codigo
+				 str = string_substring_from((char*)paquete->Payload,j);
+			}
+			salioTodoBien=IM_GuardarDatos(socketConMemoria, KERNEL, bcp->PID, i, 0, string_length(str)+1, str);
+			if(salioTodoBien==false){
+				FinalizarPrograma(bcp->PID,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+			}
 		}
-		else
-		{
-			//Ultima pagina de codigo
-			 str = string_substring_from((char*)paquete->Payload,j);
-		}
-		IM_GuardarDatos(socketConMemoria, KERNEL, bcp->PID, i, 0, string_length(str)+1, str);
-
-	}
 }
 
 void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* paquete){
@@ -51,17 +54,17 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	}
 }
 
-BloqueControlProceso* FinalizarPrograma(int PIDAFinalizar, int tipoFinalizacion, int index, int socketFD)
+BloqueControlProceso* FinalizarPrograma(int nroPidAFinalizar, int tipoFinalizacion, int index)
 {
 	BloqueControlProceso* pcbRemovido = NULL;
 	bool hayEstructurasNoLiberadas = false;
 
-	finalizarProgramaCapaFS(PIDAFinalizar);
+	finalizarProgramaCapaFS(nroPidAFinalizar);
 
 	//Aca hace la liberacion de memoria uri, fijate si podes hacer una funcion finalizarProgramaCapaMemoria, sino hace aca normal
 
 
-	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid; }));
+	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == nroPidAFinalizar; }));
 
 	if(pcbRemovido!=NULL) {
 		pcbRemovido->ExitCode = tipoFinalizacion;
@@ -70,7 +73,7 @@ BloqueControlProceso* FinalizarPrograma(int PIDAFinalizar, int tipoFinalizacion,
 
 		//Analizo si el proceso tiene Memory Leaks o no
 		t_list* pagesProcess= list_filter(PaginasPorProceso,
-							LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == PIDAFinalizar;}));
+							LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == nroPidAFinalizar;}));
 
 		if(list_size(pagesProcess) > 0)
 		{
@@ -81,7 +84,7 @@ BloqueControlProceso* FinalizarPrograma(int PIDAFinalizar, int tipoFinalizacion,
 				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso, i);
 
 				//Me fijo si hay metadatas en estado "used" en cada pagina
-				void* datosPagina = IM_LeerDatos(socketFD, KERNEL, elem->pid, elem->nroPagina, 0, TamanioPagina);
+				void* datosPagina = IM_LeerDatos(socketConMemoria, KERNEL, elem->pid, elem->nroPagina, 0, TamanioPagina);
 				int result = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
 
 				if(result >= 0)
@@ -93,17 +96,19 @@ BloqueControlProceso* FinalizarPrograma(int PIDAFinalizar, int tipoFinalizacion,
 
 			if(hayEstructurasNoLiberadas == true)
 			{
-				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó", PIDAFinalizar);
+				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó", nroPidAFinalizar);
 			}
 			else
 			{
-				printf("El proceso %d liberó todas las estructuras de memoria dinamica", PIDAFinalizar);
+				printf("El proceso %d liberó todas las estructuras de memoria dinamica", nroPidAFinalizar);
 			}
 		}
 
 		if(index == INDEX_LISTOS)
 		{
-			IM_FinalizarPrograma(socketFD, KERNEL, PIDAFinalizar);
+			if(IM_FinalizarPrograma(socketConMemoria, KERNEL, nroPidAFinalizar)==false){
+				FinalizarPrograma(nroPidAFinalizar,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+			}
 		}
 	}
 	return pcbRemovido;
@@ -121,9 +126,7 @@ uint32_t informarSiPidestaEjecutandose(int pidAFinalizar) {
 		RecibirPaqueteCliente(cpu->socketCPU, KERNEL, paquete);
 		uint32_t termino = ((uint32_t*) paquete->Payload)[0];
 		uint32_t PID = ((uint32_t*) paquete->Payload)[1];
-		if (PID == pidAFinalizar) {
-			return termino;
-		}
+		return PID==pidAFinalizar && termino==1;
 	}
 }
 
@@ -156,7 +159,7 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int soc
 		printf("Cant paginas asignadas para el codigo: %d \n",pcb->PaginasDeCodigo);
 		//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
 		list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
-		list_add(Listos, pcb);
+		queue_push(Listos, pcb);
 		printf("El programa %d se cargo en memoria \n",pcb->PID);
 }
 
@@ -258,14 +261,14 @@ void* accion(void* socket){
 							else
 							{
 								//Sacar programa de la lista de nuevos y meterlo en la lista de finalizado con su respectivo codigo de error
-								FinalizarPrograma(Nuevos,pcb->PID,NOSEPUDIERONRESERVARRECURSOS, INDEX_NUEVOS, socketConectado);
+								FinalizarPrograma(Nuevos,pcb->PID,NOSEPUDIERONRESERVARRECURSOS, INDEX_NUEVOS);
 								EnviarMensaje(socketConectado,"No se pudo guardar el programa porque no hay espacio suficiente",KERNEL);
 							}
 						}
 						else
 						{
 							//El grado de multiprogramacion no te deja agregar otro proceso
-							FinalizarPrograma(Nuevos,pcb->PID,NOSEPUDIERONRESERVARRECURSOS, INDEX_NUEVOS, socketConectado);
+							FinalizarPrograma(Nuevos,pcb->PID,NOSEPUDIERONRESERVARRECURSOS, INDEX_NUEVOS);
 							EnviarMensaje(socketConectado,"No se pudo guardar el programa porque se alcanzo el grado de multiprogramacion",KERNEL);
 
 						}
@@ -366,7 +369,7 @@ void* accion(void* socket){
 									}
 									else
 									{
-										FinalizarPrograma(PID, ERRORSINDEFINIR, INDEX_EJECUTANDO, socketConMemoria);
+										FinalizarPrograma(PID, ERRORSINDEFINIR, INDEX_EJECUTANDO);
 									}
 
 								break;

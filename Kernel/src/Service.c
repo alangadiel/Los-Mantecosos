@@ -116,47 +116,47 @@ void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos){
 
 void obtenerError(int exitCode){
 	switch(exitCode){
-		case 0:
+		case FINALIZACIONNORMAL:
 			printf(" (El programa finalizó correctamente)\n");
 		break;
 
-		case -1:
+		case NOSEPUDIERONRESERVARRECURSOS:
 			printf(" (No se pudieron reservar recursos para ejecutar el programa)\n");
 		break;
 
-		case -2:
+		case ACCEDERAARCHIVOINEXISTENTE:
 			printf(" (El programa intentó acceder a un archivo que no existe)\n");
 		break;
 
-		case -3:
+		case LEERARCHIVOSINPERMISOS:
 			printf(" (El programa intentó leer un archivo sin permisos)\n");
 		break;
 
-		case -4:
+		case ESCRIBIRARCHIVOSINPERMISOS:
 			printf(" (El programa intentó escribir un archivo sin permisos)\n");
 		break;
 
-		case -5:
+		case EXCEPCIONDEMEMORIA:
 			printf(" (Excepción de memoria)\n");
 		break;
 
-		case -6:
+		case DESCONEXIONDECONSOLA:
 			printf(" (Finalizado a través de desconexión de consola)\n");
 		break;
 
-		case -7:
+		case DESCONECTADODESDECOMANDOCONSOLA:
 			printf(" (Finalizado a través del comando Finalizar Programa de la consola)\n");
 		break;
 
-		case -8:
+		case SOLICITUDMASGRANDEQUETAMANIOPAGINA:
 			printf(" (Se intentó reservar más memoria que el tamaño de una página)\n");
 		break;
 
-		case -9:
+		case NOSEPUEDENASIGNARMASPAGINAS:
 			printf(" (No se pueden asignar más páginas al proceso)\n");
 		break;
 
-		case -20:
+		case ERRORSINDEFINIR:
 			printf(" (Error sin definición)\n");
 		break;
 	}
