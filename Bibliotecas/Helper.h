@@ -54,6 +54,8 @@ typedef struct {
 	t_list* IndiceDelStack; //lista de IndiceStack
 	int ExitCode;
 	uint32_t cantidadDeRafagasEjecutadas;
+	uint32_t cantidadSyscallEjecutadas;
+
 }__attribute__((packed)) BloqueControlProceso;
 
 typedef struct {

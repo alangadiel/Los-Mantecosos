@@ -41,10 +41,11 @@ void ConsultarEstado(int pidAConsultar)
 	else{
 		BloqueControlProceso* proceso = (BloqueControlProceso*)result;
 		printf("Proceso N°: %d \n",proceso->PID);
-		//printf("Indice de codigo: %d \n",proceso->IndiceDeCodigo);
-		//printf("Tamaño del stack: %d \n",proceso->IndiceStack);
 		printf("Paginas de codigo: %d \n",proceso->PaginasDeCodigo);
 		printf("Contador de programa: %d \n",proceso->ProgramCounter);
+		printf("Rafagas ejecutadas: %d \n",proceso->cantidadDeRafagasEjecutadas);
+		printf("Syscall ejecutadas: %d \n",proceso->cantidadSyscallEjecutadas);
+
 	}
 }
 
