@@ -85,13 +85,15 @@ BloqueControlProceso* FinalizarPrograma(int nroPidAFinalizar, int tipoFinalizaci
 
 				//Me fijo si hay metadatas en estado "used" en cada pagina
 				void* datosPagina = IM_LeerDatos(socketConMemoria, KERNEL, elem->pid, elem->nroPagina, 0, TamanioPagina);
-				int result = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-
-				if(result >= 0)
-				{
-					//Hay algun metadata que no se libero
-					hayEstructurasNoLiberadas=true;
+				if(datosPagina!=NULL){
+					int result = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
+					if(result >= 0)
+					{
+						//Hay algun metadata que no se libero
+						hayEstructurasNoLiberadas=true;
+					}
 				}
+
 			}
 
 			if(hayEstructurasNoLiberadas == true)
@@ -255,8 +257,6 @@ void* accion(void* socket){
 								//Solicito a la memoria que me guarde el codigo del programa(dependiendo cuantas paginas se requiere para el codigo
 								GuardarCodigoDelProgramaEnLaMemoria(pcb,&paquete);
 								EnviarDatos(socketConectado,KERNEL,&(pcb->PID),sizeof(uint32_t));
-								//TODO: Ejecutar en alguna CPU(Enviar PCB)
-
 							}
 							else
 							{

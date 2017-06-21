@@ -5,67 +5,77 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 	uint32_t cantTotal = cantAReservar + sizeof(HeapMetadata);
 	//Obtengo la pagina en cuestion donde actualizar la metadata
 	void* datosPagina = IM_LeerDatos(socketFD, KERNEL, PID, nroPagina, 0, TamanioPagina);
-	uint32_t offset = 0;
-	bool estado;
-	uint32_t sizeBloque;
-	bool encontroLibre = false;
-	uint32_t punteroAlPrimerBloqueDisponible;
+	if(datosPagina!=NULL){
+		uint32_t offset = 0;
+		bool estado;
+		uint32_t sizeBloque;
+		bool encontroLibre = false;
+		uint32_t punteroAlPrimerBloqueDisponible;
 
-	/*int offsetOcupado = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-	if(offsetOcupado<0) //HUBO ERROR
-		punteroAlPrimerBloqueDisponible = -1;
-	else
-		punteroAlPrimerBloqueDisponible= offsetOcupado + sizeof(HeapMetadata);*/
+		/*int offsetOcupado = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
+		if(offsetOcupado<0) //HUBO ERROR
+			punteroAlPrimerBloqueDisponible = -1;
+		else
+			punteroAlPrimerBloqueDisponible= offsetOcupado + sizeof(HeapMetadata);*/
 
-	//Recorro hasta encontrar el primer bloque libre
-	while(offset < TamanioPagina - sizeof(HeapMetadata) && encontroLibre == false)
-	{
-		//Recorro el buffer obtenido
-		sizeBloque = *(uint32_t*)datosPagina + offset;
-		estado = *(bool*)(datosPagina + offset + sizeof(uint32_t));
-
-		if(estado == true)
+		//Recorro hasta encontrar el primer bloque libre
+		while(offset < TamanioPagina - sizeof(HeapMetadata) && encontroLibre == false)
 		{
-			//Si encuentra un metadata free, freno
-			encontroLibre = true;
+			//Recorro el buffer obtenido
+			sizeBloque = *(uint32_t*)datosPagina + offset;
+			estado = *(bool*)(datosPagina + offset + sizeof(uint32_t));
+
+			if(estado == true)
+			{
+				//Si encuentra un metadata free, freno
+				encontroLibre = true;
+			}
+			else
+			{
+				//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
+				offset += (sizeof(HeapMetadata) + sizeBloque);
+			}
+
+		}
+
+		if(encontroLibre == true)
+		{
+			// Se encontro un bloque libre
+			uint32_t diferencia= sizeBloque - cantTotal;
+
+			//Actualizo el metadata de acuerdo a la cantidad de bytes a reservar
+			HeapMetadata metaOcupado;
+			metaOcupado.isFree = false;
+			metaOcupado.size = cantAReservar;
+
+			if(IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offset, sizeof(HeapMetadata), &metaOcupado)==false){
+				FinalizarPrograma(PID,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+				return -1;
+			}
+
+
+			//Creo el metadata para lo que queda libre del espacio que use
+			uint32_t offsetMetadataLibre = offset + sizeof(HeapMetadata) + cantAReservar;
+
+			HeapMetadata metaLibre;
+			metaLibre.isFree = true;
+			metaLibre.size = diferencia;
+
+			IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offsetMetadataLibre, sizeof(HeapMetadata), &metaLibre);
+
+			return offset + sizeof(HeapMetadata);
 		}
 		else
 		{
-			//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
-			offset += (sizeof(HeapMetadata) + sizeBloque);
+			//No se encontro ningun bloque donde reservar memoria dinamica
+			return -1;
 		}
-
 	}
-
-	if(encontroLibre == true)
-	{
-		// Se encontro un bloque libre
-		uint32_t diferencia= sizeBloque - cantTotal;
-
-		//Actualizo el metadata de acuerdo a la cantidad de bytes a reservar
-		HeapMetadata metaOcupado;
-		metaOcupado.isFree = false;
-		metaOcupado.size = cantAReservar;
-
-		IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offset, sizeof(HeapMetadata), &metaOcupado);
-
-
-		//Creo el metadata para lo que queda libre del espacio que use
-		uint32_t offsetMetadataLibre = offset + sizeof(HeapMetadata) + cantAReservar;
-
-		HeapMetadata metaLibre;
-		metaLibre.isFree = true;
-		metaLibre.size = diferencia;
-
-		IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offsetMetadataLibre, sizeof(HeapMetadata), &metaLibre);
-
-		return offset + sizeof(HeapMetadata);
-	}
-	else
-	{
-		//No se encontro ningun bloque donde reservar memoria dinamica
+	else{
+		FinalizarPrograma(PID,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
 		return -1;
 	}
+
 }
 
 
