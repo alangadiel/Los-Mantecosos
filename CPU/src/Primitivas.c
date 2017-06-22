@@ -261,9 +261,9 @@ void primitiva_wait(t_nombre_semaforo identificador_semaforo){
 		free(datos);
 		pcb.cantidadSyscallEjecutadas++;
 		pcb.ProgramCounter++;
-		pcb_Send(datosCpu,pcb,socketKernel,cantRafagasEjecutadas);
-
+		primitivaBloqueante = true;
 }
+
 void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 	//TODO: Programar en kernel para que decida si desbloquear o no los procesos frenados
 		int tamDatos = sizeof(uint32_t)*2+ string_length(identificador_semaforo)+1;
@@ -275,10 +275,8 @@ void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 		free(datos);
 		pcb.cantidadSyscallEjecutadas++;
 		pcb.ProgramCounter++;
-
-		pcb_Send(datosCpu,pcb,socketKernel,cantRafagasEjecutadas);
-
 }
+
 t_puntero primitiva_reservar(t_valor_variable espacio){
 	t_puntero pointer = *(t_puntero*)ReservarBloqueMemoriaDinamica(espacio);
 	pcb.cantidadSyscallEjecutadas++;

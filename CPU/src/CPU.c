@@ -4,7 +4,8 @@
 BloqueControlProceso pcb;
 DatosCPU datosCpu;
 uint32_t cantRafagasAEjecutar;
-uint32_t cantRafagasEjecutadas=0;;
+uint32_t cantRafagasEjecutadas=0;
+bool primitivaBloqueante = false;
 
 bool ejecutando;
 typedef struct {
@@ -138,7 +139,7 @@ bool terminoElPrograma(void){
 void informadorDeUsoDeCpu() {
 	Paquete* paquete;
 	while (true) {
-		RecibirPaqueteServidor(socketKernel, CPU, paquete);
+		while(RecibirPaqueteServidor(socketKernel, CPU, paquete)<0);
 		if (paquete->header.tipoMensaje == ESTAEJECUTANDO) {
 			int tamDatos = sizeof(uint32_t) * 2;
 			void* datos = malloc(tamDatos);
@@ -178,7 +179,8 @@ int main(void) {
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = true;
 				int i=0;
-				while(i< cantRafagasAEjecutar){
+				primitivaBloqueante = false;
+				while(i< cantRafagasAEjecutar && !primitivaBloqueante) {
 					uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 					char instruccion[registro[1]];
 					obtenerLinea(instruccion, registro);
