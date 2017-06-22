@@ -222,11 +222,17 @@ void dispatcher() {
 			BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
 			DatosCPU* cpuAUsar = (DatosCPU*)list_get(listCPUsLibres, 0);
 			uint32_t cantidadDeRafagas;
+			uint32_t cantidadDeRafagasRestantes = PCBAMandar->IndiceDeCodigo->elements_count - PCBAMandar->cantidadDeRafagasEjecutadas;
 			if (strcmp(ALGORITMO, "FIFO") == 0) {
-				cantidadDeRafagas = PCBAMandar->IndiceDeCodigo->elements_count - PCBAMandar->cantidadDeRafagasEjecutadas;
+				cantidadDeRafagas = cantidadDeRafagasRestantes;
 			}
 			else if (strcmp(ALGORITMO, "RR") == 0){
-				cantidadDeRafagas = QUANTUM;
+				if (cantidadDeRafagasRestantes < QUANTUM) {
+					cantidadDeRafagas = cantidadDeRafagasRestantes;
+				}
+				else {
+					cantidadDeRafagas = QUANTUM;
+				}
 			}
 			pcb_Send(cpuAUsar, KERNEL, PCBAMandar, cantidadDeRafagas);
 			cpuAUsar->isFree = false;
@@ -249,9 +255,7 @@ void* accion(void* socket){
 	Paquete paquete;
 	while (RecibirPaqueteServidorKernel(socketConectado, KERNEL, &paquete) > 0) {
 		switch(paquete.header.tipoMensaje) {
-
 			case ESSTRING:
-
 					if(strcmp(paquete.header.emisor, CONSOLA)==0)
 					{
 						double tamaniCodigoEnPaginas = paquete.header.tamPayload/TamanioPagina;
