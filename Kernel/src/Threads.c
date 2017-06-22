@@ -142,7 +142,7 @@ bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket)
 			result = FinalizarPrograma(lista,pidAFinalizar,tipoFinalizacion, i, socket);
 		}
 		else {
-			if (informarSiPIDestaEjecutandose(pidAFinalizar)) {
+			if (informarSiPidestaEjecutandose(pidAFinalizar)) {
 				result = FinalizarPrograma(lista,pidAFinalizar,tipoFinalizacion, i, socket);
 			}
 		}
