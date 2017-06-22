@@ -260,7 +260,6 @@ void primitiva_wait(t_nombre_semaforo identificador_semaforo){
 		EnviarDatos(socketKernel,CPU,datos,tamDatos);
 		free(datos);
 		pcb.cantidadSyscallEjecutadas++;
-		pcb.ProgramCounter++;
 		primitivaBloqueante = true;
 }
 

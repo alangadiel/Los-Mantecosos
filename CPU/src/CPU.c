@@ -174,7 +174,6 @@ int main(void) {
 			DesconectarCPU = true;
 			break;
 		case ESPCB:	{
-
 				pcb_Receive(&datosCpu,&pcb, socketKernel,cantRafagasAEjecutar);
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = true;

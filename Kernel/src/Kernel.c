@@ -191,6 +191,7 @@ void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
 int main(void)
 {
 	CrearListas(); //TODO: Cargar listas de semaforos y variables globales
+	planificacion_detenida = false;
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);

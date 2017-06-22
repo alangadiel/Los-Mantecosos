@@ -215,7 +215,7 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 }
 
 void dispatcher() {
-	while (true) {
+	while (true && !planificacion_detenida) {
 		t_list* listCPUsLibres = list_filter(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
 		int i;
 		for (i = 0; i < list_size(listCPUsLibres); i++) {
@@ -267,7 +267,7 @@ void* accion(void* socket){
 						AgregarAListadePidsPorSocket(pcb->PID, socketConectado);
 
 						//Manejo la multiprogramacion
-						if(GRADO_MULTIPROG - list_size((t_list*)Ejecutando) - list_size((t_list*)Listos) > 0 && list_size((t_list*)Nuevos) >= 1){
+						if(GRADO_MULTIPROG - queue_size(Ejecutando) - queue_size(Listos) > 0 && queue_size(Nuevos) >= 1){
 							//Pregunta a la memoria si me puede guardar estas paginas
 							bool pudoCargarse = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb->PID,tamanioCodigoYStackEnPaginas);
 							if(pudoCargarse == true)
@@ -382,7 +382,7 @@ void* accion(void* socket){
 											return ((DatosCPU*)item)->socketCPU == socketConectado;
 										}));
 										pcb_Receive(pcb, socketConectado, cpu);
-										if (semaf->valorSemaforo < 0) {
+										if (semaf->valorSemaforo < 0) { //se bloquea
 											list_add(semaf->listaDeProcesos, &PID);
 											list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
 												return ((BloqueControlProceso*)item)->PID == pcb->PID;
@@ -391,7 +391,7 @@ void* accion(void* socket){
 										}
 										else {
 											//si hay un wait, se mete otra vez en la cola de listos
-
+											pcb->ProgramCounter++;
 											list_add_in_index(Listos->elements, 0, pcb);
 										}
 									}
@@ -413,9 +413,11 @@ void* accion(void* socket){
 										Semaforo* semaf = (Semaforo*)result;
 										semaf->valorSemaforo++;
 										if (semaf->valorSemaforo >= 0) {
-											list_remove_by_condition(semaf->listaDeProcesos, LAMBDA(bool _(void* item) { return *((uint32_t*) item) == PID; }));
-											BloqueControlProceso* pcb = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
-											queue_push(Listos, pcb);
+											uint32_t pid = *(uint32_t*) list_get(semaf->listaDeProcesos, 0);
+											list_remove_by_condition(semaf->listaDeProcesos, LAMBDA(bool _(void* item) { return *((uint32_t*) item) == pid; }));
+											BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == pid; }));
+											pcbDesbloqueado->ProgramCounter++;
+											queue_push(Listos, pcbDesbloqueado);
 										}
 									}
 									else

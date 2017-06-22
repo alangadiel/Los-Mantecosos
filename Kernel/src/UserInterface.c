@@ -108,6 +108,12 @@ void userInterfaceHandler(uint32_t* socketFD) {
 				EnviarMensaje(*socketFD, "Error al finalizar programa", KERNEL);
 			}
 		}
+		else if (strcmp(command, "detener_planificacion") == 0){
+			planificacion_detenida = true;
+		}
+		else if (strcmp(command, "reanudar_planificacion") == 0){
+			planificacion_detenida = false;
+		}
 		else {
 			printf("No se conoce el mensaje %s\n", orden);
 		}
