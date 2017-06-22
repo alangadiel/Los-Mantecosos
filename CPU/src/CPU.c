@@ -116,7 +116,7 @@ void imprimirArchivoConfiguracion() {
 	}
 }
 
-void obtenerLinea(char** instruccion, uint32_t* registro){
+void obtenerLinea(char* instruccion, uint32_t* registro){
 	uint32_t cantQueFaltaLeer = registro[1];
 	uint32_t cantPaginasALeer = registro[0]/TamanioPaginaMemoria;
 	uint32_t offset = registro[0] % TamanioPaginaMemoria;
@@ -125,7 +125,7 @@ void obtenerLinea(char** instruccion, uint32_t* registro){
 	//TODO: incompleta
 	for (i = 0; i < cantPaginasALeer; ++i) {
 		datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,i, offset, cantQueFaltaLeer);
-		string_append(instruccion, datos);
+		string_append(&instruccion, datos);
 		cantQueFaltaLeer-=TamanioPaginaMemoria;
 	}
 	free(datos);
@@ -139,13 +139,9 @@ void informadorDeUsoDeCpu() {
 	Paquete* paquete;
 	while (true) {
 		RecibirPaqueteServidor(socketKernel, CPU, paquete);
-		while (paquete == NULL) {
-			RecibirPaqueteServidor(socketKernel, CPU, paquete);
-		}
 		if (paquete->header.tipoMensaje == ESTAEJECUTANDO) {
 			int tamDatos = sizeof(uint32_t) * 2;
 			void* datos = malloc(tamDatos);
-
 			((uint32_t*) datos)[0] = terminoElPrograma();
 			((uint32_t*) datos)[1] = estadoActual.pcb.PID;
 
@@ -165,8 +161,8 @@ int main(void) {
 	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake); //TODO: Recibir datos
 	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake_DeMemoria);
 
-	pthread_t userInterface;
-	pthread_create(&userInterface, NULL, (void*)informadorDeUsoDeCpu, NULL);
+	pthread_t hiloInformadorDeEstado;
+	pthread_create(&hiloInformadorDeEstado, NULL, (void*)informadorDeUsoDeCpu, NULL);
 
 
 	while(!DesconectarCPU) {
@@ -185,7 +181,7 @@ int main(void) {
 				while(i< cantRafagasAEjecutar){
 					uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 					char instruccion[registro[1]];
-					obtenerLinea(&instruccion, registro);
+					obtenerLinea(instruccion, registro);
 					analizadorLinea(instruccion,&functions,&kernel_functions);
 					pcb.cantidadDeRafagasEjecutadas++;
 					cantRafagasEjecutadas++;
@@ -201,6 +197,6 @@ int main(void) {
 		}
 	}
 	pcb_Destroy(&pcb);
-	pthread_join(userInterface, NULL);
+	pthread_join(hiloInformadorDeEstado, NULL);
 	return 0;
 }
