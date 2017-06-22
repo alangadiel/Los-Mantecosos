@@ -104,7 +104,7 @@ Cuando el Proceso Kernel comunique el inicio de un nuevo Programa, se crearán l
 estructuras necesarias para administrarlo correctamente. En una misma página no se podrán
 tener datos referentes a 2 segmentos diferentes (por ej. Código y Stack, o Stack y Heap).
  */
-uint32_t IM_InicializarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog, uint32_t CantPag);
+bool IM_InicializarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog, uint32_t CantPag);
 //Solicitar paginas para un programa nuevo, devuelve 0 si hay error, 1 sino.
 /*
  * Solicitar bytes de una página
@@ -124,7 +124,7 @@ Ante un pedido de escritura de página de alguno de los procesadores, se realiza
 traducción a marco (frame), y se actualizará su contenido. En caso de que la página se
 encuentre en Memoria Caché, se deberá actualizar también el frame alojado en la misma.
  */
-uint32_t IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
+bool IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 		uint32_t PagNum, uint32_t offset, uint32_t cantBytes, void* buffer);
 /* devuelve 0 si hay error, 1 sino.
  * Asignar Páginas a Proceso
@@ -134,7 +134,7 @@ asignarle tantas páginas como se soliciten al proceso ampliando así su tamaño
 que no se pueda asignar más páginas se deberá informar de la imposibilidad de asignar por
 falta de espacio.
  */
-uint32_t IM_AsignarPaginas(int socketFD, char emisor[11], uint32_t ID_Prog,	uint32_t CantPag);
+bool IM_AsignarPaginas(int socketFD, char emisor[11], uint32_t ID_Prog,	uint32_t CantPag);
 //devuelve 0 si hay error, 1 sino.
 /*
  * Liberar Página de un Proceso
@@ -144,7 +144,7 @@ uint32_t IM_AsignarPaginas(int socketFD, char emisor[11], uint32_t ID_Prog,	uint
   o no pueda ser liberada, se deberá informar de la imposibilidad de realizar dicha operación
   como una excepcion de memoria.
  */
-uint32_t IM_LiberarPagina(int socketFD, char emisor[11], uint32_t ID_Prog, uint32_t NumPag);
+bool IM_LiberarPagina(int socketFD, char emisor[11], uint32_t ID_Prog, uint32_t NumPag);
 //Agregado en el Fe de Erratas, devuelve 0 si hay error, 1 sino.
 /*
  * Finalizar programa
@@ -152,7 +152,7 @@ Parámetros: [Identificador del Programa]
 Cuando el Proceso Kernel informe el fin de un Programa, se deberán eliminar las entradas en
 estructuras usadas para administrar la memoria.
  */
-uint32_t IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog);
+bool IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog);
 //Borra las paginas de ese programa. devuelve 0 si hay error, 1 sino.
 
 void pcb_Send(int socketCliente, char emisor[11], BloqueControlProceso* pcb);
