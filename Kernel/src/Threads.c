@@ -29,7 +29,7 @@ BloqueControlProceso* removerPidDeListas(int pid) {
 }
 
 void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp,Paquete* paquete){
-	int i,j=0;
+	int i=0,j=0;
 	bool salioTodoBien = true;
 		while(i< bcp->PaginasDeCodigo && salioTodoBien==false){
 			char* str;
@@ -64,7 +64,7 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	i=0;
 	// Leer metadataprogram.c a ver como desarrollaron esto
 	while(i<metaProgram->etiquetas_size){
-		char* etiquetaABuscar;
+		char* etiquetaABuscar = string_new();
 		while(metaProgram->etiquetas[i]!=metaProgram->instrucciones_size){
 			etiquetaABuscar[i]=metaProgram->etiquetas[i];
 			i++;
@@ -239,10 +239,8 @@ void dispatcher() {
 void AgregarAListadePidsPorSocket(uint32_t PID, int socket)
 {
 	PIDporSocketConsola* PIDxSocket = malloc(sizeof(uint32_t));
-
 	PIDxSocket->PID = PID;
 	PIDxSocket->socketConsola = socket;
-
 	list_add(PIDsPorSocketConsola, PIDxSocket);
 }
 
