@@ -61,7 +61,7 @@ typedef struct {
 typedef struct {
 	int socketCPU;
 	bool isFree;
-} DatosCPU;
+} __attribute__((packed))DatosCPU;
 
 typedef struct {
 	uint32_t* Atributos;
