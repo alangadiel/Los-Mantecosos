@@ -208,6 +208,7 @@ int main(void)
 	ServidorConcuerrente(IP_PROG, PUERTO_PROG, KERNEL,&HilosDeConexiones, &end, accion);
 
 	pthread_join(hiloConsola, NULL);
+	pthread_join(hiloDispatcher, NULL);
 	LimpiarListas();
 
 	return 0;

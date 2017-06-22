@@ -103,7 +103,7 @@ void LimpiarListas() {
 	list_destroy_and_destroy_elements(CPUsConectadas, free);
 }
 
-void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos){
+void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos){
 	//Creo el pcb y lo guardo en la lista de nuevos
 	pcb->PID = *ultimoPid+1;
 	//pcb->IndiceStack = 0;

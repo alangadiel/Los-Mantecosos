@@ -8,6 +8,26 @@
 
 int ultimoPID = 0;
 
+BloqueControlProceso* removerPidDeListas(int pid) {
+	BloqueControlProceso* pcb = list_remove_by_condition((t_list*)Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+	if (pcb != NULL) {
+		return pcb;
+	}
+	pcb = list_remove_by_condition((t_list*)Ejecutando, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+	if (pcb != NULL) {
+		return pcb;
+	}
+	pcb = list_remove_by_condition((t_list*)Bloqueados, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+	if (pcb != NULL) {
+		return pcb;
+	}
+	pcb = list_remove_by_condition((t_list*)Listos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+	if (pcb != NULL) {
+		return pcb;
+	}
+	return NULL;
+}
+
 void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp,Paquete* paquete){
 	int i,j=0;
 	bool salioTodoBien = true;
@@ -24,7 +44,7 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp,Paquete* paqu
 			}
 			salioTodoBien=IM_GuardarDatos(socketConMemoria, KERNEL, bcp->PID, i, 0, string_length(str)+1, str);
 			if(salioTodoBien==false){
-				FinalizarPrograma(bcp->PID,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+				FinalizarPrograma(bcp->PID,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO, socketConMemoria);
 			}
 		}
 }
@@ -54,26 +74,24 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	}
 }
 
-BloqueControlProceso* FinalizarPrograma(int nroPidAFinalizar, int tipoFinalizacion, int index)
+BloqueControlProceso* FinalizarPrograma(int pid,int tipoFinalizacion, int index, int socketFD)
 {
 	BloqueControlProceso* pcbRemovido = NULL;
 	bool hayEstructurasNoLiberadas = false;
 
-	finalizarProgramaCapaFS(nroPidAFinalizar);
+	finalizarProgramaCapaFS(pid);
 
 	//Aca hace la liberacion de memoria uri, fijate si podes hacer una funcion finalizarProgramaCapaMemoria, sino hace aca normal
-
-
-	pcbRemovido = (BloqueControlProceso*)list_remove_by_condition(lista, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == nroPidAFinalizar; }));
+	pcbRemovido = removerPidDeListas(pid);
 
 	if(pcbRemovido!=NULL) {
 		pcbRemovido->ExitCode = tipoFinalizacion;
 
-		list_add(Finalizados, pcbRemovido);
+		list_add((t_list*)Finalizados, pcbRemovido);
 
 		//Analizo si el proceso tiene Memory Leaks o no
 		t_list* pagesProcess= list_filter(PaginasPorProceso,
-							LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == nroPidAFinalizar;}));
+							LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == pid;}));
 
 		if(list_size(pagesProcess) > 0)
 		{
@@ -98,38 +116,41 @@ BloqueControlProceso* FinalizarPrograma(int nroPidAFinalizar, int tipoFinalizaci
 
 			if(hayEstructurasNoLiberadas == true)
 			{
-				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó", nroPidAFinalizar);
+				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó", pid);
 			}
 			else
 			{
-				printf("El proceso %d liberó todas las estructuras de memoria dinamica", nroPidAFinalizar);
+				printf("El proceso %d liberó todas las estructuras de memoria dinamica", pid);
 			}
 		}
 
 		if(index == INDEX_LISTOS)
 		{
-			if(IM_FinalizarPrograma(socketConMemoria, KERNEL, nroPidAFinalizar)==false){
-				FinalizarPrograma(nroPidAFinalizar,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+			if(IM_FinalizarPrograma(socketConMemoria, KERNEL, pid)==false){
+				FinalizarPrograma(pid,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO, socketConMemoria);
 			}
 		}
 	}
 	return pcbRemovido;
 }
 
-uint32_t informarSiPidestaEjecutandose(int pidAFinalizar) {
+bool informarSiPidestaEjecutandose(int pidAFinalizar) {
 	int i;
 	for (i = 0; i < list_size(CPUsConectadas); i++) {
 		DatosCPU* cpu = (DatosCPU*) list_get(CPUsConectadas, i);
 		Paquete* paquete = malloc(sizeof(Paquete));
-		paquete->header->tipoMensaje = ESTAEJECUTANDO;
+		paquete->header.tipoMensaje = ESTAEJECUTANDO;
 		EnviarPaquete(cpu->socketCPU, paquete);
 		free(paquete);
-		Paquete* paquete = malloc(sizeof(Paquete));
-		RecibirPaqueteCliente(cpu->socketCPU, KERNEL, paquete);
-		uint32_t termino = ((uint32_t*) paquete->Payload)[0];
-		uint32_t PID = ((uint32_t*) paquete->Payload)[1];
-		return PID==pidAFinalizar && termino==1;
+		Paquete* paquete2 = malloc(sizeof(Paquete));
+		RecibirPaqueteCliente(cpu->socketCPU, KERNEL, paquete2);
+		uint32_t termino = ((uint32_t*) paquete2->Payload)[0];
+		uint32_t PID = ((uint32_t*) paquete2->Payload)[1];
+		if (PID==pidAFinalizar && termino==1) {
+			return true;
+		}
 	}
+	return false;
 }
 
 bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket)
@@ -137,13 +158,12 @@ bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket)
 	int i =0;
 	void* result = NULL;
 	while(i<list_size(EstadosConProgramasFinalizables) && result == NULL){
-		t_list* lista = list_get(EstadosConProgramasFinalizables,i);
 		if(i!=INDEX_EJECUTANDO) {
-			result = FinalizarPrograma(lista,pidAFinalizar,tipoFinalizacion, i, socket);
+			result = FinalizarPrograma(pidAFinalizar,tipoFinalizacion, i, socket);
 		}
 		else {
 			if (informarSiPidestaEjecutandose(pidAFinalizar)) {
-				result = FinalizarPrograma(lista,pidAFinalizar,tipoFinalizacion, i, socket);
+				result = FinalizarPrograma(pidAFinalizar,tipoFinalizacion, i, socket);
 			}
 		}
 		i++;
@@ -160,7 +180,7 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int soc
 		pcb->PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
 		printf("Cant paginas asignadas para el codigo: %d \n",pcb->PaginasDeCodigo);
 		//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
-		list_remove_by_condition(Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
+		list_remove_by_condition((t_list*)Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
 		queue_push(Listos, pcb);
 		printf("El programa %d se cargo en memoria \n",pcb->PID);
 }
@@ -196,7 +216,7 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 
 void dispatcher() {
 	while (true) {
-		t_list listCPUsLibres = list_filter(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
+		t_list* listCPUsLibres = list_filter(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
 		int i;
 		for (i = 0; i < list_size(listCPUsLibres); i++) {
 			BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
@@ -245,7 +265,7 @@ void* accion(void* socket){
 						AgregarAListadePidsPorSocket(pcb->PID, socketConectado);
 
 						//Manejo la multiprogramacion
-						if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
+						if(GRADO_MULTIPROG - list_size((t_list*)Ejecutando) - list_size((t_list*)Listos) > 0 && list_size((t_list*)Nuevos) >= 1){
 							//Pregunta a la memoria si me puede guardar estas paginas
 							bool pudoCargarse = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb->PID,tamanioCodigoYStackEnPaginas);
 							if(pudoCargarse == true)
@@ -261,14 +281,14 @@ void* accion(void* socket){
 							else
 							{
 								//Sacar programa de la lista de nuevos y meterlo en la lista de finalizado con su respectivo codigo de error
-								FinalizarPrograma(Nuevos,pcb->PID,NOSEPUDIERONRESERVARRECURSOS, INDEX_NUEVOS);
+								FinalizarPrograma(pcb->PID,NOSEPUDIERONRESERVARRECURSOS, INDEX_NUEVOS, socketConMemoria);
 								EnviarMensaje(socketConectado,"No se pudo guardar el programa porque no hay espacio suficiente",KERNEL);
 							}
 						}
 						else
 						{
 							//El grado de multiprogramacion no te deja agregar otro proceso
-							FinalizarPrograma(Nuevos,pcb->PID,NOSEPUDIERONRESERVARRECURSOS, INDEX_NUEVOS);
+							FinalizarPrograma(pcb->PID,NOSEPUDIERONRESERVARRECURSOS, INDEX_NUEVOS, socketConMemoria);
 							EnviarMensaje(socketConectado,"No se pudo guardar el programa porque se alcanzo el grado de multiprogramacion",KERNEL);
 
 						}
@@ -281,10 +301,11 @@ void* accion(void* socket){
 						{
 							switch ((*(uint32_t*)paquete.Payload))
 							{
-								int32_t valorADevolver;
 								int32_t valorAAsignar;
 								char* variableCompartida;
 								uint32_t PID;
+								uint32_t FD;
+								uint32_t tamanioArchivo;
 								void* result;
 								void* datos;
 								VariableCompartida var;
@@ -362,14 +383,14 @@ void* accion(void* socket){
 											return ((DatosCPU*)item)->socketCPU == socketConectado;
 										}));
 										pcb_Receive(pcb, socketConectado, cpu);
-										list_remove_by_condition(Ejecutando,  LAMBDA(bool _(void* item) {
+										list_remove_by_condition((t_list*)Ejecutando,  LAMBDA(bool _(void* item) {
 											return ((BloqueControlProceso*)item)->PID == pcb->PID;
 										}));
 										queue_push(Bloqueados, pcb);
 									}
 									else
 									{
-										FinalizarPrograma(PID, ERRORSINDEFINIR, INDEX_EJECUTANDO);
+										FinalizarPrograma(PID, ERRORSINDEFINIR, INDEX_EJECUTANDO, socketConMemoria);
 									}
 
 								break;
@@ -385,8 +406,8 @@ void* accion(void* socket){
 									{
 										Semaforo* semaf = (Semaforo*)result;
 										semaf->valorSemaforo++;
-										list_remove_by_condition(semaf->listaDeProcesos, LAMBDA(bool _(void* item) { return ((uint32_t*) item) == PID; }));
-										list_remove_by_condition(Bloqueados, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
+										list_remove_by_condition(semaf->listaDeProcesos, LAMBDA(bool _(void* item) { return *((uint32_t*) item) == PID; }));
+										list_remove_by_condition((t_list*)Bloqueados, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
 									}
 									else
 									{
@@ -439,24 +460,20 @@ void* accion(void* socket){
 
 								case BORRARARCHIVO:
 									PID = ((uint32_t*)paquete.Payload)[1];
-
-									uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
-
+									FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
 									borrarArchivo(FD, PID);
 								break;
 
 								case CERRARARCHIVO:
 									PID = ((uint32_t*)paquete.Payload)[1];
-
-									uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
-
+									FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
 									cerrarArchivo(FD, PID);
 								break;
 
 								case MOVERCURSOSARCHIVO:
 									PID = ((uint32_t*)paquete.Payload)[1];
 
-									uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+									FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
 
 									uint32_t posicion = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
 
@@ -466,9 +483,9 @@ void* accion(void* socket){
 								case ESCRIBIRARCHIVO:
 									PID = ((uint32_t*)paquete.Payload)[1];
 
-									uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+									FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
 
-									uint32_t tamanioArchivo = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+									tamanioArchivo = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
 
 									char* datosAEscribir = ((char**)paquete.Payload)[sizeof(uint32_t) * 4];
 
@@ -478,9 +495,9 @@ void* accion(void* socket){
 								case LEERARCHIVO:
 									PID = ((uint32_t*)paquete.Payload)[1];
 
-									uint32_t FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+									FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
 
-									uint32_t tamanioArchivo = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+									tamanioArchivo = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
 
 									leerArchivo(FD, PID, tamanioArchivo);
 								break;
@@ -522,7 +539,7 @@ void* accion(void* socket){
 							return ((DatosCPU*)item)->socketCPU == socketConectado;
 						}));
 						pcb_Receive(pcb, socketConectado, cpu);
-						list_remove_by_condition(Ejecutando,  LAMBDA(bool _(void* item) {
+						list_remove_by_condition((t_list*)Ejecutando,  LAMBDA(bool _(void* item) {
 							return ((BloqueControlProceso*)item)->PID == pcb->PID;
 						}));
 						if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas) {

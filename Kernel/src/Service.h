@@ -56,11 +56,11 @@ extern t_list* CPUsConectadas;
 extern t_list* Semaforos;
 extern t_list* VariablesCompartidas;
 extern t_list* PaginasPorProceso;
-extern t_list* Nuevos;
-extern t_list* Finalizados;
-extern t_list* Bloqueados;
-extern t_list* Ejecutando;
-extern t_list* Listos;
+extern t_queue* Nuevos;
+extern t_queue* Finalizados;
+extern t_queue* Bloqueados;
+extern t_queue* Ejecutando;
+extern t_queue* Listos;
 extern t_list* Estados;
 extern t_list* ListaPCB;
 extern t_list* EstadosConProgramasFinalizables;
@@ -86,7 +86,7 @@ void imprimirArchivoConfiguracion();
 char* ObtenerTextoDeArchivoSinCorchetes(FILE* f);
 
 void CrearListasEstados();
-void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_list* nuevos);
+void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos);
 void LimpiarListas();
 void CrearListas();
 

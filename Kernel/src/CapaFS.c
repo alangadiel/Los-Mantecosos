@@ -121,7 +121,8 @@ void finalizarProgramaCapaFS(int PID)
 
 	if(result != NULL)
 	{
-		for(int j = 0; j < list_size(listaProcesoAFinalizar); j++)
+		int j;
+		for(j = 0; j < list_size(listaProcesoAFinalizar); j++)
 		{
 			archivoProceso* archivoProc = (archivoProceso*)list_get(listaProcesoAFinalizar, j);
 
