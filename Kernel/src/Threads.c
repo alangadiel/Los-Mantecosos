@@ -372,29 +372,33 @@ void* accion(void* socket){
 									strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
 
 									result = NULL;
-
 									result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
-
 									if(result != NULL)
 									{
 										Semaforo* semaf = (Semaforo*)result;
 										semaf->valorSemaforo--;
-										list_add(semaf->listaDeProcesos, &PID);
 										BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
 										DatosCPU* cpu = list_find(CPUsConectadas, LAMBDA(bool _(void* item) {
 											return ((DatosCPU*)item)->socketCPU == socketConectado;
 										}));
 										pcb_Receive(pcb, socketConectado, cpu);
-										list_remove_by_condition((t_list*)Ejecutando,  LAMBDA(bool _(void* item) {
-											return ((BloqueControlProceso*)item)->PID == pcb->PID;
-										}));
-										queue_push(Bloqueados, pcb);
+										if (semaf->valorSemaforo < 0) {
+											list_add(semaf->listaDeProcesos, &PID);
+											list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
+												return ((BloqueControlProceso*)item)->PID == pcb->PID;
+											}));
+											queue_push(Bloqueados, pcb);
+										}
+										else {
+											//si hay un wait, se mete otra vez en la cola de listos
+
+											list_add_in_index(Listos->elements, 0, pcb);
+										}
 									}
 									else
 									{
 										FinalizarPrograma(PID, ERRORSINDEFINIR, INDEX_EJECUTANDO, socketConMemoria);
 									}
-
 								break;
 
 								case SIGNALSEM:
@@ -408,8 +412,11 @@ void* accion(void* socket){
 									{
 										Semaforo* semaf = (Semaforo*)result;
 										semaf->valorSemaforo++;
-										list_remove_by_condition(semaf->listaDeProcesos, LAMBDA(bool _(void* item) { return *((uint32_t*) item) == PID; }));
-										list_remove_by_condition((t_list*)Bloqueados, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
+										if (semaf->valorSemaforo >= 0) {
+											list_remove_by_condition(semaf->listaDeProcesos, LAMBDA(bool _(void* item) { return *((uint32_t*) item) == PID; }));
+											BloqueControlProceso* pcb = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
+											queue_push(Listos, pcb);
+										}
 									}
 									else
 									{
