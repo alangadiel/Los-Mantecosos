@@ -350,26 +350,30 @@ uint32_t IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog) {
 	free(paquete);
 	return r;
 }
-
+/*
 void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe) {
 
 	int tamIndiceCodigo = list_size(pecebe->IndiceDeCodigo) * sizeof(uint32_t) * 2; //IndiceDeCodigo
 
 	int tamIndiceEtiquetas = 0; //IndiceDeEtiquetas
 
-	for (int i = 0; i < dictionary_size(pecebe->IndiceDeEtiquetas); i++){
+	int i;
+
+	for (i = 0; i < dictionary_size(pecebe->IndiceDeEtiquetas); i++){
 		tamIndiceEtiquetas += sizeof(uint32_t);
 	}
 
 	int tamIndiceStack = 0; //IndiceDelStack
 
-	for (int i = 0; i < list_size(pecebe->IndiceDelStack); i++){
-		tamIndiceStack += sizeof(uint32_t) * 4 //DireccionDeRetorno y PosicionDeMemoria(struct con 3 uint32_t)
-					+ list_size(((IndiceStack)pecebe->IndiceDelStack).Argumentos) * sizeof(uint32_t) //Argumentos
-					+ list_size(((IndiceStack)pecebe->IndiceDelStack).Variables) * sizeof(uint32_t); //Variables
+	for (i = 0; i < list_size(pecebe->IndiceDelStack); i++){
+		tamIndiceStack += list_size(((IndiceStack*)list_get(pecebe->IndiceDelStack, i)).Variables) * sizeof(uint32_t)
+						+ list_size(((IndiceStack*)list_get(pecebe->IndiceDelStack, i)).Argumentos) * sizeof(uint32_t)
+						+ sizeof(uint32_t)
+						+ sizeof(PosicionDeMemoria);
 	}
 
-	int tamDatos = sizeof(uint32_t) * 4 //PID, ProgramCounter, PaginasDeCodigo, ExitCode
+	int tamDatos = sizeof(uint32_t) * 3 //PID, ProgramCounter, PaginasDeCodigo
+						+ sizeof(int32_t) //ExitCode
 						+ tamIndiceCodigo //IndiceDeCodigo
 						+ tamIndiceEtiquetas //IndiceDeEtiquetas
 						+ tamIndiceStack; //IndiceDelStack
@@ -379,12 +383,130 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	((uint32_t*) pcbSerializado)[0] = pecebe->PID;
 	((uint32_t*) pcbSerializado)[1] = pecebe->ProgramCounter;
 	((uint32_t*) pcbSerializado)[2] = pecebe->PaginasDeCodigo;
-	((uint32_t*) pcbSerializado)[3] = pecebe->ExitCode;
+	((int32_t*) pcbSerializado)[3] = pecebe->ExitCode;
 	((uint32_t*) pcbSerializado)[4] = list_size(pecebe->IndiceDeCodigo); //cantElementosIndiceDeCodigo
 	((uint32_t*) pcbSerializado)[5] = dictionary_size(pecebe->IndiceDeEtiquetas); //cantElementosIndiceDeEtiquetas
 	((uint32_t*) pcbSerializado)[6] = list_size(pecebe->IndiceDelStack); //cantElementosIndiceDelStack
-	memcpy(pcbSerializado+sizeof(uint32_t) * 7, pecebe->IndiceDeCodigo, tamIndiceCodigo);
-	memcpy(pcbSerializado+sizeof(uint32_t) * 7 + tamIndiceCodigo, pecebe->IndiceDeEtiquetas, tamIndiceEtiquetas);
-	memcpy(pcbSerializado+sizeof(uint32_t) * 7 + tamIndiceCodigo + tamIndiceEtiquetas, pecebe->IndiceDelStack, tamIndiceStack);
+	for (i = 0 ; i < list_size(pecebe->IndiceDeCodigo); i++){
+		((uint32_t*) pcbSerializado)[7+i] = (uint32_t) list_get(pecebe->IndiceDeCodigo, i);
+
+	}
+	//memcpy(pcbSerializado+sizeof(uint32_t) * 7, pecebe->IndiceDeCodigo, tamIndiceCodigo);
+	//memcpy(pcbSerializado+sizeof(uint32_t) * 7 + tamIndiceCodigo, pecebe->IndiceDeEtiquetas, tamIndiceEtiquetas);
+	//memcpy(pcbSerializado+sizeof(uint32_t) * 7 + tamIndiceCodigo + tamIndiceEtiquetas, pecebe->IndiceDelStack, tamIndiceStack);
+	pcb_Destroy(pecebe);
+}*/
+
+
+void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe, uint32_t cantRafagas) {
+
+	int tamIndiceCodigo = list_size(pecebe->IndiceDeCodigo) * sizeof(uint32_t) * 2; //IndiceDeCodigo
+
+	int tamIndiceEtiquetas = 0; //IndiceDeEtiquetas
+
+	int i;
+
+	for (i = 0; i < dictionary_size(pecebe->IndiceDeEtiquetas); i++){
+		tamIndiceEtiquetas += sizeof(uint32_t);
+	}
+
+	int tamIndiceStack = 0; //IndiceDelStack
+
+	for (i = 0; i < list_size(pecebe->IndiceDelStack); i++){
+		IndiceStack* indSt = (IndiceStack*)list_get(pecebe->IndiceDelStack, i);
+		tamIndiceStack += list_size(indSt->Variables) * sizeof(uint32_t)
+						+ list_size(indSt->Argumentos) * sizeof(uint32_t)
+						+ sizeof(uint32_t)
+						+ sizeof(PosicionDeMemoria);
+	}
+
+	int tamDatos = sizeof(uint32_t) * 3 //PID, ProgramCounter, PaginasDeCodigo
+						+ sizeof(int32_t) //ExitCode
+						+ tamIndiceCodigo //IndiceDeCodigo
+						+ tamIndiceEtiquetas //IndiceDeEtiquetas
+						+ tamIndiceStack; //IndiceDelStack
+
+	void* pcbSerializado = malloc(tamDatos);
+
+	//Serialización ExitCode
+	*((uint32_t*)pcbSerializado) = cantRafagas;
+	pcbSerializado += sizeof(uint32_t);
+
+	//Serialización PID
+	*((uint32_t*)pcbSerializado) = pecebe->PID;
+	pcbSerializado += sizeof(uint32_t);
+
+	//Serialización ProgramCounter
+	*((uint32_t*)pcbSerializado) = pecebe->ProgramCounter;
+	pcbSerializado += sizeof(uint32_t);
+
+	//Serialización PaginasDeCodigo
+	*((uint32_t*)pcbSerializado) = pecebe->PaginasDeCodigo;
+	pcbSerializado += sizeof(uint32_t);
+
+	//Serialización ExitCode
+	*((int32_t*)pcbSerializado) = pecebe->ExitCode;
+	pcbSerializado += sizeof(int32_t);
+
+
+	//Serialización IndiceDeCodigo
+
+	uint32_t sizeIndCod = (uint32_t)list_size(pecebe->IndiceDeCodigo);
+
+	*((uint32_t*)pcbSerializado) = sizeIndCod;
+	pcbSerializado += sizeof(uint32_t);
+
+	for (i = 0; i < sizeIndCod; i++){
+		*((uint32_t*)pcbSerializado)[0] = ((uint32_t*)(list_get(pecebe->IndiceDeCodigo, i)))[0];
+		*((uint32_t*)pcbSerializado)[1] = ((uint32_t*)(list_get(pecebe->IndiceDeCodigo, i)))[1];
+		pcbSerializado += sizeof(uint32_t) * 2;
+	}
+
+	//Serialización IndiceDelStack
+
+	uint32_t sizeIndStack = (uint32_t)list_size(pecebe->IndiceDelStack);
+
+	*((uint32_t*)pcbSerializado) = sizeIndStack;
+	pcbSerializado += sizeof(uint32_t);
+
+	for (i = 0; i < sizeIndStack; i++){
+		IndiceStack indice = *((IndiceStack*)(list_get(pecebe->IndiceDelStack, i)));
+		uint32_t sizeVariables = (uint32_t) list_size(indice.Variables);
+		uint32_t sizeArgumentos = (uint32_t) list_size(indice.Argumentos);
+		int j;
+
+		*((uint32_t*)pcbSerializado) = indice.DireccionDeRetorno;
+		pcbSerializado += sizeof(uint32_t);
+		*((PosicionDeMemoria*)pcbSerializado) = indice.PosVariableDeRetorno;
+		pcbSerializado += sizeof(PosicionDeMemoria);
+		*((uint32_t*)pcbSerializado) = sizeVariables;
+		pcbSerializado += sizeof(uint32_t);
+
+		for (j = 0; j < sizeVariables; j++){
+			*((uint32_t*)pcbSerializado) = *((uint32_t*)list_get(indice.Variables, j));
+			pcbSerializado += sizeof(uint32_t);
+		}
+
+		*((uint32_t*)pcbSerializado) = sizeArgumentos;
+		pcbSerializado += sizeof(uint32_t);
+
+		for (j = 0; j < sizeArgumentos; j++){
+			*((uint32_t*)pcbSerializado) = *((uint32_t*)list_get(indice.Argumentos, j));
+			pcbSerializado += sizeof(uint32_t);
+		}
+	}
+
+	//Serialización Índice De Etiquetas
+
+	uint32_t sizeIndEtiq = (uint32_t)dictionary_size(pecebe->IndiceDeEtiquetas);
+
+	*((uint32_t*)pcbSerializado) = sizeIndEtiq;
+	pcbSerializado += sizeof(uint32_t);
+
+	for(i = 0; i < sizeIndEtiq; i++){
+		(dictionary_get(pecebe->IndiceDeEtiquetas, "hola"));
+	}
+
 	pcb_Destroy(pecebe);
 }
+

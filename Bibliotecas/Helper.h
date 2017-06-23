@@ -43,7 +43,7 @@ typedef struct {
 	t_list* IndiceDeCodigo;    //Cada elemento seria un array de 2 ints
 	t_dictionary* IndiceDeEtiquetas;
 	t_list* IndiceDelStack; //lista de IndiceStack
-	uint32_t ExitCode;
+	int32_t ExitCode;
 }__attribute__((packed)) BloqueControlProceso;
 
 typedef struct {
