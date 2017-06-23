@@ -56,7 +56,7 @@ char* integer_to_string(int x);
 char* obtenerTiempoString(time_t t);
 int GetTamanioArchivo(FILE * f);
 
-void pcb_Create(BloqueControlProceso* pecebe, int*);
+void pcb_Create(BloqueControlProceso* pecebe);
 void pcb_Destroy(BloqueControlProceso* pecebe);
 
 #endif /* HELPER_*/

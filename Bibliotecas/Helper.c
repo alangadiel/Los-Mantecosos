@@ -42,15 +42,14 @@ int GetTamanioArchivo(FILE * f) {
 	return size;
 }
 
-void pcb_Create(BloqueControlProceso* pecebe,int* ultimoPid){
-	pecebe->PID = *ultimoPid+1;
+void pcb_Create(BloqueControlProceso* pecebe){
+	pecebe->PID = 0;
 	pecebe->ProgramCounter = 0;
 	pecebe->PaginasDeCodigo=0;
 	pecebe->IndiceDeCodigo = list_create();
 	pecebe->IndiceDeEtiquetas = dictionary_create();
 	pecebe->IndiceDelStack = list_create();
 	//pecebe->ExitCode = ? si todavia no finalizó
-	(*ultimoPid)++;
 }
 
 void pcb_Destroy(BloqueControlProceso* pecebe){

@@ -457,9 +457,10 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe,
 	pcbSerializado += sizeof(uint32_t);
 
 	for (i = 0; i < sizeIndCod; i++){
-		*((uint32_t*)pcbSerializado)[0] = ((uint32_t*)(list_get(pecebe->IndiceDeCodigo, i)))[0];
-		*((uint32_t*)pcbSerializado)[1] = ((uint32_t*)(list_get(pecebe->IndiceDeCodigo, i)))[1];
-		pcbSerializado += sizeof(uint32_t) * 2;
+		*((uint32_t*)pcbSerializado) = *((uint32_t*)(list_get(pecebe->IndiceDeCodigo, i)));
+		pcbSerializado += sizeof(uint32_t);
+		*((uint32_t*)pcbSerializado)= *((uint32_t*)(list_get(pecebe->IndiceDeCodigo, i)));
+		pcbSerializado += sizeof(uint32_t);
 	}
 
 	//Serialización IndiceDelStack
@@ -504,9 +505,16 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe,
 	pcbSerializado += sizeof(uint32_t);
 
 	for(i = 0; i < sizeIndEtiq; i++){
-		(dictionary_get(pecebe->IndiceDeEtiquetas, "hola"));
+		*((t_hash_element*)pcbSerializado) = pecebe->IndiceDeEtiquetas[sizeof(uint32_t)*i];
+		pcbSerializado += (t_dictionary*);
 	}
 
+	EnviarDatos(socketCliente, emisor, pcbSerializado, tamDatos);
+
 	pcb_Destroy(pecebe);
+}
+
+void RecibirPCB(void* pecebe, int socketFD){
+	BloqueControlProceso* nuevoPCB =
 }
 
