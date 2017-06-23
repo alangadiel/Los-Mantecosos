@@ -51,7 +51,31 @@ void dumpMemoryStruct() {
 	}
 	fclose(file);
 }
-
+void dumpMemoryContentOfCache() {
+	if(list_is_empty(tablaCache)){
+		printf("La memoria cache esta vacia\n");
+	} else {
+		printf("Imprimiendo todo el contenido de la memoria cache\n");
+		char nombreDelArchivo[64+33+1];//tam de la hora + tam de "Contenido de la memoria cache en " + \0
+		char* t = temporal_get_string_time();
+		//char* tr = string_substring_from(t, ) TODO, que no se guarden con la fecha, solo la hora
+		sprintf(nombreDelArchivo, "Contenido de la memoria cache en %s", t);
+		free(t);
+		FILE* file = fopen(nombreDelArchivo, "w");
+		int i; entradaCache* entrada;
+		char* contenido;
+		for(i=0; i<list_size(tablaCache);i++) {
+			entrada = list_get(tablaCache, i);
+			contenido = ContenidoMemoria + MARCO_SIZE*FrameLookup(entrada->PID, entrada->Pag);
+			printf("PID: %u, Pag: %u: %*s\n",entrada->PID, entrada->Pag, MARCO_SIZE, contenido);
+			fprintf(file, "PID: %u, Pag: %u: %*s\n",entrada->PID, entrada->Pag, MARCO_SIZE, contenido);
+		}
+		fclose(file);
+	}
+}
+void cleanCache(){
+	list_clean_and_destroy_elements(tablaCache, free);
+}
 void userInterfaceHandler(void* socketFD) {
 	char* command = malloc(20);
 	while (!end) {
@@ -75,7 +99,7 @@ void userInterfaceHandler(void* socketFD) {
 			scanf("%s", command);
 
 			if (!strcmp(command, "cache")) {
-				//TODO mostrar cache
+				dumpMemoryContentOfCache();
 
 			} else if (!strcmp(command, "struct")){
 				dumpMemoryStruct();
@@ -105,7 +129,7 @@ void userInterfaceHandler(void* socketFD) {
 			scanf("%s", command);
 
 			if (!strcmp(command, "cache")) {
-			//TODO limpiar cache
+				cleanCache();
 
 			} else
 				printf("No se conoce el comando %s\n", command);

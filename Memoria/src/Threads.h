@@ -15,6 +15,6 @@ void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD);
 void FinalizarPrograma(uint32_t pid, int socketFD);
 
 int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete);
-void* accionHilo(void* socket);
+void accion(void* socket);
 
 #endif /* THREADS_H_ */

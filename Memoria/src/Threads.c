@@ -2,7 +2,7 @@
 
 uint32_t Hash(uint32_t x, uint32_t y){
 	x--;
-	int r = ((x + y) * (x + y + 1)) / 2 + y;
+	uint32_t r = ((x + y) * (x + y + 1)) / 2 + y;
 	while(r>MARCOS)
 		r -= MARCOS;
 	return r;
@@ -21,8 +21,37 @@ uint32_t cuantasPagTiene(uint32_t pid){
 	}
 	return c;
 }
+bool estaEnCache(uint32_t pid, uint32_t numPag){
+	bool esta = list_any_satisfy(tablaCache, LAMBDA(bool _(void* elem) {
+		return ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==numPag; }));
+	if(esta) {//llevar al final de la pila
+		entradaCache* entrada = list_remove_by_condition(tablaCache, LAMBDA(bool _(void* elem) {
+			return ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==numPag; }));
+		list_add(tablaCache, entrada);
+		return true;
+	}
+	else return false;
+}
+void agregarACache(uint32_t pid, uint32_t numPag){
+	entradaCache* entrada = malloc(sizeof(entradaCache));
+	entrada->PID=pid;
+	entrada->Pag=numPag;
+	entrada->Contenido=FrameLookup(pid, numPag);
+
+	int cantPagProc = list_count_satisfying(tablaCache, LAMBDA(bool _(void* elem) {
+		return ((entradaCache*)elem)->PID==pid; }));
+	if(cantPagProc >= CACHE_X_PROC){
+		list_remove_and_destroy_by_condition(tablaCache, LAMBDA(bool _(void* elem) {
+			return ((entradaCache*)elem)->PID==pid; }), free);
+	}
+	else if(list_size(tablaCache) >= ENTRADAS_CACHE)
+		list_remove_and_destroy_element(tablaCache, 0, free);
+
+	list_add(tablaCache, entrada);
+}
+
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
-	uint32_t r = 0;
+
 	if (pid != 0 && cuantasPagTiene(pid) == 0 && cantPagAsignadas + cantPag < MARCOS) {
 		//si no existe el proceso y hay lugar en la memoria
 		int i;
@@ -34,21 +63,29 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 			TablaDePagina[frame].Pag = i;
 			cantPagAsignadas++;
 		}
-		r=1;
-	}
-	EnviarDatos(socketFD, MEMORIA, &r, sizeof(uint32_t));
+		EnviarDatos(socketFD, MEMORIA, NULL, 0);
+	} else
+		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
 }
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam, int socketFD) {
-	void* datosSolicitados = NULL;
-	if(numPag>0 && cuantasPagTiene(pid)>=numPag && offset+tam < MARCO_SIZE) { //valido los parametros
+	//valido los parametros
+	if(numPag>0 && cuantasPagTiene(pid)>=numPag && offset+tam < MARCO_SIZE) {
+		//si no esta en chache, esperar tiempo definido por arch de config
+		if (!estaEnCache(pid, numPag)) {
+			sleep(RETARDO_MEMORIA);
+			agregarACache(pid, numPag);
+		}
+		//buscar pagina
 		uint32_t frame = FrameLookup(pid, numPag);
-		datosSolicitados = ContenidoMemoria + MARCO_SIZE * frame + offset;
-	}
-	EnviarDatos(socketFD, MEMORIA, datosSolicitados, tam);
+		void*  datosSolicitados = ContenidoMemoria + MARCO_SIZE * frame + offset;
+		EnviarDatos(socketFD, MEMORIA, datosSolicitados, tam);
+	} else
+		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
 }
 void AlmacenarBytes(Paquete paquete, int socketFD) {
-	uint32_t r = 0;
+	//Parámetros: PID, #página, offset, tamaño y buffer.
+
 	if(DATOS[2]>0 && cuantasPagTiene(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
 		//esperar tiempo definido por arch de config
 		sleep(RETARDO_MEMORIA);
@@ -57,16 +94,17 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 		//escribir en pagina
 		memcpy(pagina + DATOS[3],(void*) DATOS[5], DATOS[4]);
 		printf("Datos Almacenados: %*s", DATOS[4],(char*) DATOS[5]);
-
-		//TODO: actualizar cache
-
-		r=1;
-	}
-	EnviarDatos(socketFD, MEMORIA, &r, sizeof(uint32_t));
+		//actualizar cache
+		if (!estaEnCache(DATOS[1], DATOS[2])) {
+			agregarACache(DATOS[1], DATOS[2]);
+		}
+		EnviarDatos(socketFD, MEMORIA, NULL, 0);
+	} else
+		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
 }
 
 void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
-	uint32_t r = 0;
+
 	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cuantasPagTiene(pid) > 0) {
 		int i;
 		for (i = cuantasPagTiene(pid); i < cantPagParaAsignar; i++) {
@@ -77,23 +115,27 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 			TablaDePagina[frame].Pag = i;
 			cantPagAsignadas++;
 		}
-		r=1;
-	}
-	EnviarDatos(socketFD, MEMORIA, &r, sizeof(uint32_t));
+		EnviarDatos(socketFD, MEMORIA, NULL, 0);
+	} else
+		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
 }
 
 void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
-	uint32_t r = 0;
+
 	if(cuantasPagTiene(pid) > 0) {
 		cantPagAsignadas--;
 		TablaDePagina[FrameLookup(pid, numPag)].PID=0;
-		r=1;
-	}
-	EnviarDatos(socketFD, MEMORIA, &r, sizeof(uint32_t));
+		//sacar de cache.
+		list_remove_and_destroy_by_condition(tablaCache, LAMBDA(bool _(void* elem) {
+				return ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==numPag; }), free);
+
+		EnviarDatos(socketFD, MEMORIA, NULL, 0);
+	} else
+		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
 }
 
 void FinalizarPrograma(uint32_t pid, int socketFD) {
-	uint32_t r = 0;
+
 	uint32_t cantPag = cuantasPagTiene(pid);
 	if(cantPag > 0) {
 		//TODO: join de hilo correspondiente?
@@ -101,10 +143,13 @@ void FinalizarPrograma(uint32_t pid, int socketFD) {
 		for(i=0; i < cantPag; i++){
 			TablaDePagina[FrameLookup(pid, i)].PID=0;
 			cantPagAsignadas--;
+			//sacar de cache.
+			list_remove_and_destroy_by_condition(tablaCache, LAMBDA(bool _(void* elem) { return
+				 ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==i; }), free);
 		}
-		r=1;
-	}
-	EnviarDatos(socketFD, MEMORIA, &r, sizeof(uint32_t));
+		EnviarDatos(socketFD, MEMORIA, NULL, 0);
+	} else
+		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
 }
 
 int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
@@ -130,7 +175,7 @@ int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
 	return resul;
 }
 
-void* accion(void* socket){
+void accion(void* socket){
 	int socketFD = *(int*)socket;
 	Paquete paquete;
 	while (RecibirPaqueteMemoria(socketFD, MEMORIA, &paquete) > 0) {
@@ -159,5 +204,4 @@ void* accion(void* socket){
 		free(paquete.Payload);
 	}
 	close(socketFD);
-	return NULL;
 }

@@ -9,19 +9,6 @@ uint32_t CACHE_X_PROC;
 char* REEMPLAZO_CACHE;
 unsigned int RETARDO_MEMORIA;
 char* IP;
-t_list* listaHilos;
-
-typedef struct {
-	uint32_t Frame;
-	uint32_t PID;
-	uint32_t Pag;
-} RegistroTablaPaginacion ;
-
-typedef struct {
-	uint32_t PID;
-	uint32_t Pag;
-	void* contenido;
-} tabla_Cache ;
 
 void* BloquePrincipal;
 void* ContenidoMemoria;
@@ -29,6 +16,8 @@ int tamanioTotalBytesMemoria;
 int tamEstructurasAdm;
 int cantPagAsignadas;
 int socketABuscar;
+
+t_list* tablaCache;
 t_list* listaHilos;
 bool end;
 
@@ -97,12 +86,12 @@ void InicializarTablaDePagina() {
 	for(i=0;i<MARCOS;i++){
 		TablaDePagina[i].Frame = i;
 	}
-
 }
 
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
+	tablaCache = list_create();
 
 	tamEstructurasAdm = sizeof(RegistroTablaPaginacion) * MARCOS;
 	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE) + tamEstructurasAdm;
@@ -111,13 +100,6 @@ int main(void) {
 	ContenidoMemoria = BloquePrincipal + tamEstructurasAdm; //guardo el puntero donde empieza el contenido
 	cantPagAsignadas = 0;
 
-	//tabla_Adm tablaAdm[MARCOS]; //no, mejor accedamos casteando y recorriendo el bloquePpal
-	/*//MEMORIA CACHE, NO BORRAR
-	 tabla_Cache tablaCache[ENTRADAS_CACHE]; //crear y allocar cache
-	 int i;
-	 for (i = 0; i < MARCOS; ++i)
-	 tablaCache[i].contenido = malloc(MARCO_SIZE);
-	 */
 	InicializarTablaDePagina();
 
 	pthread_t hiloConsola;
@@ -126,12 +108,7 @@ int main(void) {
 	ServidorConcuerrente(IP, PUERTO, MEMORIA, &listaHilos, &end, accion);
 
 	pthread_join(hiloConsola, NULL);
-	//liberar listas
-	//list_destroy_and_destroy_elements(lista, free); //recibe cada elemento y lo libera.
-	/*//MEMORIA CACHE, NO BORRAR
-	 for (i = 0; i < MARCOS; ++i)  //liberar cache.
-	 free(tablaCache[i].contenido);
-	 */
+	list_destroy_and_destroy_elements(tablaCache, free);
 	free(BloquePrincipal);
 	exit(3); //TODO: ¿Esto va? Se supone que termina todos los hilos del proceso.
 	return 0;
