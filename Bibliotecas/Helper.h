@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <parser/parser.h>
 
 typedef struct {
 	uint32_t NumeroDePagina;
@@ -44,6 +45,8 @@ typedef struct {
 	t_dictionary* IndiceDeEtiquetas;
 	t_list* IndiceDelStack; //lista de IndiceStack
 	int32_t ExitCode;
+	t_size etiquetas_size;
+	char* etiquetas;
 }__attribute__((packed)) BloqueControlProceso;
 
 typedef struct {
