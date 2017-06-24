@@ -120,7 +120,7 @@ void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos)
 	(*ultimoPid)++;
 	pthread_mutex_lock(&mutexQueueNuevos);
 	queue_push(nuevos,pcb);
-	pthread_mutex_unlock(&mutexQueueNuevos);s
+	pthread_mutex_unlock(&mutexQueueNuevos);
 	//list_add(ListaPCB,pcb);
 }
 

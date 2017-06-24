@@ -11,10 +11,13 @@ int PUERTO_MEMORIA;
 char* IP_FS;
 int PUERTO_FS;
 
+int cantNombresSemaforos = 0;
+int cantValoresSemaforos = 0;
+
 
 t_list* HilosDeConexiones;
 
-void obtenerValoresArchivoConfiguracion() {
+void obtenerValoresArchivoConfiguracion(bool* cantNombresSemaforosEsIgualAValores) {
 	int contadorDeVariables = 0;
 	int c;
 	FILE *file;
@@ -46,19 +49,14 @@ void obtenerValoresArchivoConfiguracion() {
 				if (contadorDeVariables == 12)
 				{
 					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
-					int i = 0;
-
-					while (texto != NULL)
-					{
-						SHARED_VARS[i] = texto;
-						texto = strtok (NULL, ",");
-						//Inicializo las variables compartidas
+					char ** variablesAInicializar = string_split(texto,",");
+					string_iterate_lines(variablesAInicializar,LAMBDA(void _(char* texto){
 						VariableCompartida nuevaVar;
 						nuevaVar.nombreVariableGlobal = texto;
 						nuevaVar.valorVariableGlobal=0;
 						list_add(VariablesCompartidas,&nuevaVar);
-						i++;
-					}
+					}));
+
 
 					contadorDeVariables++;
 				}
@@ -67,24 +65,25 @@ void obtenerValoresArchivoConfiguracion() {
 				{
 					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
-
 					char ** valoresSemaforos = string_split(texto,",");
 					string_iterate_lines(valoresSemaforos,	LAMBDA(void _(char* item) {
-							Semaforo sem = *(Semaforo*)list_get(Semaforos,i);
+							Semaforo sem;
+							sem= *(Semaforo*)list_get(Semaforos,i);
 							sem.valorSemaforo = atoi(item);
 							i++;
+							cantValoresSemaforos++;
 						}));
 					contadorDeVariables++;
 				}
 
 				if (contadorDeVariables == 10){
 					char * texto = ObtenerTextoDeArchivoSinCorchetes(file);
-					int i = 0;
 					char ** nombresSemaforos = string_split(texto,",");
 					string_iterate_lines(nombresSemaforos,	LAMBDA(void _(char* item) {
 							Semaforo sem;
 							strcpy(sem.nombreSemaforo,texto);
 							list_add(Semaforos,&sem);
+							cantNombresSemaforos++;
 						}));
 
 					contadorDeVariables++;
@@ -166,6 +165,11 @@ void obtenerValoresArchivoConfiguracion() {
 
 		fclose(file);
 	}
+
+	if(cantNombresSemaforos == cantValoresSemaforos)
+	{
+		*cantNombresSemaforosEsIgualAValores = false;
+	}
 }
 
 void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
@@ -191,27 +195,37 @@ void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
 
 int main(void)
 {
-	CrearListas(); //TODO: Cargar listas de semaforos y variables globales
-	planificacion_detenida = false;
-	obtenerValoresArchivoConfiguracion();
-	imprimirArchivoConfiguracion();
-	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
-	while((socketConFS = ConectarAServidor(PUERTO_FS,IP_FS,FS,KERNEL, RecibirHandshake))<0);
+	bool cantNombresSemaforosEsIgualAValores = true;
 
-	//pthread_t hiloSyscallWrite;
-	//pthread_create(&hiloSyscallWrite, NULL, (void*)syscallWrite, 2); //socket 2 hardcodeado
-	//pthread_join(hiloSyscallWrite, NULL);
+	obtenerValoresArchivoConfiguracion(&cantNombresSemaforosEsIgualAValores);
 
-	pthread_t hiloConsola;
-	pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, &socketConMemoria);
+	if(cantNombresSemaforosEsIgualAValores)
+	{
+		CrearListas(); //TODO: Cargar listas de semaforos y variables globales
+		planificacion_detenida = false;
+		imprimirArchivoConfiguracion();
+		while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
+		while((socketConFS = ConectarAServidor(PUERTO_FS,IP_FS,FS,KERNEL, RecibirHandshake))<0);
 
-	pthread_t hiloDispatcher;
-	pthread_create(&hiloDispatcher, NULL, (void*)dispatcher, NULL);
-	ServidorConcuerrente(IP_PROG, PUERTO_PROG, KERNEL,&HilosDeConexiones, &end, accion);
+		//pthread_t hiloSyscallWrite;
+		//pthread_create(&hiloSyscallWrite, NULL, (void*)syscallWrite, 2); //socket 2 hardcodeado
+		//pthread_join(hiloSyscallWrite, NULL);
 
-	pthread_join(hiloConsola, NULL);
-	pthread_join(hiloDispatcher, NULL);
-	LimpiarListas();
+		pthread_t hiloConsola;
+		pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, &socketConMemoria);
+
+		pthread_t hiloDispatcher;
+		pthread_create(&hiloDispatcher, NULL, (void*)dispatcher, NULL);
+		ServidorConcuerrente(IP_PROG, PUERTO_PROG, KERNEL,&HilosDeConexiones, &end, accion);
+
+		pthread_join(hiloConsola, NULL);
+		pthread_join(hiloDispatcher, NULL);
+		LimpiarListas();
+	}
+	else
+	{
+
+	}
 
 	return 0;
 }
