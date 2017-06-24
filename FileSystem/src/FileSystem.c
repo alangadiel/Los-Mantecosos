@@ -376,7 +376,6 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 }
 
 int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete) {
-	double HolaKmisiComoEstas = 3;
 	paquete->Payload = malloc(1);
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0) { //si no hubo error
