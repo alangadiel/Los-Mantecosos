@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <commons/temporal.h>
 #include <commons/log.h>
+#include <commons/config.h>
 #include <commons/collections/list.h>
 #include <commons/collections/dictionary.h>
 #include <commons/collections/queue.h>
