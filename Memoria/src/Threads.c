@@ -21,16 +21,24 @@ uint32_t cuantasPagTiene(uint32_t pid){
 	}
 	return c;
 }
+
 bool estaEnCache(uint32_t pid, uint32_t numPag){
+	pthread_mutex_lock( &mutexTablaCache );
 	bool esta = list_any_satisfy(tablaCache, LAMBDA(bool _(void* elem) {
 		return ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==numPag; }));
-	if(esta) {//llevar al final de la pila
+	if (esta)
+	{//llevar al final de la pila
 		entradaCache* entrada = list_remove_by_condition(tablaCache, LAMBDA(bool _(void* elem) {
 			return ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==numPag; }));
 		list_add(tablaCache, entrada);
+		pthread_mutex_unlock( &mutexTablaCache );
 		return true;
 	}
-	else return false;
+	else {
+		pthread_mutex_unlock( &mutexTablaCache );
+		return false;
+	}
+
 }
 void agregarACache(uint32_t pid, uint32_t numPag){
 	entradaCache* entrada = malloc(sizeof(entradaCache));
@@ -38,16 +46,20 @@ void agregarACache(uint32_t pid, uint32_t numPag){
 	entrada->Pag=numPag;
 	entrada->Contenido=FrameLookup(pid, numPag);
 
+	pthread_mutex_lock( &mutexTablaCache );
 	int cantPagProc = list_count_satisfying(tablaCache, LAMBDA(bool _(void* elem) {
 		return ((entradaCache*)elem)->PID==pid; }));
 	if(cantPagProc >= CACHE_X_PROC){
+
 		list_remove_and_destroy_by_condition(tablaCache, LAMBDA(bool _(void* elem) {
 			return ((entradaCache*)elem)->PID==pid; }), free);
+
 	}
 	else if(list_size(tablaCache) >= ENTRADAS_CACHE)
 		list_remove_and_destroy_element(tablaCache, 0, free);
 
 	list_add(tablaCache, entrada);
+	pthread_mutex_unlock( &mutexTablaCache );
 }
 
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {

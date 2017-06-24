@@ -41,4 +41,7 @@ extern t_list* tablaCache;
 extern t_list* listaHilos;
 extern bool end;
 
+//semaforos
+extern pthread_mutex_t mutexTablaCache;
+
 #endif /* MEMORIA_H_ */

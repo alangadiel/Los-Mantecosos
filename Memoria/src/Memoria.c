@@ -21,6 +21,9 @@ t_list* tablaCache;
 t_list* listaHilos;
 bool end;
 
+//semaforos
+pthread_mutex_t mutexTablaCache = PTHREAD_MUTEX_INITIALIZER;
+
 
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
