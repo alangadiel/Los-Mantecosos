@@ -52,6 +52,9 @@ typedef struct {
 	t_size etiquetas_size;
 	char* etiquetas;
 	uint32_t cantidad_de_etiquetas;
+	uint32_t cantidad_de_funciones;
+	uint32_t cantRafagas;
+	uint32_t acumRafagas;
 }__attribute__((packed)) BloqueControlProceso;
 
 typedef struct {

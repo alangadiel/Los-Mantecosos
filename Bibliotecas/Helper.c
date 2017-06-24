@@ -35,18 +35,25 @@ int GetTamanioArchivo(FILE * f) {
 	return size;
 }
 
-void pcb_Create(BloqueControlProceso* pecebe){
-	pecebe->PID = 0;
+void pcb_Create(BloqueControlProceso* pecebe, uint32_t pid_actual){
+	pecebe->PID = pid_actual;
 	pecebe->ProgramCounter = 0;
 	pecebe->PaginasDeCodigo=0;
+	pecebe->ExitCode = 0;
+	pecebe->etiquetas_size = 0;
+	pecebe->etiquetas = string_new();
+	pecebe->cantidad_de_etiquetas = 0;
+	pecebe->cantidad_de_funciones = 0;
+	pecebe-> cantRafagas = 0;
+	pecebe->acumRafagas = 0;
 	pecebe->IndiceDeCodigo = list_create();
 	pecebe->IndiceDeEtiquetas = dictionary_create();
 	pecebe->IndiceDelStack = list_create();
-	//pecebe->ExitCode = ? si todavia no finalizó
 }
 
 void pcb_Destroy(BloqueControlProceso* pecebe){
 	//Creo el pcb y lo guardo en la lista de nuevos
+	free(pecebe->etiquetas);
 	list_destroy_and_destroy_elements(pecebe->IndiceDeCodigo,free);
 	list_destroy_and_destroy_elements(pecebe->IndiceDelStack,free);
 	dictionary_destroy_and_destroy_elements(pecebe->IndiceDeEtiquetas,free);
