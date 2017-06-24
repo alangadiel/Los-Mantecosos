@@ -17,9 +17,20 @@ int cantValoresSemaforos = 0;
 
 t_list* HilosDeConexiones;
 
+void agregarSemaforo(char* item){
+	Semaforo* sem = malloc(sizeof(Semaforo));
+	sem->nombreSemaforo = string_duplicate(item);
+	list_add(Semaforos,sem);
+	cantNombresSemaforos++;
+}
+
+
 void obtenerValoresArchivoConfiguracion(bool* cantNombresSemaforosEsIgualAValores) {
 	int contadorDeVariables = 0;
 	int c;
+	t_config* arch = config_create("ArchivoConfiguracion.txt");
+
+	/*
 	FILE *file;
 
 	file = fopen("ArchivoConfiguracion.txt", "r");
@@ -67,26 +78,26 @@ void obtenerValoresArchivoConfiguracion(bool* cantNombresSemaforosEsIgualAValore
 					int i = 0;
 					char ** valoresSemaforos = string_split(texto,",");
 					string_iterate_lines(valoresSemaforos,	LAMBDA(void _(char* item) {
-							Semaforo sem;
-							sem= *(Semaforo*)list_get(Semaforos,i);
-							sem.valorSemaforo = atoi(item);
+							Semaforo* sem = list_get(Semaforos,i);
+							sem->valorSemaforo = atoi(item);
 							i++;
+							printf("%d\n", i);
+							printf("%d\n\n", sem->valorSemaforo);
 							cantValoresSemaforos++;
 						}));
 					contadorDeVariables++;
+					free(texto);
+					free(valoresSemaforos);
 				}
 
 				if (contadorDeVariables == 10){
 					char * texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					char ** nombresSemaforos = string_split(texto,",");
-					string_iterate_lines(nombresSemaforos,	LAMBDA(void _(char* item) {
-							Semaforo sem;
-							strcpy(sem.nombreSemaforo,texto);
-							list_add(Semaforos,&sem);
-							cantNombresSemaforos++;
-						}));
+					string_iterate_lines(nombresSemaforos,	agregarSemaforo);
 
 					contadorDeVariables++;
+					free(texto);
+					free(nombresSemaforos);
 				}
 
 				if (contadorDeVariables == 9)
@@ -170,6 +181,7 @@ void obtenerValoresArchivoConfiguracion(bool* cantNombresSemaforosEsIgualAValore
 	{
 		*cantNombresSemaforosEsIgualAValores = false;
 	}
+	*/
 }
 
 void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
@@ -196,12 +208,12 @@ void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
 int main(void)
 {
 	bool cantNombresSemaforosEsIgualAValores = true;
-
+	CrearListas();
 	obtenerValoresArchivoConfiguracion(&cantNombresSemaforosEsIgualAValores);
 
 	if(cantNombresSemaforosEsIgualAValores)
 	{
-		CrearListas(); //TODO: Cargar listas de semaforos y variables globales
+
 		planificacion_detenida = false;
 		imprimirArchivoConfiguracion();
 		while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
