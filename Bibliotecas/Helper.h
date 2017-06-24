@@ -70,7 +70,7 @@ char* obtenerTiempoString(time_t t);
 int GetTamanioArchivo(FILE * f);
 bool list_contains(t_list* list, void* item);
 
-void pcb_Create(BloqueControlProceso* pecebe);
+void pcb_Create(BloqueControlProceso* pecebe, uint32_t pid_actual);
 void pcb_Destroy(BloqueControlProceso* pecebe);
 
 #endif /* HELPER_*/
