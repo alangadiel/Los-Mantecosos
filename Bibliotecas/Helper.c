@@ -59,3 +59,4 @@ void pcb_Destroy(BloqueControlProceso* pecebe){
 	dictionary_destroy_and_destroy_elements(pecebe->IndiceDeEtiquetas,free);
 	free(pecebe);
 }
+
