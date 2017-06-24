@@ -5,13 +5,15 @@ void dumpMemoryContent() {
 		printf("La memoria esta vacia\n");
 	} else {
 		printf("Imprimiendo todo el contenido de la memoria\n");
-		printf("%*s\n", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
 		char nombreDelArchivo[64+27+1];//tam de la hora + tam de "Contenido de la memoria en " + \0
 		char* t = temporal_get_string_time();
 		sprintf(nombreDelArchivo, "Contenido de la memoria en %s", t);
 		free(t);
 		FILE* file = fopen(nombreDelArchivo, "w");
+		pthread_mutex_lock( &mutexContenidoMemoria );
+		printf("%*s\n", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
 		fprintf(file, "%*s", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
+		pthread_mutex_unlock( &mutexContenidoMemoria );
 		fclose(file);
 	}
 }
@@ -29,7 +31,9 @@ void dumpMemoryContentOfPID(uint32_t pid) {
 		FILE* file = fopen(nombreDelArchivo, "w");
 		uint32_t i;
 		for(i=0; i<cantPag; i++){
+			pthread_mutex_lock( &mutexContenidoMemoria );
 			char* contenido = ContenidoMemoria + (FrameLookup(pid, i) * MARCO_SIZE);
+			pthread_mutex_unlock( &mutexContenidoMemoria );
 			printf("%*s", MARCO_SIZE, contenido);
 			fprintf(file, "%*s", MARCO_SIZE, contenido);
 		}
@@ -46,7 +50,9 @@ void dumpMemoryStruct() {
 	FILE* file = fopen(nombreDelArchivo, "w");
 	int i;
 	for (i = 0; i < MARCOS; i++) {
+		pthread_mutex_lock( &mutexTablaPagina );
 		RegistroTablaPaginacion reg = TablaDePagina[i];
+		pthread_mutex_unlock( &mutexTablaPagina );
 		fprintf(file, "Frame: %i, PID: %i, Pagina: %i\n", reg.Frame, reg.PID, reg.Pag);
 	}
 	fclose(file);
@@ -64,17 +70,23 @@ void dumpMemoryContentOfCache() {
 		FILE* file = fopen(nombreDelArchivo, "w");
 		int i; entradaCache* entrada;
 		char* contenido;
+		pthread_mutex_lock( &mutexTablaCache );
 		for(i=0; i<list_size(tablaCache);i++) {
 			entrada = list_get(tablaCache, i);
+			pthread_mutex_lock( &mutexContenidoMemoria );
 			contenido = ContenidoMemoria + MARCO_SIZE*FrameLookup(entrada->PID, entrada->Pag);
+			pthread_mutex_unlock( &mutexContenidoMemoria );
 			printf("PID: %u, Pag: %u: %*s\n",entrada->PID, entrada->Pag, MARCO_SIZE, contenido);
 			fprintf(file, "PID: %u, Pag: %u: %*s\n",entrada->PID, entrada->Pag, MARCO_SIZE, contenido);
 		}
+		pthread_mutex_unlock( &mutexTablaCache );
 		fclose(file);
 	}
 }
 void cleanCache(){
+	pthread_mutex_lock( &mutexTablaCache );
 	list_clean_and_destroy_elements(tablaCache, free);
+	pthread_mutex_unlock( &mutexTablaCache );
 }
 void userInterfaceHandler(void* socketFD) {
 	char* command = malloc(20);

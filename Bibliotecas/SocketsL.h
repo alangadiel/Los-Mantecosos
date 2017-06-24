@@ -78,7 +78,7 @@ extern uint32_t TamanioPaginaMemoria;
 void Servidor(char* ip, int puerto, char nombre[11],
 		void (*accion)(Paquete* paquete, int socketFD),
 		int (*RecibirPaquete)(int socketFD, char receptor[11], Paquete* paquete));
-void ServidorConcuerrente(char* ip, int puerto, char nombre[11], t_list** listaDeHilos,
+void ServidorConcurrente(char* ip, int puerto, char nombre[11], t_list** listaDeHilos,
 		bool* terminar, void (*accionHilo)(void* socketFD));
 int StartServidor(char* MyIP, int MyPort);
 int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11],
