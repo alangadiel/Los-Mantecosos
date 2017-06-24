@@ -62,7 +62,6 @@ extern t_queue* Bloqueados;
 extern t_queue* Ejecutando;
 extern t_queue* Listos;
 extern t_list* Estados;
-extern t_list* ListaPCB;
 extern t_list* EstadosConProgramasFinalizables;
 
 extern bool end;
@@ -83,6 +82,16 @@ extern char* SHARED_VARS[100];
 extern int STACK_SIZE;
 extern bool planificacion_detenida;
 extern pthread_mutex_t mutexQueueNuevos;
+extern pthread_mutex_t mutexQueueListos;
+extern pthread_mutex_t mutexQueueEjecutando;
+extern pthread_mutex_t mutexQueueBloqueados;
+extern pthread_mutex_t mutexQueueFinalizados;
+extern pthread_mutex_t mutexFinalizarPrograma;
+extern pthread_mutex_t mutexQueuesProcesos;
+extern pthread_mutex_t mutexCPUsConectadas;
+extern pthread_mutex_t mutexSemaforos;
+extern pthread_mutex_t mutexVariablesCompartidas;
+extern pthread_mutex_t mutexPaginasPorProceso;
 
 void imprimirArchivoConfiguracion();
 char* ObtenerTextoDeArchivoSinCorchetes(FILE* f);

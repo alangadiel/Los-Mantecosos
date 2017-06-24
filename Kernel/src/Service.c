@@ -14,7 +14,6 @@ t_queue* Bloqueados;
 t_queue* Ejecutando;
 t_queue* Listos;
 t_list* Estados;
-t_list* ListaPCB;
 t_list* EstadosConProgramasFinalizables;
 
 bool end;
@@ -29,6 +28,12 @@ pthread_mutex_t mutexQueueListos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueEjecutando = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueBloqueados = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueFinalizados = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexFinalizarPrograma = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexQueuesProcesos = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexCPUsConectadas = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexSemaforos = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexVariablesCompartidas = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexPaginasPorProceso = PTHREAD_MUTEX_INITIALIZER;
 
 int QUANTUM;
 int QUANTUM_SLEEP;
@@ -111,12 +116,11 @@ void LimpiarListas() {
 
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos){
 	//Creo el pcb y lo guardo en la lista de nuevos
-	pcb->PID = *ultimoPid+1;
-	//pcb->IndiceStack = 0;
-	pcb->PaginasDeCodigo=0;
-	pcb->ProgramCounter = 0;
+	pcb_Create(pcb, *ultimoPid+1);
 	(*ultimoPid)++;
+	pthread_mutex_lock(&mutexQueueNuevos);
 	queue_push(nuevos,pcb);
+	pthread_mutex_unlock(&mutexQueueNuevos);s
 	//list_add(ListaPCB,pcb);
 }
 

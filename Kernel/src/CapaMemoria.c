@@ -86,10 +86,12 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 	if(cantTotal <= TamanioPagina-sizeof(HeapMetadata)*2){
 		void* result = NULL;
 		//Busco en las paginas asignadas a ese proceso, a ver si hay alguna con tamaño suficiente
+		pthread_mutex_lock(&mutexPaginasPorProceso);
 		result = list_find(PaginasPorProceso,
 				LAMBDA(bool _(void* item) {
 			return ((PaginaDelProceso*)item)->pid == PID && ((PaginaDelProceso*)item)->espacioDisponible >= cantTotal;
 		}));
+		pthread_mutex_unlock(&mutexPaginasPorProceso);
 		if(result!=NULL){ 		//Se encontro la pagina con tamaño disponible
 			//Actualizar el tamaño disponible
 			PaginaDelProceso* paginaObtenida = (PaginaDelProceso*)result;
@@ -101,19 +103,25 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 		else  		//No hay una pagina del proceso utilizable
 		{
 			//Obtengo el ultimo numero de pagina, de ese PID
+			pthread_mutex_lock(&mutexPaginasPorProceso);
 			t_list* pagesProcess= list_filter(PaginasPorProceso,
 					LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}));
+			pthread_mutex_unlock(&mutexPaginasPorProceso);
 			int i=0;
 			int maximoNroPag=0;
+			pthread_mutex_lock(&mutexPaginasPorProceso);
 			for (i = 0; i < list_size(pagesProcess); i++) {
 				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso,i);
 				if(maximoNroPag< elem->nroPagina)	maximoNroPag = elem->nroPagina;
 			}
+			pthread_mutex_unlock(&mutexPaginasPorProceso);
 			PaginaDelProceso nuevaPPP;
 			nuevaPPP.nroPagina = maximoNroPag+1;
 			nuevaPPP.espacioDisponible = TamanioPagina;
 			nuevaPPP.pid = PID;
+			pthread_mutex_lock(&mutexPaginasPorProceso);
 			list_add(PaginasPorProceso,&nuevaPPP);
+			pthread_mutex_unlock(&mutexPaginasPorProceso);
 			//Le pido al Proceso Memoria que me guarde esta pagina para el proceso en cuestion
 			bool resultado = IM_AsignarPaginas(socket,KERNEL,PID,1);
 			if(resultado==true){

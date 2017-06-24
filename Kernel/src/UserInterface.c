@@ -19,11 +19,21 @@ void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator)
 
 void MostrarTodosLosProcesos()
 {
+	pthread_mutex_lock(&mutexQueueNuevos);
 	MostrarProcesosDeUnaLista(Nuevos,NUEVOS);
+	pthread_mutex_unlock(&mutexQueueNuevos);
+	pthread_mutex_lock(&mutexQueueListos);
 	MostrarProcesosDeUnaLista(Listos,LISTOS);
+	pthread_mutex_unlock(&mutexQueueListos);
+	pthread_mutex_lock(&mutexQueueEjecutando);
 	MostrarProcesosDeUnaLista(Ejecutando,EJECUTANDO);
+	pthread_mutex_unlock(&mutexQueueEjecutando);
+	pthread_mutex_lock(&mutexQueueBloqueados);
 	MostrarProcesosDeUnaLista(Bloqueados,BLOQUEADOS);
+	pthread_mutex_unlock(&mutexQueueBloqueados);
+	pthread_mutex_lock(&mutexQueueFinalizados);
 	MostrarProcesosDeUnaLista(Finalizados,FINALIZADOS);
+	pthread_mutex_unlock(&mutexQueueFinalizados);
 }
 
 void ConsultarEstado(int pidAConsultar)

@@ -132,6 +132,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion, int socke
 	BloqueControlProceso* pcbRemovido = NULL;
 	bool hayEstructurasNoLiberadas = false;
 	int index;
+	pthread_mutex_lock(&mutexFinalizarPrograma);
 
 	finalizarProgramaCapaFS(PID);
 
@@ -195,17 +196,18 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion, int socke
 		if(index==INDEX_EJECUTANDO)
 			FinalizarPrograma(PID,tipoFinalizacion,socketFD);
 		else if(index==-1){
+			pthread_mutex_unlock(&mutexFinalizarPrograma);
 			return pcbRemovido;
 		}
 	}
-
+	pthread_mutex_unlock(&mutexFinalizarPrograma);
 }
 
 
 bool ProcesoNoEstaEjecutandoseActualmente(int pidAFinalizar)
 {
 	int i;
-
+	pthread_mutex_lock(&mutexCPUsConectadas);
 	for (i = 0; i < list_size(CPUsConectadas); i++)
 	{
 		DatosCPU* cpu = (DatosCPU*) list_get(CPUsConectadas, i);
@@ -229,7 +231,7 @@ bool ProcesoNoEstaEjecutandoseActualmente(int pidAFinalizar)
 			return true;
 		}
 	}
-
+	pthread_mutex_unlock(&mutexCPUsConectadas);
 	return false;
 }
 
@@ -254,12 +256,13 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int s
 {
 	pcb->PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
 	printf("Cant paginas asignadas para el codigo: %d \n",pcb->PaginasDeCodigo);
-
+	pthread_mutex_lock(&mutexQueueNuevos);
 	//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
 	list_remove_by_condition((t_list*)Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
-
+	pthread_mutex_unlock(&mutexQueueNuevos);
+	pthread_mutex_lock(&mutexQueueListos);
 	queue_push(Listos, pcb);
-
+	pthread_mutex_unlock(&mutexQueueListos);
 	printf("El programa %d se cargo en memoria \n",pcb->PID);
 }
 
@@ -282,8 +285,9 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 
 				disp->isFree = true;
 				disp->socketCPU = socketFD;
-
+				pthread_mutex_lock(&mutexCPUsConectadas);
 				list_add(CPUsConectadas, disp);
+				pthread_mutex_unlock(&mutexCPUsConectadas);
 			}
 
 			EnviarHandshake(socketFD, receptor); // paquete->header.emisor
@@ -304,7 +308,9 @@ void dispatcher()
 {
 	while (true && !planificacion_detenida)
 	{
+		pthread_mutex_lock(&mutexCPUsConectadas);
 		t_list* listCPUsLibres = list_filter(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
+		pthread_mutex_unlock(&mutexCPUsConectadas);
 		int i;
 
 		for (i = 0; i < list_size(listCPUsLibres); i++)
@@ -334,8 +340,9 @@ void dispatcher()
 			pcb_Send(cpuAUsar, KERNEL, PCBAMandar, cantidadDeRafagas);
 
 			cpuAUsar->isFree = false;
-
+			pthread_mutex_lock(&mutexQueueEjecutando);
 			queue_push(Ejecutando, PCBAMandar);
+			pthread_mutex_unlock(&mutexQueueEjecutando);
 			//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
 		}
 	}
@@ -430,11 +437,12 @@ void* accion(void* socket)
 
 							//Busco la variable compartida
 							result = NULL;
+							pthread_mutex_lock(&mutexVariablesCompartidas);
 							result = list_find(VariablesCompartidas,
 								LAMBDA(bool _(void* item) {
 									return strcmp(((VariableCompartida*)item)->nombreVariableGlobal, variableCompartida) == 0;
 							}));
-
+							pthread_mutex_unlock(&mutexVariablesCompartidas);
 							 var = *(VariableCompartida*)result;
 
 							//Devuelvo a la cpu el valor de la variable compartida
@@ -456,10 +464,11 @@ void* accion(void* socket)
 
 							//Busco la variable compartida
 							result = NULL;
+							pthread_mutex_lock(&mutexVariablesCompartidas);
 							result = list_find(VariablesCompartidas,
 								LAMBDA(bool _(void* item) {
 									return strcmp(((VariableCompartida*)item)->nombreVariableGlobal, variableCompartida) == 0; }));
-
+							pthread_mutex_unlock(&mutexVariablesCompartidas);
 							var = *(VariableCompartida*)result;
 							var.valorVariableGlobal = valorAAsignar;
 
@@ -480,30 +489,37 @@ void* accion(void* socket)
 							strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t) * 2));
 
 							result = NULL;
+							pthread_mutex_lock(&mutexSemaforos);
 							result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
+							pthread_mutex_unlock(&mutexSemaforos);
 							if(result != NULL)
 							{
 								Semaforo* semaf = (Semaforo*)result;
 								semaf->valorSemaforo--;
 
 								BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
-
+								pthread_mutex_lock(&mutexCPUsConectadas);
 								DatosCPU* cpu = list_find(CPUsConectadas, LAMBDA(bool _(void* item) {
 									return ((DatosCPU*)item)->socketCPU == socketConectado;
 								}));
-
+								pthread_mutex_unlock(&mutexCPUsConectadas);
 								pcb_Receive(pcb, socketConectado, cpu);
 
 								if (semaf->valorSemaforo < 0)
 								{ //se bloquea
+									pthread_mutex_lock(&mutexSemaforos);
 									list_add(semaf->listaDeProcesos, &PID);
-
+									pthread_mutex_unlock(&mutexSemaforos);
+									pthread_mutex_lock(&mutexQueueEjecutando);
 									list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
 										return ((BloqueControlProceso*)item)->PID == pcb->PID;
 									}));
-
+									pthread_mutex_unlock(&mutexQueueEjecutando);
+									pthread_mutex_lock(&mutexQueueBloqueados);
 									queue_push(Bloqueados, pcb);
+									pthread_mutex_unlock(&mutexQueueBloqueados);
 								}
+
 								else
 								{
 									//si hay un wait, se mete otra vez en la cola de listos
@@ -523,9 +539,9 @@ void* accion(void* socket)
 							PID = ((uint32_t*)paquete.Payload)[1];
 							strcpy(nombreSem, (char*)(paquete.Payload+sizeof(uint32_t)*2));
 							result = NULL;
-
+							pthread_mutex_lock(&mutexSemaforos);
 							result = (Semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
-
+							pthread_mutex_unlock(&mutexSemaforos);
 							if(result != NULL)
 							{
 								Semaforo* semaf = (Semaforo*)result;
@@ -533,14 +549,18 @@ void* accion(void* socket)
 
 								if (semaf->valorSemaforo >= 0)
 								{
+									pthread_mutex_lock(&mutexSemaforos);
 									uint32_t pid = *(uint32_t*) list_get(semaf->listaDeProcesos, 0);
-
 									list_remove_by_condition(semaf->listaDeProcesos, LAMBDA(bool _(void* item) { return *((uint32_t*) item) == pid; }));
-
+									pthread_mutex_unlock(&mutexSemaforos);
+									pthread_mutex_lock(&mutexQueueBloqueados);
 									BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == pid; }));
 									pcbDesbloqueado->ProgramCounter++;
-
+									pthread_mutex_unlock(&mutexQueueBloqueados);
+									pthread_mutex_lock(&mutexQueueListos);
 									queue_push(Listos, pcbDesbloqueado);
+									pthread_mutex_unlock(&mutexQueueListos);
+
 								}
 							}
 							else
@@ -636,9 +656,11 @@ void* accion(void* socket)
 				}
 			break;
 			case ESDESCONEXIONCPU:
+				pthread_mutex_lock(&mutexCPUsConectadas);
 				list_remove_by_condition(CPUsConectadas,LAMBDA(bool _(void* item){
 					return ((DatosCPU*)item)->socketCPU==socketConectado;}
 				));
+				pthread_mutex_unlock(&mutexCPUsConectadas);
 			break;
 			case KILLPROGRAM:
 				if(strcmp(paquete.header.emisor, CONSOLA) == 0)
@@ -664,23 +686,26 @@ void* accion(void* socket)
 				if(strcmp(paquete.header.emisor, CPU) == 0)
 				{
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
+					pthread_mutex_lock(&mutexCPUsConectadas);
 					DatosCPU* cpu = list_find(CPUsConectadas, LAMBDA(bool _(void* item) {
 						return ((DatosCPU*)item)->socketCPU == socketConectado;
 					}));
-
+					pthread_mutex_unlock(&mutexCPUsConectadas);
 					pcb_Receive(pcb, socketConectado, cpu);
-
+					pthread_mutex_lock(&mutexQueueEjecutando);
 					list_remove_by_condition((t_list*)Ejecutando,  LAMBDA(bool _(void* item) {
 						return ((BloqueControlProceso*)item)->PID == pcb->PID;
 					}));
-
+					pthread_mutex_unlock(&mutexQueueEjecutando);
 					if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas)
 					{
 						FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL, socketConMemoria);
 					}
 					else
 					{
+						pthread_mutex_lock(&mutexQueueListos);
 						queue_push(Listos, pcb);
+						pthread_mutex_unlock(&mutexQueueListos);
 					}
 
 				}
