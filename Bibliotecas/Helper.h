@@ -10,6 +10,7 @@
 #include <commons/log.h>
 #include <commons/collections/list.h>
 #include <commons/collections/dictionary.h>
+#include <commons/collections/queue.h>
 #include <commons/string.h>
 #include <commons/txt.h>
 #include <commons/bitarray.h>
@@ -19,6 +20,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <parser/parser.h>
@@ -66,6 +68,7 @@ char* getWord(char* string, int pos);
 char* integer_to_string(int x);
 char* obtenerTiempoString(time_t t);
 int GetTamanioArchivo(FILE * f);
+bool list_contains(t_list* list, void* item);
 
 void pcb_Create(BloqueControlProceso* pecebe);
 void pcb_Destroy(BloqueControlProceso* pecebe);
