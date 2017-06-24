@@ -184,6 +184,4 @@ void* FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset
 uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, char* buffer);
 
 
-
-
 #endif //SOCKETS_H_

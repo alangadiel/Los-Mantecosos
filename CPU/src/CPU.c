@@ -233,14 +233,13 @@ int main(void) {
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = true;
 				int i=0;
-				primitivaBloqueante = false;
-				while(i< cantRafagasAEjecutar && !primitivaBloqueante) {
+				while(i< pcb.cantidadDeRafagasAEjecutar && !primitivaBloqueante) {
 					uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 					char instruccion[registro[1]];
 					obtenerLineaAEjecutar(instruccion, registro);
 					analizadorLinea(instruccion,&functions,&kernel_functions);
+					pcb.cantidadDeRafagasEjecutadasHistorica++;
 					pcb.cantidadDeRafagasEjecutadas++;
-					cantRafagasEjecutadas++;
 					i++;
 				}
 				// Avisar al kernel que terminaste de ejecutar la instruccion
