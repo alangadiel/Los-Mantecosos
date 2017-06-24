@@ -35,21 +35,20 @@ int GetTamanioArchivo(FILE * f) {
 	return size;
 }
 
-void pcb_Create(BloqueControlProceso* pcb,int* ultimoPid){
-	pcb->PID = *ultimoPid+1;
-	pcb->ProgramCounter = 0;
-	pcb->PaginasDeCodigo=0;
-	pcb->IndiceDeCodigo = list_create();
-	pcb->IndiceDeEtiquetas = dictionary_create();
-	pcb->IndiceDelStack = list_create();
-	//pcb->ExitCode = ? si todavia no finalizó
-	(*ultimoPid)++;
+void pcb_Create(BloqueControlProceso* pecebe){
+	pecebe->PID = 0;
+	pecebe->ProgramCounter = 0;
+	pecebe->PaginasDeCodigo=0;
+	pecebe->IndiceDeCodigo = list_create();
+	pecebe->IndiceDeEtiquetas = dictionary_create();
+	pecebe->IndiceDelStack = list_create();
+	//pecebe->ExitCode = ? si todavia no finalizó
 }
 
-void pcb_Destroy(BloqueControlProceso* pcb){
+void pcb_Destroy(BloqueControlProceso* pecebe){
 	//Creo el pcb y lo guardo en la lista de nuevos
-	list_destroy_and_destroy_elements(pcb->IndiceDeCodigo,free);
-	list_destroy_and_destroy_elements(pcb->IndiceDelStack,free);
-	dictionary_destroy_and_destroy_elements(pcb->IndiceDeEtiquetas,free);
-	free(pcb);
+	list_destroy_and_destroy_elements(pecebe->IndiceDeCodigo,free);
+	list_destroy_and_destroy_elements(pecebe->IndiceDelStack,free);
+	dictionary_destroy_and_destroy_elements(pecebe->IndiceDeEtiquetas,free);
+	free(pecebe);
 }

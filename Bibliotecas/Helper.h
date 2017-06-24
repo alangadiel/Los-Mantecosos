@@ -21,8 +21,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
-
-
+#include <parser/parser.h>
 
 typedef struct {
 	uint32_t NumeroDePagina;
@@ -49,7 +48,10 @@ typedef struct {
 	t_list* IndiceDeCodigo;    //Cada elemento seria un array de 2 ints
 	t_dictionary* IndiceDeEtiquetas;
 	t_list* IndiceDelStack; //lista de IndiceStack
-	int ExitCode;
+	int32_t ExitCode;
+	t_size etiquetas_size;
+	char* etiquetas;
+	uint32_t cantidad_de_etiquetas;
 }__attribute__((packed)) BloqueControlProceso;
 
 typedef struct {
@@ -62,7 +64,7 @@ char* integer_to_string(int x);
 char* obtenerTiempoString(time_t t);
 int GetTamanioArchivo(FILE * f);
 
-void pcb_Create(BloqueControlProceso*, int*);
-void pcb_Destroy(BloqueControlProceso* pcb);
+void pcb_Create(BloqueControlProceso* pecebe);
+void pcb_Destroy(BloqueControlProceso* pecebe);
 
 #endif /* HELPER_*/
