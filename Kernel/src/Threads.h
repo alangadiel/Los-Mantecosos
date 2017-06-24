@@ -16,4 +16,6 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int soc
 int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paquete);
 void* accion(void* socket);
 void dispatcher();
+bool ProcesoNoEstaEjecutandoseActualmente(int pidAFinalizar);
+
 #endif /* THREADS_H_ */

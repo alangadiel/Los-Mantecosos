@@ -24,6 +24,12 @@ int pidAFinalizar;
 int socketConMemoria;
 int socketConFS;
 
+pthread_mutex_t mutexQueueNuevos = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexQueueListos = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexQueueEjecutando = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexQueueBloqueados = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexQueueFinalizados = PTHREAD_MUTEX_INITIALIZER;
+
 int QUANTUM;
 int QUANTUM_SLEEP;
 char* ALGORITMO;

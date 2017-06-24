@@ -82,6 +82,7 @@ extern int SEM_INIT[100];
 extern char* SHARED_VARS[100];
 extern int STACK_SIZE;
 extern bool planificacion_detenida;
+extern pthread_mutex_t mutexQueueNuevos;
 
 void imprimirArchivoConfiguracion();
 char* ObtenerTextoDeArchivoSinCorchetes(FILE* f);

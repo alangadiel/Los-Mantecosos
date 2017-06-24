@@ -8,21 +8,13 @@ uint32_t cantRafagasEjecutadas=0;
 bool primitivaBloqueante = false;
 
 bool ejecutando;
+bool DesconectarCPU = false;
 typedef struct {
 	uint32_t ejecutando;
 	BloqueControlProceso pcb;
 } EstadoActualDeLaCpu;
 
 EstadoActualDeLaCpu estadoActual;
-
-static const char* PROGRAMA =
-		"begin\n"
-		"variables a, b\n"
-		"a = 3\n"
-		"b = 5\n"
-		"a = b + 12\n"
-		"end\n"
-		"\n";
 
 AnSISOP_funciones functions = {
   .AnSISOP_asignar = primitiva_asignar,
@@ -137,47 +129,79 @@ void obtenerLineaAEjecutar(char *instruccion,uint32_t*registro){
 	Si es asi, habria que hacer otra funcion */
 	uint32_t paginaInicial = registro[0]/TamanioPaginaMemoria;
 	uint32_t offsetPaginaInicial = registro[0]%TamanioPaginaMemoria;
-	uint32_t cantALeer = registro[1];
-	uint32_t cantPaginasALeer = (registro[0]+registro[1])/TamanioPaginaMemoria+1;
-	char* datos= string_new();
-	if(offsetPaginaInicial+registro[1]>TamanioPaginaMemoria){
-		int cantPrimera = TamanioPaginaMemoria-offsetPaginaInicial;
-		datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,paginaInicial, offsetPaginaInicial, cantPrimera);
-		string_append(&datos,(char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,paginaInicial+1, 0, cantALeer-cantPrimera));
+	uint32_t cantTotalALeer = registro[1];
+	uint32_t cantPaginasALeer;
 
+	if(offsetPaginaInicial + cantTotalALeer > TamanioPaginaMemoria)
+	{
+		cantPaginasALeer = 1 + ceil((cantTotalALeer - (TamanioPaginaMemoria - offsetPaginaInicial)) / TamanioPaginaMemoria); //El 1 es por la primer pagina
 	}
 	else
 	{
-		datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,paginaInicial, offsetPaginaInicial, cantALeer);
-
+		cantPaginasALeer = 1;
 	}
-	strcpy(instruccion,datos);
-	free(datos);
 
+
+	char* datos = string_new();
+
+	uint32_t offsetPaginaALeer = offsetPaginaInicial;
+
+	for(int i = 0; i < cantPaginasALeer; i++)
+	{
+		uint32_t cantALeerEnPagina;
+
+		if(cantPaginasALeer > 1)
+		{
+			if(i == 0) //Es la primer pagina
+			{
+				cantALeerEnPagina = TamanioPaginaMemoria - offsetPaginaALeer;
+			}
+			else
+			{
+				if(cantTotalALeer > TamanioPaginaMemoria)
+				{
+					cantALeerEnPagina = TamanioPaginaMemoria;
+				}
+				else
+				{
+					cantALeerEnPagina = cantTotalALeer;
+				}
+			}
+		}
+		else
+		{
+			cantALeerEnPagina = cantTotalALeer;
+		}
+
+		string_append(&datos,(char*)IM_LeerDatos(socketMemoria, CPU, pcb.PID, paginaInicial + i, offsetPaginaALeer, cantALeerEnPagina));
+
+		cantTotalALeer -= cantALeerEnPagina;
+
+		offsetPaginaALeer = 0;
+	}
+
+	strcpy(instruccion, datos);
+
+	free(datos);
 }
 
 bool terminoElPrograma(void){
 	return !estadoActual.ejecutando;
 }
 
-void informadorDeUsoDeCpu() {
-	Paquete* paquete;
-	while (true) {
-		while(RecibirPaqueteServidor(socketKernel, CPU, paquete)<0);
-		if (paquete->header.tipoMensaje == ESTAEJECUTANDO) {
-			int tamDatos = sizeof(uint32_t) * 2;
-			void* datos = malloc(tamDatos);
-			((uint32_t*) datos)[0] = terminoElPrograma();
-			((uint32_t*) datos)[1] = estadoActual.pcb.PID;
-
-			EnviarDatos(socketKernel, CPU, datos, tamDatos);
+void userInterfaceHandler(){
+	while (!DesconectarCPU) {
+		char orden[100];
+		printf("\n\nIngrese una orden: \n");
+		scanf("%s", orden);
+		char* command = getWord(orden, 0);
+		if(strcmp(command,"SIGUSR1")==0){
+			DesconectarCPU = true;
 		}
 	}
 }
-
 int main(void) {
 	indiceDeCodigo = list_create();
-	bool DesconectarCPU = false;
 	pcb_Create(&pcb, 0); //TODO: sacar el 0 despues de mergear de newMaster
 
 	obtenerValoresArchivoConfiguracion();
@@ -186,20 +210,24 @@ int main(void) {
 	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake); //TODO: Recibir datos
 	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake_DeMemoria);
 
-	pthread_t hiloInformadorDeEstado;
 	pthread_t consola;
-
-	pthread_create(&hiloInformadorDeEstado, NULL, (void*)informadorDeUsoDeCpu, NULL);
-	pthread_create(consola,)
+	pthread_create(&consola,NULL,(void*)userInterfaceHandler,NULL);
 
 	while(!DesconectarCPU) {
 		Paquete paquete;
 		while (RecibirPaqueteCliente(socketKernel, CPU, &paquete)<=0);
 		switch(paquete.header.tipoMensaje) {
-		case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
-			DesconectarCPU = true;
+			case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
+				DesconectarCPU = true;
 			break;
-		case ESPCB:	{
+			case ESTAEJECUTANDO:
+				int tamDatos = sizeof(uint32_t) * 2;
+				void* datos = malloc(tamDatos);
+				((uint32_t*) datos)[0] = terminoElPrograma();
+				((uint32_t*) datos)[1] = estadoActual.pcb.PID;
+				EnviarDatos(socketKernel, CPU, datos, tamDatos);
+			break;
+			case ESPCB:	{
 				pcb_Receive(&datosCpu,&pcb, socketKernel,cantRafagasAEjecutar);
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = true;
@@ -223,7 +251,8 @@ int main(void) {
 
 		}
 	}
+
 	pcb_Destroy(&pcb);
-	pthread_join(hiloInformadorDeEstado, NULL);
+	pthread_join(consola, NULL);
 	return 0;
 }

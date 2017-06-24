@@ -25,6 +25,7 @@ void obtenerValoresArchivoConfiguracion() {
 	{
 		while ((c = getc(file)) != EOF)
 		{
+
 			if (c == '=')
 			{
 				if (contadorDeVariables == 14)
@@ -67,24 +68,24 @@ void obtenerValoresArchivoConfiguracion() {
 					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
 
-					while (texto != NULL)
-					{
-						SEM_INIT[i++] = atoi(texto);
-						texto = strtok (NULL, ",");
-					}
-
+					char ** nombresSemaforos = string_split(texto,",");
+					string_iterate_lines(nombresSemaforos,	LAMBDA(void _(char* item) {
+							Semaforo sem = *(Semaforo)list_get(Semaforos,i);
+							sem.valorSemaforo = atoi(item);
+							i++;
+						}));
 					contadorDeVariables++;
 				}
 
 				if (contadorDeVariables == 10){
 					char * texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
-
-					while (texto != NULL)
-					{
-						SEM_IDS[i++] = texto;
-						texto = strtok (NULL, ",");
-					}
+					char ** nombresSemaforos = string_split(texto,",");
+					string_iterate_lines(nombresSemaforos,	LAMBDA(void _(char* item) {
+							Semaforo sem;
+							strcpy(sem.nombreSemaforo,texto);
+							list_add(Semaforos,&sem);
+						}));
 
 					contadorDeVariables++;
 				}

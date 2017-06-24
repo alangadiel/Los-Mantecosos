@@ -107,21 +107,13 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	i = 0;
 
 	// Leer metadataprogram.c a ver como desarrollaron esto
-	while(i < metaProgram->etiquetas_size)
-	{
-		char* etiquetaABuscar = string_new();
+	char **etiquetasEncontradas = string_n_split(metaProgram->etiquetas,metaProgram->cantidad_de_etiquetas+metaProgram->cantidad_de_funciones,(char*)metaProgram->instrucciones_size);
+	string_iterate_lines(etiquetasEncontradas,
+			LAMBDA(void _(char* item) {
+		t_puntero_instruccion pointer = metadata_buscar_etiqueta(item,metaProgram->etiquetas, metaProgram->etiquetas_size);
+		dictionary_put(pcb->IndiceDeEtiquetas, item, &pointer);
 
-		while(metaProgram->etiquetas[i] != metaProgram->instrucciones_size)
-		{
-			etiquetaABuscar[i]=metaProgram->etiquetas[i];
-
-			i++;
-		}
-
-		t_puntero_instruccion pointer = metadata_buscar_etiqueta(etiquetaABuscar,metaProgram->etiquetas, metaProgram->etiquetas_size);
-
-		dictionary_put(pcb->IndiceDeEtiquetas, etiquetaABuscar, &pointer);
-	}
+	}));
 }
 
 
@@ -234,7 +226,6 @@ bool ProcesoNoEstaEjecutandoseActualmente(int pidAFinalizar)
 
 bool KillProgram(int pidAFinalizar, int tipoFinalizacion, int socket)
 {
-	int i = 0;
 	void* result = NULL;
 	result = FinalizarPrograma(pidAFinalizar, tipoFinalizacion, socket);
 
@@ -361,7 +352,7 @@ void* accion(void* socket)
 	{
 		switch(paquete.header.tipoMensaje)
 		{
-			case ESSTRING:
+				case ESSTRING:
 				if(strcmp(paquete.header.emisor, CONSOLA) == 0)
 				{
 					double tamaniCodigoEnPaginas = paquete.header.tamPayload / TamanioPagina;
@@ -507,8 +498,9 @@ void* accion(void* socket)
 								{
 									//si hay un wait, se mete otra vez en la cola de listos
 									pcb->ProgramCounter++;
-
+									pthread_mutex_lock(&mutexQueueListos);
 									list_add_in_index(Listos->elements, 0, pcb);
+									pthread_mutex_unlock(&mutexQueueListos);
 								}
 							}
 							else
@@ -581,64 +573,63 @@ void* accion(void* socket)
 							PID = ((uint32_t*)paquete.Payload)[1];
 
 							permisosArchivo permisos;
+							permisos.creacion = *((bool*)paquete.Payload+sizeof(uint32_t) * 2);
+							permisos.escritura = *((bool*)paquete.Payload+sizeof(uint32_t) * 3);
+							permisos.lectura = *((bool*)paquete.Payload+sizeof(uint32_t) * 4);
 
-							permisos.creacion = ((bool*)paquete.Payload)[sizeof(uint32_t) * 2];
-							permisos.escritura = ((bool*)paquete.Payload)[sizeof(uint32_t) * 3];
-							permisos.lectura = ((bool*)paquete.Payload)[sizeof(uint32_t) * 4];
-							char* path = ((char**)paquete.Payload)[sizeof(uint32_t) * 2 + sizeof(bool) * 3];
-
-							abrirArchivo(path, PID, permisos);
+							abrirArchivo(((char*)paquete.Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos);
 						break;
 
 						case BORRARARCHIVO:
 							PID = ((uint32_t*)paquete.Payload)[1];
-							FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+							FD = ((uint32_t*)paquete.Payload)[2];
 
 							borrarArchivo(FD, PID);
 						break;
 
 						case CERRARARCHIVO:
 							PID = ((uint32_t*)paquete.Payload)[1];
-							FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
+							FD = ((uint32_t*)paquete.Payload)[2];
 
 							cerrarArchivo(FD, PID);
 						break;
 
 						case MOVERCURSOSARCHIVO:
 							PID = ((uint32_t*)paquete.Payload)[1];
-							FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
-							uint32_t posicion = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+							FD = ((uint32_t*)paquete.Payload)[2];
+							uint32_t posicion = ((uint32_t*)paquete.Payload)[3];
 
 							moverCursor(FD, PID, posicion);
 						break;
 
 						case ESCRIBIRARCHIVO:
 							PID = ((uint32_t*)paquete.Payload)[1];
-							FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
-							tamanioArchivo = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
-							char* datosAEscribir = ((char**)paquete.Payload)[sizeof(uint32_t) * 4];
-
-							escribirArchivo(FD, PID, tamanioArchivo, datosAEscribir);
+							FD = ((uint32_t*)paquete.Payload)[2];
+							tamanioArchivo = ((uint32_t*)paquete.Payload)[3];
+							escribirArchivo(FD, PID, tamanioArchivo, ((char*)paquete.Payload+sizeof(uint32_t) * 4));
 						break;
 
 						case LEERARCHIVO:
 							PID = ((uint32_t*)paquete.Payload)[1];
-							FD = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 2];
-							tamanioArchivo = ((uint32_t*)paquete.Payload)[sizeof(uint32_t) * 3];
+							FD = ((uint32_t*)paquete.Payload)[2];
+							tamanioArchivo = ((uint32_t*)paquete.Payload)[3];
 
 							leerArchivo(FD, PID, tamanioArchivo);
 						break;
 
 						case FINEJECUCIONPROGRAMA:
 							PID = ((uint32_t*)paquete.Payload)[1];
-
 							//Finalizar programa
 							FinalizarPrograma(PID, FINALIZACIONNORMAL, socketConectado);
 						break;
 					}
 				}
 			break;
-
+			case ESDESCONEXIONCPU:
+				list_remove_by_condition(CPUsConectadas,LAMBDA(bool _(void* item){
+					return ((DatosCPU*)item)->socketCPU==socketConectado;}
+				));
+			break;
 			case KILLPROGRAM:
 				if(strcmp(paquete.header.emisor, CONSOLA) == 0)
 				{
