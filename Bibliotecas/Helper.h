@@ -26,8 +26,6 @@
 #include <dirent.h>
 #include <parser/parser.h>
 
-#define cantidadDeRafagasEjecutadas acumRafagas
-
 typedef struct {
 	uint32_t NumeroDePagina;
 	uint32_t Offset; //Desplazamiento
@@ -58,8 +56,9 @@ typedef struct {
 	char* etiquetas;
 	uint32_t cantidad_de_etiquetas;
 	uint32_t cantidad_de_funciones;
-	uint32_t cantRafagas;
-	uint32_t acumRafagas;
+	uint32_t cantidadDeRafagasAEjecutar; //esto se manda en send de kernel
+	uint32_t cantidadDeRafagasEjecutadasHistorica; //esto se hace en cpu
+	uint32_t cantidadDeRafagasEjecutadas; //esto se manda en send de cpu
 	uint32_t cantidadSyscallEjecutadas;
 }__attribute__((packed)) BloqueControlProceso;
 

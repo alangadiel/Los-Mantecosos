@@ -507,11 +507,14 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	//Serialización etiquetas
 	memcpy(pcbSerializado, pecebe->etiquetas, pecebe->etiquetas_size);
 	pcbSerializado += pecebe->etiquetas_size;
-	//Serialización cantRafagas
-	*((uint32_t*)pcbSerializado) = pecebe->cantRafagas;
+	//Serialización cantidadDeRafagasEjecutadas
+	*((uint32_t*)pcbSerializado) = pecebe->cantidadDeRafagasEjecutadas;
 	pcbSerializado += sizeof(uint32_t);
-	//Serialización acumRafagas
-	*((uint32_t*)pcbSerializado) = pecebe->acumRafagas;
+	//Serialización cantidadDeRafagasEjecutadasHistorica
+	*((uint32_t*)pcbSerializado) = pecebe->cantidadDeRafagasEjecutadasHistorica;
+	pcbSerializado += sizeof(uint32_t);
+	//Serialización cantidadDeRafagasAEjecutar
+	*((uint32_t*)pcbSerializado) = pecebe->cantidadDeRafagasAEjecutar;
 	pcbSerializado += sizeof(uint32_t);
 	//Serialización PID
 	*((uint32_t*)pcbSerializado) = pecebe->PID;
@@ -607,9 +610,11 @@ void RecibirPCB(BloqueControlProceso* pecebe, int socketFD, char receptor[11]){
 	pcbSerializado += sizeof(t_size);
 	memcpy(pecebe->etiquetas, pcbSerializado, pecebe->etiquetas_size);
 	pcbSerializado += pecebe->etiquetas_size;
-	pecebe->cantRafagas = *(uint32_t*)pcbSerializado;
+	pecebe->cantidadDeRafagasEjecutadas = *(uint32_t*)pcbSerializado;
 	pcbSerializado += sizeof(uint32_t);
-	pecebe->acumRafagas= *(uint32_t*)pcbSerializado;
+	pecebe->cantidadDeRafagasEjecutadasHistorica= *(uint32_t*)pcbSerializado;
+	pcbSerializado += sizeof(uint32_t);
+	pecebe->cantidadDeRafagasAEjecutar= *(uint32_t*)pcbSerializado;
 	pcbSerializado += sizeof(uint32_t);
 	pecebe->PID = *(uint32_t*)pcbSerializado;
 	pcbSerializado += sizeof(uint32_t);

@@ -119,6 +119,7 @@ void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos)
 	//Creo el pcb y lo guardo en la lista de nuevos
 	pcb_Create(pcb, *ultimoPid+1);
 	(*ultimoPid)++;
+	pcb->cantidadDeRafagasEjecutadasHistorica = 0;
 	pthread_mutex_lock(&mutexQueueNuevos);
 	queue_push(nuevos,pcb);
 	pthread_mutex_unlock(&mutexQueueNuevos);

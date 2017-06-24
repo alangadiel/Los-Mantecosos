@@ -336,6 +336,8 @@ void dispatcher()
 					cantidadDeRafagas = QUANTUM;
 				}
 			}
+			PCBAMandar->cantidadDeRafagasAEjecutar = cantidadDeRafagas;
+			PCBAMandar->cantidadDeRafagasEjecutadas = 0;
 
 			EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar);
 
