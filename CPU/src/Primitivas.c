@@ -181,6 +181,15 @@ void primitiva_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
 	pcb.ProgramCounter = *(int*)dictionary_get(pcb.IndiceDeEtiquetas,t_nombre_etiqueta);
 
 }
+void primitiva_llamarSinRetorno(t_nombre_etiqueta etiqueta){
+	void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
+		IndiceStack nuevoIs;
+		//Entrada del indice de codigo a donde se debe regresar
+		nuevoIs.DireccionDeRetorno = pcb.ProgramCounter;
+		//La proxima instruccion a ejecutar es la de la funcion en cuestion
+		primitiva_irAlLabel(etiqueta);
+	}
+}
 
 void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 	IndiceStack nuevoIs;
