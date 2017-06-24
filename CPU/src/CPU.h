@@ -23,6 +23,7 @@ int PUERTO_MEMORIA;
 int socketKernel;
 int socketMemoria;
 extern BloqueControlProceso pcb;
+extern bool primitivaBloqueante;
 
 void obtenerValoresArchivoConfiguracion();
 void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos);

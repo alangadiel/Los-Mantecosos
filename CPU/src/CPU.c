@@ -145,8 +145,8 @@ void obtenerLineaAEjecutar(char *instruccion,uint32_t*registro){
 	char* datos = string_new();
 
 	uint32_t offsetPaginaALeer = offsetPaginaInicial;
-
-	for(int i = 0; i < cantPaginasALeer; i++)
+	int i;
+	for(i = 0; i < cantPaginasALeer; i++)
 	{
 		uint32_t cantALeerEnPagina;
 
@@ -220,15 +220,16 @@ int main(void) {
 			case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
 				DesconectarCPU = true;
 			break;
-			case ESTAEJECUTANDO:
+			case ESTAEJECUTANDO: {
 				int tamDatos = sizeof(uint32_t) * 2;
 				void* datos = malloc(tamDatos);
 				((uint32_t*) datos)[0] = terminoElPrograma();
 				((uint32_t*) datos)[1] = estadoActual.pcb.PID;
 				EnviarDatos(socketKernel, CPU, datos, tamDatos);
+			}
 			break;
 			case ESPCB:	{
-				pcb_Receive(&datosCpu,&pcb, socketKernel,cantRafagasAEjecutar);
+				RecibirPCB(&pcb, socketKernel, CPU);
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = true;
 				int i=0;
@@ -243,7 +244,7 @@ int main(void) {
 					i++;
 				}
 				// Avisar al kernel que terminaste de ejecutar la instruccion
-				pcb_Send(CPU, &pcb,socketKernel,cantRafagasEjecutadas);
+				EnviarPCB(socketKernel, CPU, &pcb);
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = false;
 			}
