@@ -10,7 +10,7 @@ typedef struct {
 	int socketConsola;
 } PIDporSocketConsola;
 
-BloqueControlProceso* FinalizarPrograma(int pid,int tipoFinalizacion, int index, int socketFD) ;
+BloqueControlProceso* FinalizarPrograma(int pid,int tipoFinalizacion, int socketFD) ;
 bool KillProgram(int pidAFinalizar,int tipoFinalizacion, int socket);
 void PonerElProgramaComoListo(BloqueControlProceso* pcb,Paquete* paquete,int socketFD,double tamanioTotalPaginas);
 int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paquete);

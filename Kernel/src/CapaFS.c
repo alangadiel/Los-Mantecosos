@@ -1,5 +1,11 @@
 #include "CapaFS.h"
 
+//Tipos de ExitCode
+#define ACCEDERAARCHVIOQUENOEXISTE -2
+#define LEERARCHIVOSINPERMISOS -3
+#define ESCRIBIRARCHIVOSINPERMISO -4
+#define CREARARCHIVOSINPERMISOS -10
+
 
 int ultimoFD = 3;
 
@@ -122,6 +128,7 @@ void finalizarProgramaCapaFS(int PID)
 	if(result != NULL)
 	{
 		int j;
+
 		for(j = 0; j < list_size(listaProcesoAFinalizar); j++)
 		{
 			archivoProceso* archivoProc = (archivoProceso*)list_get(listaProcesoAFinalizar, j);
@@ -163,8 +170,8 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos)
 		else
 		{
 			//TODO: Avisarle a la CPU que termino
-			//FinalizarPrograma(Ejecutando, PID, -20, INDEX_EJECUTANDO, socketConMemoria);
-			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -20 (El programa intentó crear un archivo sin permisos)
+			FinalizarPrograma(PID, CREARARCHIVOSINPERMISOS, socketConMemoria);
+			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -10 (El programa intentó crear un archivo sin permisos)
 		}
 	}
 
@@ -208,11 +215,14 @@ uint32_t leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 		else
 		{
 			free(archivoProc);
+
+			FinalizarPrograma(PID, LEERARCHIVOSINPERMISOS, socketConFS);
 			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -3
 		}
 	}
 	else
 	{
+		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE, socketConFS);
 		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
@@ -253,11 +263,14 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* 
 		else
 		{
 			free(archivoProc);
+
+			FinalizarPrograma(PID, ESCRIBIRARCHIVOSINPERMISO, socketConFS);
 			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -4
 		}
 	}
 	else
 	{
+		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE, socketConFS);
 		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
@@ -301,7 +314,8 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 	}
 	else
 	{
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -20 (El programa intentó cerrar un archivo que no existe)
+		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE, socketConFS);
+		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
 
@@ -345,7 +359,8 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
 	}
 	else
 	{
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -20 (El programa intentó borrar un archivo que no existe)
+		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE, socketConFS);
+		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
 
@@ -373,12 +388,13 @@ uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 
 		archivoProc->offsetArchivo = posicion;
 
-		list_replace(listaProceso, FD - 3, archivoProc); //El -3 es porque los FD empiezan desde el 3
+		list_replace(listaProceso, FD-3, archivoProc); //El -3 es porque los FD empiezan desde el 3
 
 		free(archivoProc);
 	}
 	else
 	{
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -20 (El programa intentó mover el cursor de un archivo que no existe)
+		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE, socketConFS);
+		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }

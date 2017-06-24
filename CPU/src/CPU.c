@@ -131,6 +131,30 @@ void obtenerLinea(char* instruccion, uint32_t* registro){
 	}
 	free(datos);
 }
+void obtenerLineaAEjecutar(char *instruccion,uint32_t*registro){
+	/*Suponiendo que una instruccion nunca nos va a ocupar mas de 2 paginas
+	TODO: puede pasar que una instruccion ocupe mas de 2 paginas?
+	Si es asi, habria que hacer otra funcion */
+	uint32_t paginaInicial = registro[0]/TamanioPaginaMemoria;
+	uint32_t offsetPaginaInicial = registro[0]%TamanioPaginaMemoria;
+	uint32_t cantALeer = registro[1];
+	uint32_t cantPaginasALeer = (registro[0]+registro[1])/TamanioPaginaMemoria+1;
+	char* datos= string_new();
+	if(offsetPaginaInicial+registro[1]>TamanioPaginaMemoria){
+		int cantPrimera = TamanioPaginaMemoria-offsetPaginaInicial;
+		datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,paginaInicial, offsetPaginaInicial, cantPrimera);
+		string_append(&datos,(char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,paginaInicial+1, 0, cantALeer-cantPrimera));
+
+	}
+	else
+	{
+		datos = (char*)IM_LeerDatos(socketMemoria,CPU,pcb.PID,paginaInicial, offsetPaginaInicial, cantALeer);
+
+	}
+	strcpy(instruccion,datos);
+	free(datos);
+
+}
 
 bool terminoElPrograma(void){
 	return !estadoActual.ejecutando;
@@ -163,8 +187,10 @@ int main(void) {
 	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake_DeMemoria);
 
 	pthread_t hiloInformadorDeEstado;
-	pthread_create(&hiloInformadorDeEstado, NULL, (void*)informadorDeUsoDeCpu, NULL);
+	pthread_t consola;
 
+	pthread_create(&hiloInformadorDeEstado, NULL, (void*)informadorDeUsoDeCpu, NULL);
+	pthread_create(consola,)
 
 	while(!DesconectarCPU) {
 		Paquete paquete;
@@ -182,7 +208,7 @@ int main(void) {
 				while(i< cantRafagasAEjecutar && !primitivaBloqueante) {
 					uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 					char instruccion[registro[1]];
-					obtenerLinea(instruccion, registro);
+					obtenerLineaAEjecutar(instruccion, registro);
 					analizadorLinea(instruccion,&functions,&kernel_functions);
 					pcb.cantidadDeRafagasEjecutadas++;
 					cantRafagasEjecutadas++;
