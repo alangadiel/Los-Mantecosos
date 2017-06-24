@@ -68,9 +68,9 @@ void obtenerValoresArchivoConfiguracion() {
 					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
 
-					char ** nombresSemaforos = string_split(texto,",");
-					string_iterate_lines(nombresSemaforos,	LAMBDA(void _(char* item) {
-							Semaforo sem = *(Semaforo)list_get(Semaforos,i);
+					char ** valoresSemaforos = string_split(texto,",");
+					string_iterate_lines(valoresSemaforos,	LAMBDA(void _(char* item) {
+							Semaforo sem = *(Semaforo*)list_get(Semaforos,i);
 							sem.valorSemaforo = atoi(item);
 							i++;
 						}));
