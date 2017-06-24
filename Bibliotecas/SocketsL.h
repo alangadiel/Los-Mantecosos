@@ -143,7 +143,7 @@ uint32_t IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog);
 
 void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe, uint32_t cantRafagas);
 
-void RecibirPCB(BloqueControlProceso* pecebe, int socketFD);
+void RecibirPCB(BloqueControlProceso* pecebe, int socketFD, char receptor[11]);
 
 
 
