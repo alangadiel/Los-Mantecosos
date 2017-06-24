@@ -29,6 +29,9 @@
 #define ESPCB 4
 #define KILLPROGRAM 5
 #define ESERROR 6
+#define ESTAEJECUTANDO 7
+#define ESDESCONEXIONCPU -8
+
 //Comunicacion Kernel con CPU
 #define PEDIRSHAREDVAR 0
 #define ASIGNARSHAREDVAR 1
@@ -50,6 +53,22 @@
 #define ASIG_PAG 3
 #define LIBE_PAG 4
 #define FIN_PROG 5
+
+//Comunicacion Kernel con CPU
+#define PEDIRSHAREDVAR 0
+#define ASIGNARSHAREDVAR 1
+#define WAITSEM 2
+#define SIGNALSEM 3
+#define RESERVARHEAP 4
+#define LIBERARHEAP 5
+#define ABRIRARCHIVO 6
+#define BORRARARCHIVO 7
+#define CERRARARCHIVO 8
+#define MOVERCURSOSARCHIVO 9
+#define ESCRIBIRARCHIVO 10
+#define LEERARCHIVO 11
+#define FINEJECUCIONPROGRAMA 12
+
 //API File system
 #define VALIDAR_ARCHIVO 0
 #define CREAR_ARCHIVO 1
@@ -158,6 +177,12 @@ bool IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog);
 void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe);
 
 void RecibirPCB(BloqueControlProceso* pecebe, int socketFD, char receptor[11]);
+uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path);
+uint32_t FS_CrearPrograma(int socketFD, char emisor[11], char* path);
+uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path);
+void* FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset, uint32_t size);
+uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, char* buffer);
+
 
 
 

@@ -175,12 +175,12 @@ void endProgram(uint32_t pid,uint32_t* socketgeneral) {
 	paquete.header.tamPayload = sizeof(uint32_t);
 	paquete.Payload = &pid;
 	printf("pid a eliminar : %d\n",pid);
-	SocketProceso* sp = malloc(sizeof(SocketProceso));
-	sp = (SocketProceso*)list_find(SocketsProcesos,LAMBDA(bool _(void* item) { return ((SocketProceso*)item)->pid == pid; }));
+	SocketProceso* sp = (SocketProceso*)list_find(SocketsProcesos,LAMBDA(bool _(void* item) { return ((SocketProceso*)item)->pid == pid; }));
 	if(sp!=NULL){
 		printf("socket: %d\n",sp->socket);
 		printf("pid: %d\n",sp->pid);
 		EnviarPaquete(sp->socket, &paquete);
+
 		Paquete nuevoPaquete;
 		while(RecibirPaqueteCliente(sp->socket, CONSOLA, &nuevoPaquete)<0);
 		free(sp);
@@ -189,6 +189,7 @@ void endProgram(uint32_t pid,uint32_t* socketgeneral) {
 			if(strcmp(nuevoPaquete.header.emisor,KERNEL)==0){
 			char* result = (char*)nuevoPaquete.Payload;
 			printf("result: %s",result);
+
 			if (strcmp(result, "KILLEADO") == 0) {
 				printf("Se finalizo el programa N°: %d\n",pid);
 			}

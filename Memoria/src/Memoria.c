@@ -99,10 +99,10 @@ int main(void) {
 
 	tamEstructurasAdm = sizeof(RegistroTablaPaginacion) * MARCOS;
 	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE) + tamEstructurasAdm;
-
 	BloquePrincipal = malloc(tamanioTotalBytesMemoria); //Reservo toda mi memoria
 	ContenidoMemoria = BloquePrincipal + tamEstructurasAdm; //guardo el puntero donde empieza el contenido
 	cantPagAsignadas = 0;
+
 
 	InicializarTablaDePagina();
 

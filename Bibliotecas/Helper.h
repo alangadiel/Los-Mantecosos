@@ -1,3 +1,4 @@
+
 #ifndef HELPER_
 #define HELPER_
 #define LAMBDA(c_) ({ c_ _;}) //Para funciones lamda
@@ -24,6 +25,8 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <parser/parser.h>
+
+#define cantidadDeRafagasEjecutadas acumRafagas
 
 typedef struct {
 	uint32_t NumeroDePagina;
@@ -57,7 +60,13 @@ typedef struct {
 	uint32_t cantidad_de_funciones;
 	uint32_t cantRafagas;
 	uint32_t acumRafagas;
+	uint32_t cantidadSyscallEjecutadas;
 }__attribute__((packed)) BloqueControlProceso;
+
+typedef struct {
+	int socketCPU;
+	bool isFree;
+} __attribute__((packed))DatosCPU;
 
 typedef struct {
 	uint32_t* Atributos;

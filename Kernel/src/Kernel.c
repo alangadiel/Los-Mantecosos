@@ -1,92 +1,23 @@
-#include "SocketsL.h"
-#include "Helper.h"
+#include "Service.h"
+#include "UserInterface.h"
+#include "Threads.h"
 
+//Variables archivo de configuracion
+char* IP_PROG;
 int PUERTO_PROG;
 int PUERTO_CPU;
 char* IP_MEMORIA;
 int PUERTO_MEMORIA;
 char* IP_FS;
 int PUERTO_FS;
-int QUANTUM;
-int QUANTUM_SLEEP;
-char* ALGORITMO;
-int GRADO_MULTIPROG;
-char* SEM_IDS[4];
-int SEM_INIT[100];
-char* SHARED_VARS[100];
-int STACK_SIZE;
-char* IP_PROG;
 
-int ultimoPID=0;
-int socketConMemoria;
-double TamanioPagina;
-typedef struct  {
- uint32_t size;
- int isFree;
-} HeapMetadata;
-
-typedef struct {
-	FILE * file;
-	BloqueControlProceso pcb;
-} PeticionTamanioStack;
+int cantNombresSemaforos = 0;
+int cantValoresSemaforos = 0;
 
 
-uint32_t PidAComparar;
-t_list* Nuevos;
-t_list* Finalizados;
-t_list* Bloqueados;
-t_list* Ejecutando;
-t_list* Listos;
+t_list* HilosDeConexiones;
 
-/*
-//replicar aca!!
-int j;
-for (j = 0; j <= fdmax; j++) {
-		// ¡enviar a todo el mundo!
-		if (FD_ISSET(j, &master)) {
-			// excepto al listener y a nosotros mismos
-			if (j != SocketEscucha && j != i) {
-				EnviarMensaje(j,(char*)paquete->Payload,KERNEL, ESSTRING);
-				//if (send(j, paquete, result, 0) == -1) {
-					//perror("send");
-				//}
-			}
-		}
-	}
-*/
-char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
-{
-	char buffer[10000];
-	char *line = fgets(buffer,sizeof buffer,f);
-	int length = string_length(line)-3;
-	char *texto = string_substring(line,1,length);
-
-	texto  = strtok(texto,",");
-
-	return texto;
-}
-
-void ObtenerTamanioPagina(int socketFD){
-	Paquete* datosInicialesMemoria = malloc(sizeof(Paquete));
-	uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD,KERNEL,datosInicialesMemoria);
-	if(datosRecibidos>0){
-		TamanioPagina = *((uint32_t*)datosInicialesMemoria->Payload);
-	}
-	free(datosInicialesMemoria->Payload+1);
-	free(datosInicialesMemoria);
-
-}
-
-BloqueControlProceso CrearNuevoProceso(){
-	//Creo el pcb y lo guardo en la lista de nuevos
-	BloqueControlProceso pcb;
-	pcb.PID = ultimoPID+1;
-	ultimoPID++;
-	list_add(Nuevos,&pcb);
-	return pcb;
-}
-void obtenerValoresArchivoConfiguracion()
-{
+void obtenerValoresArchivoConfiguracion(bool* cantNombresSemaforosEsIgualAValores) {
 	int contadorDeVariables = 0;
 	int c;
 	FILE *file;
@@ -97,14 +28,9 @@ void obtenerValoresArchivoConfiguracion()
 	{
 		while ((c = getc(file)) != EOF)
 		{
+
 			if (c == '=')
 			{
-				/*if (contadorDeVariables == 15)
-				{
-					fscanf(file, "%i", &TAM_PAG);
-					contadorDeVariables++;
-
-				}*/
 				if (contadorDeVariables == 14)
 				{
 					char buffer[10000];
@@ -123,13 +49,14 @@ void obtenerValoresArchivoConfiguracion()
 				if (contadorDeVariables == 12)
 				{
 					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
-					int i = 0;
+					char ** variablesAInicializar = string_split(texto,",");
+					string_iterate_lines(variablesAInicializar,LAMBDA(void _(char* texto){
+						VariableCompartida nuevaVar;
+						nuevaVar.nombreVariableGlobal = texto;
+						nuevaVar.valorVariableGlobal=0;
+						list_add(VariablesCompartidas,&nuevaVar);
+					}));
 
-					while (texto != NULL)
-					{
-						SHARED_VARS[i++] = texto;
-						texto = strtok (NULL, ",");
-					}
 
 					contadorDeVariables++;
 				}
@@ -138,25 +65,26 @@ void obtenerValoresArchivoConfiguracion()
 				{
 					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
 					int i = 0;
-
-					while (texto != NULL)
-					{
-						SEM_INIT[i++] = atoi(texto);
-						texto = strtok (NULL, ",");
-					}
-
+					char ** valoresSemaforos = string_split(texto,",");
+					string_iterate_lines(valoresSemaforos,	LAMBDA(void _(char* item) {
+							Semaforo sem;
+							sem= *(Semaforo*)list_get(Semaforos,i);
+							sem.valorSemaforo = atoi(item);
+							i++;
+							cantValoresSemaforos++;
+						}));
 					contadorDeVariables++;
 				}
 
 				if (contadorDeVariables == 10){
 					char * texto = ObtenerTextoDeArchivoSinCorchetes(file);
-					int i = 0;
-
-					while (texto != NULL)
-					{
-						SEM_IDS[i++] = texto;
-						texto = strtok (NULL, ",");
-					}
+					char ** nombresSemaforos = string_split(texto,",");
+					string_iterate_lines(nombresSemaforos,	LAMBDA(void _(char* item) {
+							Semaforo sem;
+							strcpy(sem.nombreSemaforo,texto);
+							list_add(Semaforos,&sem);
+							cantNombresSemaforos++;
+						}));
 
 					contadorDeVariables++;
 				}
@@ -237,68 +165,10 @@ void obtenerValoresArchivoConfiguracion()
 
 		fclose(file);
 	}
-}
-void imprimirArchivoConfiguracion()
-{
-	int c;
-	FILE *file;
 
-	file = fopen("ArchivoConfiguracion.txt", "r");
-
-	if (file)
+	if(cantNombresSemaforos == cantValoresSemaforos)
 	{
-		while ((c = getc(file)) != EOF)
-		{
-			putchar(c);
-		}
-
-		fclose(file);
-	}
-}
-
-void accion(Paquete* paquete, int socketConectado){
-	switch(paquete->header.tipoMensaje) {
-
-		case ESSTRING:
-
-				if(strcmp(paquete->header.emisor,CONSOLA)==0)
-				{
-					double tamanioArchivo = paquete->header.tamPayload/TamanioPagina;
-					double tamanioTotalPaginas = ceil(tamanioArchivo)+STACK_SIZE;
-
-					BloqueControlProceso pcb = CrearNuevoProceso();
-					//Manejo la multiprogramacion
-					if(GRADO_MULTIPROG - list_size(Ejecutando) - list_size(Listos) > 0 && list_size(Nuevos) >= 1){
-						//Pregunta a la memoria si me puede guardar estas paginas
-						uint32_t paginasConfirmadas = IM_InicializarPrograma(socketConMemoria,KERNEL,pcb.PID,tamanioTotalPaginas);
-						if(paginasConfirmadas == tamanioTotalPaginas) // N° negativo significa que la memoria no tiene espacio
-						{
-							printf("Cant paginas asignadas: %d \n",paginasConfirmadas);
-
-							pcb.PaginasDeCodigo = tamanioTotalPaginas;
-							//Saco el programa de la lista de NEW y lo agrego el programa a la lista de READY
-							PidAComparar = pcb.PID;
-
-							list_remove_by_condition(Nuevos, LAMBDA(bool _(void* pcb) { return ((BloqueControlProceso*)pcb)->PID != PidAComparar; }));
-							printf("Tamanio de la lista de nuevos programas: %d \n",list_size(Nuevos));
-							list_add(Listos,&pcb);
-							printf("El programa %d se cargo en memoria \n",pcb.PID);
-
-							//Solicito a la memoria que me guarde el codigo del programa
-							IM_GuardarDatos(socketConMemoria, KERNEL, pcb.PID, 0, 0, paquete->header.tamPayload, paquete->Payload); //TODO: sacar harcodeo
-
-						}
-						else
-						{
-							printf("%s","No se pudo guardar programa \n");
-							EnviarMensaje(socketConectado,"No se pudo guardar el programa",KERNEL);
-						}
-
-					}
-
-				}
-
-		break;
+		*cantNombresSemaforosEsIgualAValores = false;
 	}
 }
 
@@ -325,17 +195,37 @@ void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
 
 int main(void)
 {
-	Nuevos = list_create();
-	Finalizados= list_create();
-	Bloqueados= list_create();
-    Ejecutando= list_create();
-	Listos= list_create();
+	bool cantNombresSemaforosEsIgualAValores = true;
 
-	obtenerValoresArchivoConfiguracion();
-	imprimirArchivoConfiguracion();
-	while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
-	Servidor(IP_PROG, PUERTO_PROG, KERNEL, accion, RecibirPaqueteServidor);
+	obtenerValoresArchivoConfiguracion(&cantNombresSemaforosEsIgualAValores);
 
+	if(cantNombresSemaforosEsIgualAValores)
+	{
+		CrearListas(); //TODO: Cargar listas de semaforos y variables globales
+		planificacion_detenida = false;
+		imprimirArchivoConfiguracion();
+		while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
+		while((socketConFS = ConectarAServidor(PUERTO_FS,IP_FS,FS,KERNEL, RecibirHandshake))<0);
+
+		//pthread_t hiloSyscallWrite;
+		//pthread_create(&hiloSyscallWrite, NULL, (void*)syscallWrite, 2); //socket 2 hardcodeado
+		//pthread_join(hiloSyscallWrite, NULL);
+
+		pthread_t hiloConsola;
+		pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, &socketConMemoria);
+
+		pthread_t hiloDispatcher;
+		pthread_create(&hiloDispatcher, NULL, (void*)dispatcher, NULL);
+		ServidorConcurrente(IP_PROG, PUERTO_PROG, KERNEL,&HilosDeConexiones, &end, accion);
+
+		pthread_join(hiloConsola, NULL);
+		pthread_join(hiloDispatcher, NULL);
+		LimpiarListas();
+	}
+	else
+	{
+		printf("\nError: La cantidad de semaforos no concuerda con la cantidad de valores. Finalizando proceso\n");
+	}
 
 	return 0;
 }
