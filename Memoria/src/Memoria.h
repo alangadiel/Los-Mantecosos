@@ -43,5 +43,7 @@ extern bool end;
 
 //semaforos
 extern pthread_mutex_t mutexTablaCache;
+extern pthread_mutex_t mutexTablaPagina;
+extern pthread_mutex_t mutexContenidoMemoria;
 
 #endif /* MEMORIA_H_ */

@@ -23,7 +23,8 @@ bool end;
 
 //semaforos
 pthread_mutex_t mutexTablaCache = PTHREAD_MUTEX_INITIALIZER;
-
+pthread_mutex_t mutexTablaPagina = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexContenidoMemoria = PTHREAD_MUTEX_INITIALIZER;
 
 void obtenerValoresArchivoConfiguracion() {
 	int contadorDeVariables = 0;
@@ -108,7 +109,7 @@ int main(void) {
 	pthread_t hiloConsola;
 	pthread_create(&hiloConsola, NULL, (void*) userInterfaceHandler, NULL);
 
-	ServidorConcuerrente(IP, PUERTO, MEMORIA, &listaHilos, &end, accion);
+	ServidorConcurrente(IP, PUERTO, MEMORIA, &listaHilos, &end, accion);
 
 	pthread_join(hiloConsola, NULL);
 	list_destroy_and_destroy_elements(tablaCache, free);
