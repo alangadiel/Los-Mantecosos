@@ -489,15 +489,12 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe,
 	*((uint32_t*)pcbSerializado) = sizeIndEtiq;
 	pcbSerializado += sizeof(uint32_t);
 
-	char** etiqueta = string_split(pecebe->etiquetas, sizeIndCod);
-	string_iterate_lines(etiqueta,cargarDiccionario);
-	for(i = 0; i < sizeIndEtiq; i++){
-	//getEtiqueta
-	//elemento
-		dictionary_get(pecebe->IndiceDeEtiquetas, etiqueta);
-
-		pcbSerializado += sizeof(uint32_t);
-	}
+	char** etiquetas = string_n_split(pecebe->etiquetas, pecebe->cantidad_de_etiquetas ,(char*)&sizeIndCod);
+	string_iterate_lines(etiquetas, LAMBDA(void _(char* etiqueta) {
+		t_puntero_instruccion* instruccion = dictionary_get(pecebe->IndiceDeEtiquetas, etiqueta);
+		*((t_puntero_instruccion*)pcbSerializado) = *instruccion;
+		pcbSerializado += sizeof(t_puntero_instruccion);
+	}));
 
 	*((uint32_t*)pcbSerializado) = pecebe->etiquetas_size;
 	pcbSerializado += sizeof(uint32_t);
@@ -509,7 +506,7 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe,
 	free(pcbSerializado);
 }
 
-void RecibirPCB(void* pecebe, int socketFD){
+void RecibirPCB(BloqueControlProceso* pecebe, int socketFD){
 
 }
 

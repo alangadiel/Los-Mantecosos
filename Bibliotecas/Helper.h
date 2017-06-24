@@ -47,6 +47,7 @@ typedef struct {
 	int32_t ExitCode;
 	t_size etiquetas_size;
 	char* etiquetas;
+	uint32_t cantidad_de_etiquetas;
 }__attribute__((packed)) BloqueControlProceso;
 
 typedef struct {
