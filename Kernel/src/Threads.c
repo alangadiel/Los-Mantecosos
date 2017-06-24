@@ -78,7 +78,7 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp, Paquete* paq
 
 		if(i+1 != bcp->PaginasDeCodigo)
 		{
-			str = string_substring((char*)paquete->Payload, j, TamanioPagina);
+			str = string_substring((char*)paquete->Payload, j, TamanioPagina-1); //Si la pagina es de 512, iria de 0 a 511
 			j += TamanioPagina;
 		}
 		else
@@ -87,7 +87,7 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp, Paquete* paq
 			 str = string_substring_from((char*)paquete->Payload, j);
 		}
 
-		salioTodoBien = IM_GuardarDatos(socketConMemoria, KERNEL, bcp->PID, i, 0, string_length(str)+1, str);
+		salioTodoBien = IM_GuardarDatos(socketConMemoria, KERNEL, bcp->PID, i, 0, string_length(str), str);
 
 		if(salioTodoBien == false)
 		{
