@@ -14,174 +14,52 @@ int PUERTO_FS;
 int cantNombresSemaforos = 0;
 int cantValoresSemaforos = 0;
 
-
 t_list* HilosDeConexiones;
 
-void agregarSemaforo(char* item){
+void agregarIdSemaforo(char* item){
 	Semaforo* sem = malloc(sizeof(Semaforo));
 	sem->nombreSemaforo = string_duplicate(item);
-	list_add(Semaforos,sem);
+	list_add(Semaforos, &sem);
 	cantNombresSemaforos++;
 }
 
+void agregarValorSemaforo(char* item) {
+	Semaforo* sem = list_get(Semaforos,cantValoresSemaforos);
+	sem->valorSemaforo = atoi(item);
+	cantValoresSemaforos++;
+}
+
+void agregarSharedVar(char* item) {
+	VariableCompartida* nuevaVar = malloc(sizeof(VariablesCompartidas));
+	nuevaVar->nombreVariableGlobal = item;
+	nuevaVar->valorVariableGlobal=0;
+	list_add(VariablesCompartidas,&nuevaVar);
+}
+
+void LlenarListas() {
+	string_iterate_lines(SEM_IDS, agregarIdSemaforo);
+	string_iterate_lines(SEM_INIT, agregarValorSemaforo);
+	string_iterate_lines(SHARED_VARS, agregarSharedVar);
+}
 
 void obtenerValoresArchivoConfiguracion(bool* cantNombresSemaforosEsIgualAValores) {
-	int contadorDeVariables = 0;
-	int c;
 	t_config* arch = config_create("ArchivoConfiguracion.txt");
-
-	/*
-	FILE *file;
-
-	file = fopen("ArchivoConfiguracion.txt", "r");
-
-	if (file)
-	{
-		while ((c = getc(file)) != EOF)
-		{
-
-			if (c == '=')
-			{
-				if (contadorDeVariables == 14)
-				{
-					char buffer[10000];
-
-					IP_PROG = fgets(buffer, sizeof buffer, file);
-					strtok(IP_PROG, "\n");
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 13)
-				{
-					fscanf(file, "%i", &STACK_SIZE);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 12)
-				{
-					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
-					char ** variablesAInicializar = string_split(texto,",");
-					string_iterate_lines(variablesAInicializar,LAMBDA(void _(char* texto){
-						VariableCompartida nuevaVar;
-						nuevaVar.nombreVariableGlobal = texto;
-						nuevaVar.valorVariableGlobal=0;
-						list_add(VariablesCompartidas,&nuevaVar);
-					}));
-
-
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 11)
-				{
-					char* texto = ObtenerTextoDeArchivoSinCorchetes(file);
-					int i = 0;
-					char ** valoresSemaforos = string_split(texto,",");
-					string_iterate_lines(valoresSemaforos,	LAMBDA(void _(char* item) {
-							Semaforo* sem = list_get(Semaforos,i);
-							sem->valorSemaforo = atoi(item);
-							i++;
-							printf("%d\n", i);
-							printf("%d\n\n", sem->valorSemaforo);
-							cantValoresSemaforos++;
-						}));
-					contadorDeVariables++;
-					free(texto);
-					free(valoresSemaforos);
-				}
-
-				if (contadorDeVariables == 10){
-					char * texto = ObtenerTextoDeArchivoSinCorchetes(file);
-					char ** nombresSemaforos = string_split(texto,",");
-					string_iterate_lines(nombresSemaforos,	agregarSemaforo);
-
-					contadorDeVariables++;
-					free(texto);
-					free(nombresSemaforos);
-				}
-
-				if (contadorDeVariables == 9)
-				{
-					fscanf(file, "%i", &GRADO_MULTIPROG);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 8)
-				{
-					char buffer[10000];
-
-					ALGORITMO = fgets(buffer, sizeof buffer, file);
-					strtok(ALGORITMO, "\n");
-
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 7)
-				{
-					fscanf(file, "%i", &QUANTUM_SLEEP);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 6)
-				{
-					fscanf(file, "%i", &QUANTUM);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 5)
-				{
-					fscanf(file, "%i", &PUERTO_FS);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 4)
-				{
-					char buffer[10000];
-
-					IP_FS = fgets(buffer, sizeof buffer, file);
-					strtok(IP_FS, "\n");
-
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 3)
-				{
-					fscanf(file, "%i", &PUERTO_MEMORIA);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 2)
-				{
-					char buffer[10000];
-
-					IP_MEMORIA = fgets(buffer, sizeof buffer, file);
-					strtok(IP_MEMORIA, "\n");
-
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 1)
-				{
-					fscanf(file, "%i", &PUERTO_CPU);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 0)
-				{
-					fscanf(file, "%i", &PUERTO_PROG);
-					contadorDeVariables++;
-				}
-			}
-		}
-
-		fclose(file);
-	}
-
-	if(cantNombresSemaforos == cantValoresSemaforos)
-	{
-		*cantNombresSemaforosEsIgualAValores = false;
-	}
-	*/
+	PUERTO_PROG = config_get_int_value(arch, "PUERTO_PROG");
+	PUERTO_CPU =  config_get_int_value(arch, "PUERTO_CPU");
+	IP_MEMORIA = config_get_string_value(arch, "IP_MEMORIA");
+	PUERTO_MEMORIA = config_get_int_value(arch, "PUERTO_MEMORIA");
+	IP_FS = config_get_string_value(arch, "IP_FS");
+	PUERTO_FS =  config_get_int_value(arch, "PUERTO_FS");
+	QUANTUM =  config_get_int_value(arch, "QUANTUM");
+	QUANTUM_SLEEP =  config_get_int_value(arch, "QUANTUM_SLEEP");
+	ALGORITMO = config_get_string_value(arch, "ALGORITMO");
+	GRADO_MULTIPROG =  config_get_int_value(arch, "GRADO_MULTIPROG");
+	SEM_IDS = config_get_array_value(arch, "SEM_IDS");
+	SHARED_VARS = config_get_array_value(arch, "SHARED_VARS");
+	SEM_INIT = config_get_array_value(arch, "SEM_INIT");
+	STACK_SIZE =  config_get_int_value(arch, "STACK_SIZE");
+	IP_PROG = config_get_string_value(arch, "IP_PROG");
+	config_destroy(arch);
 }
 
 void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
@@ -200,8 +78,6 @@ void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
 			perror("Error, no se recibio un handshake del servidor esperado\n");
 	} else
 	perror("Error de Conexion, no se recibio un handshake\n");
-
-
 	free(paquete);
 }
 
@@ -210,10 +86,9 @@ int main(void)
 	bool cantNombresSemaforosEsIgualAValores = true;
 	CrearListas();
 	obtenerValoresArchivoConfiguracion(&cantNombresSemaforosEsIgualAValores);
-
+	LlenarListas();
 	if(cantNombresSemaforosEsIgualAValores)
 	{
-
 		planificacion_detenida = false;
 		imprimirArchivoConfiguracion();
 		while((socketConMemoria = ConectarAServidor(PUERTO_MEMORIA,IP_MEMORIA,MEMORIA,KERNEL, RecibirHandshake_KernelDeMemoria))<0);
@@ -238,6 +113,5 @@ int main(void)
 	{
 		printf("\nError: La cantidad de semaforos no concuerda con la cantidad de valores. Finalizando proceso\n");
 	}
-
 	return 0;
 }

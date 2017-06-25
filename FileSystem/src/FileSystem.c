@@ -18,7 +18,7 @@ struct stat st = {0};
 
 typedef struct {
 	int Tamanio;
-	int Bloques[];
+	t_list* Bloques;
 }__attribute__((packed)) ValoresArchivo;
 
 char* obtenerPathABloque(int num) {
@@ -29,79 +29,27 @@ char* obtenerPathABloque(int num) {
 	return pathAEscribir;
 }
 
-void obtenerValoresDeArchivo(char* pathArchivo, ValoresArchivo* valores) {
-	int contadorDeVariables = 0;
-		int c;
-		FILE *file;
-		file = fopen(pathArchivo, "r");
-		if (file) {
-			while ((c = getc(file)) != EOF)
-				if (c == '=')
-				{
-					if (contadorDeVariables == 1)
-					{
-						char buffer[10000];
-						char *line = fgets(buffer,sizeof buffer,file);
-						int length = string_length(line)-2;
-						char *texto = string_substring(line,1,length);
-						texto  = strtok(texto,",");
-						int i = 0;
-						while (texto != NULL)
-						{
-							valores->Bloques[i++] = atoi(texto);
-							texto = strtok (NULL, ",");
-						}
-					}
-					if (contadorDeVariables == 0) {
-						fscanf(file, "%i", &valores->Tamanio);
-						contadorDeVariables++;
-					}
-				}
-			fclose(file);
-		}
-}
-
-int calcularBloques(int tamanio) {
+int calcularCantidadDeBloques(int tamanio) {
 	int cantidad = ceil(tamanio/TAMANIO_BLOQUES);
 	if (cantidad == 0) return 1;
 	return cantidad;
 }
 
-void obtenerValoresArchivoConfiguracion() {
-	int contadorDeVariables = 0;
-	int c;
-	FILE *file;
-	file = fopen("ArchivoConfiguracion.txt", "r");
-	if (file) {
-		while ((c = getc(file)) != EOF)
-			if (c == '=')
-			{
-				if (contadorDeVariables == 1)
-				{
-					char buffer[10000];
-					PUNTO_MONTAJE = fgets(buffer, sizeof buffer, file);
-					strtok(PUNTO_MONTAJE, "\n");
-					contadorDeVariables++;
-
-				}
-				if (contadorDeVariables == 0) {
-					fscanf(file, "%i", &PUERTO);
-					contadorDeVariables++;
-				}
-			}
-		fclose(file);
+void obtenerValoresDeArchivo(char* pathArchivo, ValoresArchivo* valores) {
+	t_config* arch = config_create(pathArchivo);
+	char** Bloques = config_get_array_value(arch, "BLOQUES");
+	valores->Tamanio = config_get_int_value(arch, "TAMANIO");
+	int i = 0;
+	for (i = 0; i<calcularCantidadDeBloques(valores->Tamanio); i++) {
+		list_add(valores->Bloques, Bloques[i]);
 	}
 }
 
-void imprimirArchivoConfiguracion() {
-	int c;
-	FILE *file;
-	file = fopen("ArchivoConfiguracion.txt", "r");
-	if (file) {
-		while ((c = getc(file)) != EOF)
-			putchar(c);
-		fclose(file);
-	}
+void obtenerValoresArchivoConfiguracion() {
+	t_config* arch = config_create("ArchivoConfiguracion.txt");
+	PUNTO_MONTAJE = config_get_string_value(arch, "PUNTO_MONTAJE");
+	PUERTO = config_get_int_value(arch, "PUERTO");
+	config_destroy(arch);
 }
 
 int validarArchivo(char* path, int socketFD) {
@@ -188,7 +136,7 @@ void modificarValoresDeArchivo(int tamanio, int* bloques, char* path) {
 }
 
 int reservarBloques(int cantidadDeBloquesNuevos, char* path, int size, ValoresArchivo* valoresViejos) {
-	int* bloquesNuevos = malloc(sizeof(int) * cantidadDeBloquesNuevos);
+	t_list* bloquesNuevos = list_create();
 	int i;
 	for (i = 0; i < cantidadDeBloquesNuevos; i++) {
 		int posicion = encontrarPrimerBloqueLibre();
@@ -199,12 +147,12 @@ int reservarBloques(int cantidadDeBloquesNuevos, char* path, int size, ValoresAr
 	}
 	int cantidadDeBloquesViejos;
 	int j;
-	int* bloquesTotales;
+	t_list* bloquesTotales = list_create();
 	if (valoresViejos != NULL) {
-		cantidadDeBloquesViejos = calcularBloques(valoresViejos->Tamanio);
+		cantidadDeBloquesViejos = calcularCantidadDeBloques(valoresViejos->Tamanio);
 		bloquesTotales = malloc(sizeof(int) * (cantidadDeBloquesViejos + cantidadDeBloquesNuevos));
 		for (j = 0; j < cantidadDeBloquesViejos; j++) {
-			bloquesTotales[j] = valoresViejos->Bloques[j];
+			list_add(bloquesTotales, list_get(valoresViejos->Bloques,j));
 		}
 	}
 	else {
@@ -293,7 +241,7 @@ char* leerTodoElArchivo(char* fileToScan) {
 char* obtenerTodosLosDatosDeBloques(ValoresArchivo* valores) {
 	char* datos = string_new();
 	int i;
-	for (i = 0; i < calcularBloques(valores->Tamanio); i++) {
+	for (i = 0; i < calcularCantidadDeBloques(valores->Tamanio); i++) {
 		string_append(&datos, leerTodoElArchivo(obtenerPathABloque(i)));
 	}
 	return datos;
@@ -349,7 +297,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 		ValoresArchivo valores;
 		obtenerValoresDeArchivo(pathAEscribir, &valores);
 		int nuevoTamanioDeArchivoQueSeNecesita = obtenerTamanioNuevoDeArchivo(offset, &valores, size);
-		int cantidadDeBloquesNecesitados = calcularBloques(nuevoTamanioDeArchivoQueSeNecesita) - calcularBloques(valores.Tamanio);
+		int cantidadDeBloquesNecesitados = calcularCantidadDeBloques(nuevoTamanioDeArchivoQueSeNecesita) - calcularCantidadDeBloques(valores.Tamanio);
 		reservarBloques(cantidadDeBloquesNecesitados, pathAEscribir, nuevoTamanioDeArchivoQueSeNecesita, &valores);
 		ValoresArchivo nuevosValores;
 		obtenerValoresDeArchivo(pathAEscribir, &nuevosValores);
@@ -360,7 +308,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 			datosActuales[i] = buffer[j];
 			j++;
 		}
-		int cantidadDeBloques = calcularBloques(nuevosValores.Tamanio);
+		int cantidadDeBloques = calcularCantidadDeBloques(nuevosValores.Tamanio);
 		for (i = 0; i < cantidadDeBloques; i++) {
 			FILE* file = fopen(obtenerPathABloque(i), "w+");
 			fputs(obtenerTextoParaBloque(i, cantidadDeBloques, datosActuales, buffer), file);

@@ -124,8 +124,8 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 		dictionary_put(pcb->IndiceDeEtiquetas, item, &pointer);
 
 	}));
-	pcb->cantidad_de_etiquetas = metaProgram.cantidad_de_etiquetas;
-	pcb->cantidad_de_funciones = metaProgram.cantidad_de_funciones;
+	pcb->cantidad_de_etiquetas = metaProgram->cantidad_de_etiquetas;
+	pcb->cantidad_de_funciones = metaProgram->cantidad_de_funciones;
 	pcb->etiquetas_size= metaProgram->etiquetas_size;
 	strcpy(pcb->etiquetas,metaProgram->etiquetas);
 }

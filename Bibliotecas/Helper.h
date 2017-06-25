@@ -78,6 +78,7 @@ char* integer_to_string(int x);
 char* obtenerTiempoString(time_t t);
 int GetTamanioArchivo(FILE * f);
 bool list_contains(t_list* list, void* item);
+void imprimirArchivoConfiguracion();
 
 void pcb_Create(BloqueControlProceso* pecebe, uint32_t pid_actual);
 void pcb_Destroy(BloqueControlProceso* pecebe);

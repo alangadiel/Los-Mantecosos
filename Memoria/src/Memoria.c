@@ -27,64 +27,18 @@ pthread_mutex_t mutexTablaPagina = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexContenidoMemoria = PTHREAD_MUTEX_INITIALIZER;
 
 void obtenerValoresArchivoConfiguracion() {
-	int contadorDeVariables = 0;
-	int c;
-	FILE *file;
-	file = fopen("ArchivoConfiguracion.txt", "r");
-	if (file) {
-		while ((c = getc(file)) != EOF)
-			if (c == '=') {
-				char buffer[10000];
-				switch (contadorDeVariables) {
-				case 7:
-					IP = fgets(buffer, sizeof buffer, file);
-					strtok(IP, "\n");
-					break;
-				case 6:
-					fscanf(file, "%u", &RETARDO_MEMORIA);
-					contadorDeVariables++;
-					break;
-				case 5:
-					REEMPLAZO_CACHE = fgets(buffer, sizeof buffer, file);
-					strtok(REEMPLAZO_CACHE, "\n");
-					contadorDeVariables++;
-					break;
-				case 4:
-					fscanf(file, "%u", &CACHE_X_PROC);
-					contadorDeVariables++;
-					break;
-				case 3:
-					fscanf(file, "%u", &ENTRADAS_CACHE);
-					contadorDeVariables++;
-					break;
-				case 2:
-					fscanf(file, "%u", &MARCO_SIZE);
-					contadorDeVariables++;
-					break;
-				case 1:
-					fscanf(file, "%u", &MARCOS);
-					contadorDeVariables++;
-					break;
-				case 0:
-					fscanf(file, "%i", &PUERTO);
-					contadorDeVariables++;
-					break;
-				}
-			}
-		fclose(file);
-	}
+	t_config* arch = config_create("ArchivoConfiguracion.txt");
+	PUERTO= config_get_int_value(arch, "PUERTO");
+	MARCOS=config_get_int_value(arch, "MARCOS");
+	MARCO_SIZE=config_get_int_value(arch, "MARCO_SIZE");
+	ENTRADAS_CACHE=config_get_int_value(arch, "ENTRADAS_CACHE");
+	CACHE_X_PROC=config_get_int_value(arch, "CACHE_X_PROC");
+	REEMPLAZO_CACHE=config_get_string_value(arch, "REEMPLAZO_CACHE");
+	RETARDO_MEMORIA=config_get_int_value(arch, "RETARDO_MEMORIA");
+	IP=config_get_string_value(arch, "IP");
+	config_destroy(arch);
 }
 
-void imprimirArchivoConfiguracion() {
-	int c;
-	FILE *file;
-	file = fopen("ArchivoConfiguracion.txt", "r");
-	if (file) {
-		while ((c = getc(file)) != EOF)
-			putchar(c);
-		fclose(file);
-	}
-}
 void InicializarTablaDePagina() {
 	uint32_t i;
 	for(i=0;i<MARCOS;i++){

@@ -45,68 +45,12 @@ AnSISOP_kernel kernel_functions = {
 };
 
 void obtenerValoresArchivoConfiguracion(){
-	int contadorDeVariables = 0;
-	int c;
-	FILE *file;
-
-	file = fopen("ArchivoConfiguracion.txt", "r");
-
-	if (file)
-	{
-		while ((c = getc(file)) != EOF)
-		{
-			if (c == '=')
-			{
-				if (contadorDeVariables == 3)
-				{
-					fscanf(file, "%i", &PUERTO_MEMORIA);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 2)
-				{
-					char buffer[10000];
-
-					IP_MEMORIA = fgets(buffer, sizeof buffer, file);
-					strtok(IP_MEMORIA, "\n");
-
-					contadorDeVariables++;
-				}
-				if (contadorDeVariables == 1)
-				{
-					fscanf(file, "%i", &PUERTO_KERNEL);
-					contadorDeVariables++;
-				}
-
-				if (contadorDeVariables == 0)
-				{
-					char buffer[10000];
-
-					IP_KERNEL = fgets(buffer, sizeof buffer, file);
-					strtok(IP_KERNEL, "\n");
-
-					contadorDeVariables++;
-				}
-			}
-		}
-
-		fclose(file);
-	}
-}
-
-
-void imprimirArchivoConfiguracion() {
-	int c;
-	FILE *file;
-
-	file = fopen("ArchivoConfiguracion.txt", "r");
-
-	if (file) {
-		while ((c = getc(file)) != EOF) {
-			putchar(c);
-		}
-		fclose(file);
-	}
+	t_config* arch = config_create("ArchivoConfiguracion.txt");
+	IP_KERNEL = config_get_string_value(arch, "IP_KERNEL");
+	PUERTO_KERNEL = config_get_int_value(arch, "PUERTO_KERNEL");
+	IP_MEMORIA = config_get_string_value(arch, "IP_MEMORIA");
+	PUERTO_MEMORIA = config_get_int_value(arch, "PUERTO_MEMORIA");
+	config_destroy(arch);
 }
 
 void obtenerLinea(char* instruccion, uint32_t* registro){

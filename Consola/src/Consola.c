@@ -8,7 +8,6 @@
 #define NULL   ((void *) 0)
 #endif
 
-
 char* IP_KERNEL;
 int PUERTO_KERNEL;
 
@@ -17,48 +16,14 @@ typedef struct {
 	uint32_t pid;
 } SocketProceso;
 t_list * SocketsProcesos;
+
 void obtenerValoresArchivoConfiguracion() {
-	int contadorDeVariables = 0;
-	int c;
-	FILE *file;
-
-	file = fopen("ArchivoConfiguracion.txt", "r");
-
-	if (file) {
-		while ((c = getc(file)) != EOF) {
-			if (c == '=') {
-				if (contadorDeVariables == 1) {
-					fscanf(file, "%i", &PUERTO_KERNEL);
-				}
-
-				if (contadorDeVariables == 0) {
-					char buffer[10000];
-
-					IP_KERNEL = fgets(buffer, sizeof buffer, file);
-					strtok(IP_KERNEL, "\n");
-
-					contadorDeVariables++;
-				}
-			}
-		}
-
-		fclose(file);
-	}
+	t_config* arch = config_create("ArchivoConfiguracion.txt");
+	IP_KERNEL = config_get_string_value(arch, "IP_KERNEL");
+	PUERTO_KERNEL = config_get_int_value(arch, "PUERTO_KERNEL");
+	config_destroy(arch);
 }
 
-void imprimirArchivoConfiguracion() {
-	int c;
-	FILE *file;
-
-	file = fopen("ArchivoConfiguracion.txt", "r");
-
-	if (file) {
-		while ((c = getc(file)) != EOF) {
-			putchar(c);
-		}
-		fclose(file);
-	}
-}
 void sendSignalOpenFile(char* programPath, int socketFD) {
 	FILE* fileForSend = fopen(programPath, "r");
 	char * buffer = 0;
@@ -245,6 +210,5 @@ int main(void) {
 	pthread_t userInterface;
 	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,&socketFD);
 	pthread_join(userInterface, NULL);
-	//userInterfaceHandler(&socketFD);
 	return 0;
 }

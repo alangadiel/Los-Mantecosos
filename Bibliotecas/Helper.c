@@ -1,6 +1,18 @@
 #include "Helper.h"
 #include "SocketsL.h"
 
+void imprimirArchivoConfiguracion() {
+	int c;
+	FILE *file;
+	file = fopen("ArchivoConfiguracion.txt", "r");
+	if (file) {
+		while ((c = getc(file)) != EOF) {
+			putchar(c);
+		}
+		fclose(file);
+	}
+}
+
 char* getWord(char* string, int pos) {
 	char delimiter[] = " ";
 	char *word, *context;
