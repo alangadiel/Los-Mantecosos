@@ -21,6 +21,18 @@ typedef struct {
 	t_list* Bloques;
 }__attribute__((packed)) ValoresArchivo;
 
+bool existeArchivo(char* path) {
+	return access( path , F_OK ) != -1;
+}
+
+bool existeDirectorio(char* path) {
+	return stat(path, &st) != -1;
+}
+
+void crearDirectorio(char* path) {
+	mkdir(path, 0777);
+}
+
 char* obtenerPathABloque(int num) {
 	char* pathAEscribir = string_new();
 	string_append(&pathAEscribir, BLOQUESPATH);
@@ -35,14 +47,18 @@ int calcularCantidadDeBloques(int tamanio) {
 	return cantidad;
 }
 
-void obtenerValoresDeArchivo(char* pathArchivo, ValoresArchivo* valores) {
+ValoresArchivo* obtenerValoresDeArchivo(char* pathArchivo) {
+	ValoresArchivo* valores = malloc(sizeof(ValoresArchivo));
 	t_config* arch = config_create(pathArchivo);
 	char** Bloques = config_get_array_value(arch, "BLOQUES");
 	valores->Tamanio = config_get_int_value(arch, "TAMANIO");
+	int cantidadBloques = ceil(valores->Tamanio/TAMANIO_BLOQUES);
+	if (cantidadBloques == 0) cantidadBloques = 1;
 	int i = 0;
-	for (i = 0; i<calcularCantidadDeBloques(valores->Tamanio); i++) {
+	for (i = 0; i<cantidadBloques; i++) {
 		list_add(valores->Bloques, Bloques[i]);
 	}
+	return valores;
 }
 
 void obtenerValoresArchivoConfiguracion() {
@@ -53,17 +69,14 @@ void obtenerValoresArchivoConfiguracion() {
 }
 
 int validarArchivo(char* path, int socketFD) {
-	if( access( path, F_OK ) != -1 ) {
-		if (socketFD != 0) {
-			EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
-		}
+	if(existeArchivo(path)) {
+		EnviarDatos(socketFD, FS, NULL, 0);
 		return 1;
-	} else {
-		if (socketFD != 0) {
-			EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
-		}
 	}
-	return 0;
+	else {
+		EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
+		return 0;
+	}
 }
 
 void cambiarValorBitmap(int posicion, int valor) {
@@ -76,128 +89,118 @@ void cambiarValorBitmap(int posicion, int valor) {
 	}
 	fputs(bitmapToWrite, bitmap);
 	fclose(bitmap);
+	free(bitmapToWrite);
 }
 
 int encontrarPrimerBloqueLibre() {
 	int i = 0;
-	int seEncontro = 0;
-	while (bitmapArray[i] < CANTIDAD_BLOQUES && seEncontro == 0) {
+	while (bitmapArray[i] < CANTIDAD_BLOQUES) {
 		if (bitmapArray[i] == 0) {
-			seEncontro = 1;
+			return i;
 		}
 	}
-	if (seEncontro == 1) {
-		return i;
-	}
-	else {
-		return -1;
-	}
+	return -1;
 }
 
-void crearBloques(int* bloques, int cantidadBloques) {
+void crearBloqueVacio(int idBloque) {
+	char* pathABloque = obtenerPathABloque(idBloque);
+	FILE* file = fopen(pathABloque, "a");
+	fclose(file);
+}
+
+void crearBloques(t_list* bloques) {
 	int i;
-	for (i = 0; i < cantidadBloques; i++) {
-		FILE* file = fopen((char*)obtenerPathABloque(i), "a");
-		fclose(file);
-		cambiarValorBitmap(bloques[i], 1);
+	for (i = 0; i < list_size(bloques); i++) {
+		int idBloque = (int) list_get(bloques, i);
+		crearBloqueVacio(idBloque);
+		cambiarValorBitmap(idBloque, 1);
 	}
 }
 
-void eliminarBloques(int* bloques, int cantidadBloques) {
+void eliminarBloques(t_list* bloques) {
 	int i;
-	for (i = 0; i < cantidadBloques; i++) {
-		cambiarValorBitmap(bloques[i], 0);
-		remove((char*)obtenerPathABloque(bloques[i]));
+	for (i = 0; i < list_size(bloques); i++) {
+		int idBloque = (int) list_get(bloques, i);
+		cambiarValorBitmap(idBloque, 0);
+		char* pathDeBloque = obtenerPathABloque(idBloque);
+		remove(pathDeBloque);
 	}
 }
 
-void modificarValoresDeArchivo(int tamanio, int* bloques, char* path) {
-	ValoresArchivo valores;
-	obtenerValoresDeArchivo(path, &valores);
-
+void modificarValoresDeArchivo(ValoresArchivo* valoresNuevos, char* path) {
 	FILE* newFile = fopen(path, "w+");
 	char* strTamanio = string_new();
 	string_append(&strTamanio, "TAMANIO=");
-	string_append(&strTamanio, string_itoa(tamanio));
+	string_append(&strTamanio, string_itoa(valoresNuevos->Tamanio));
 	string_append(&strTamanio, "\n");
 	fputs(strTamanio, newFile);
+	free(strTamanio);
+
 	char* strBloque = string_new();
 	string_append(&strBloque, "BLOQUES=[");
-	int i = 0;
-	string_append(&strBloque, string_itoa(bloques[i]));
-	i++;
-	while (bloques[i] >= 0) {
+	string_append(&strBloque, string_itoa((int)list_get(valoresNuevos->Bloques, 0)));
+	int i;
+	for (i = 1; i < list_size(valoresNuevos->Bloques); i++) {
 		string_append(&strBloque, ",");
-		string_append(&strBloque, string_itoa(bloques[i]));
+		string_append(&strBloque, string_itoa((int)list_get(valoresNuevos->Bloques, i)));
 	}
+
 	string_append(&strBloque, "]");
 	fputs(strBloque, newFile);
+	free(strBloque);
 	fclose(newFile);
 }
 
-int reservarBloques(int cantidadDeBloquesNuevos, char* path, int size, ValoresArchivo* valoresViejos) {
+ValoresArchivo* reservarBloques(char* path, int tamanioNecesitado, ValoresArchivo* valoresViejos) {
+	int cantidadDeBloquesAReservar = calcularCantidadDeBloques(tamanioNecesitado) - list_size(valoresViejos->Bloques);
+	t_list* bloquesViejos = valoresViejos->Bloques;
 	t_list* bloquesNuevos = list_create();
+	t_list* bloquesTotales = list_create();
 	int i;
-	for (i = 0; i < cantidadDeBloquesNuevos; i++) {
+	for (i = 0; i < cantidadDeBloquesAReservar; i++) {
 		int posicion = encontrarPrimerBloqueLibre();
 		if (posicion < 0) {
-			return 0;
+			return NULL;
 		}
-		bloquesNuevos[i] = posicion;
+		list_add(bloquesNuevos, &posicion);
 	}
-	int cantidadDeBloquesViejos;
-	int j;
-	t_list* bloquesTotales = list_create();
-	if (valoresViejos != NULL) {
-		cantidadDeBloquesViejos = calcularCantidadDeBloques(valoresViejos->Tamanio);
-		bloquesTotales = malloc(sizeof(int) * (cantidadDeBloquesViejos + cantidadDeBloquesNuevos));
-		for (j = 0; j < cantidadDeBloquesViejos; j++) {
-			list_add(bloquesTotales, list_get(valoresViejos->Bloques,j));
-		}
-	}
-	else {
-		bloquesTotales = malloc(sizeof(int) * (cantidadDeBloquesNuevos));
-		cantidadDeBloquesViejos = 0;
-	}
-	for (j = cantidadDeBloquesViejos; j < cantidadDeBloquesNuevos; j++) {
-		bloquesTotales[j] = bloquesNuevos[j];
-	}
-	i++;
-	j++;
-	bloquesNuevos[i] = -1;
-	bloquesTotales[j] = -1;
-	crearBloques(bloquesNuevos, cantidadDeBloquesNuevos);
-	modificarValoresDeArchivo(size, bloquesTotales, path);
-	free(bloquesNuevos);
-	return 1;
+	list_add_all(bloquesTotales, bloquesViejos);
+	list_add_all(bloquesTotales, bloquesNuevos);
+	crearBloques(bloquesNuevos);
+	ValoresArchivo* valoresNuevos = malloc(sizeof(ValoresArchivo));
+	valoresNuevos->Bloques = bloquesTotales;
+	valoresNuevos->Tamanio = tamanioNecesitado;
+	modificarValoresDeArchivo(valoresNuevos, path);
+	return valoresNuevos;
 }
 
 void crearArchivo(char* path,int socketFD) {
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
 	string_append(&pathForValidation, path);
 	if (!validarArchivo(pathForValidation, 0)) {
-		char** pathArray1 = string_split(path, "/");
+		char** pathArray = string_split(path, "/");
 		int i = 0;
 		char* nuevoPath = string_duplicate(ARCHIVOSPATH);
-		while (!string_ends_with(pathArray1[i], ".bin")) {
-			string_append(&nuevoPath, pathArray1[i]);
+		while (!string_ends_with(pathArray[i], ".bin")) {
+			string_append(&nuevoPath, pathArray[i]);
 			string_append(&nuevoPath, "/");
-			if (stat(nuevoPath, &st) == -1) {
-				mkdir(nuevoPath, 0777);
+			if (existeDirectorio(nuevoPath)) {
+				crearDirectorio(nuevoPath);
 			}
 			i++;
 		}
-		string_append(&nuevoPath, pathArray1[i]);
-		int sePudoReservar = reservarBloques(1, nuevoPath, 0, NULL);
-		if (socketFD != 0) {
-			if (sePudoReservar) {
-
-				EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
-			}
-			else {
-				EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
-			}
+		string_append(&nuevoPath, pathArray[i]);
+		ValoresArchivo* nuevosValores = reservarBloques(nuevoPath, 0, NULL);
+		if (nuevosValores != NULL) {
+			EnviarDatos(socketFD, FS, NULL, 0);
 		}
+		else {
+			EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
+		}
+		free(nuevosValores);
+		free(nuevoPath);
+		free(pathArray);
+		free(pathForValidation);
 	}
 }
 
@@ -206,34 +209,33 @@ void borrarArchivo(char* path, int socketFD) {
 	pathArchivo = string_duplicate(ARCHIVOSPATH);
 	string_append(&pathArchivo, path);
 	if (validarArchivo(pathArchivo, 0)) {
-		ValoresArchivo valores;
-		obtenerValoresDeArchivo(pathArchivo, &valores);
-		int cantidadBloques = ceil(valores.Tamanio/TAMANIO_BLOQUES);
-		if (cantidadBloques == 0) cantidadBloques = 1;
-		eliminarBloques(valores.Bloques, cantidadBloques);
+		ValoresArchivo* valores = obtenerValoresDeArchivo(pathArchivo);
+		eliminarBloques(valores->Bloques);
 		int removeFile = remove(pathArchivo);
 		if (removeFile >= 0 && socketFD != 0) {
-			EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
+			EnviarDatos(socketFD, FS, NULL, 0);
 		}
 		else {
-			EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+			EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
 		}
+		free(valores);
 	}
 	else
 	{
-		EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+		EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
 	}
+	free(pathArchivo);
 }
 
 char* leerTodoElArchivo(char* fileToScan) {
 	char *buffer = NULL;
 	size_t size = 0;
 	FILE *fp = fopen(fileToScan, "r");
-	fseek(fp, 0, SEEK_END); /* Go to end of file */
-	size = ftell(fp); /* How many bytes did we pass ? */
+	fseek(fp, 0, SEEK_END);
+	size = ftell(fp);
 	rewind(fp);
-	buffer = malloc((size + 1) * sizeof(*buffer)); /* size + 1 byte for the \0 */
-	fread(buffer, size, 1, fp); /* Read 1 chunk of size bytes from fp into buffer */
+	buffer = malloc((size + 1) * sizeof(*buffer));
+	fread(buffer, size, 1, fp);
 	buffer[size] = '\0';
 	return buffer;
 }
@@ -241,7 +243,7 @@ char* leerTodoElArchivo(char* fileToScan) {
 char* obtenerTodosLosDatosDeBloques(ValoresArchivo* valores) {
 	char* datos = string_new();
 	int i;
-	for (i = 0; i < calcularCantidadDeBloques(valores->Tamanio); i++) {
+	for (i = 0; i < list_size(valores->Bloques); i++) {
 		string_append(&datos, leerTodoElArchivo(obtenerPathABloque(i)));
 	}
 	return datos;
@@ -251,15 +253,16 @@ void obtenerDatos(char* path, uint32_t offset, uint32_t size, int socketFD) {
 	char* pathAObtener = string_duplicate(ARCHIVOSPATH);
 	string_append(&pathAObtener, path);
 	if (validarArchivo(pathAObtener, 0)) {
-		ValoresArchivo valores;
-		obtenerValoresDeArchivo(pathAObtener, &valores);
-		char* datos = obtenerTodosLosDatosDeBloques(&valores);
-		char* datosAEnviar = string_substring(datos, offset, size);
-		EnviarDatos(socketFD,FS,datosAEnviar,sizeof(char) * string_length(datosAEnviar));
+		ValoresArchivo* valores = obtenerValoresDeArchivo(pathAObtener);
+		char* datosAEnviar = string_substring(obtenerTodosLosDatosDeBloques(valores), offset, size);
+		EnviarDatos(socketFD,FS,datosAEnviar, sizeof(char) * string_length(datosAEnviar));
+		free(datosAEnviar);
+		free(valores);
 	}
 	else {
-		EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+		EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
 	}
+	free(pathAObtener);
 }
 
 int obtenerTamanioDeArchivo(char* path) {
@@ -270,57 +273,52 @@ int obtenerTamanioDeArchivo(char* path) {
 	return tamanio;
 }
 
-char* obtenerTextoParaBloque(int numeroDeBloque, int cantidadDeBloques, char* datosActuales, char* datosAAgregar) {
-	int j = TAMANIO_BLOQUES*(numeroDeBloque+1);
-	if (numeroDeBloque == cantidadDeBloques) {
-		return string_substring(datosActuales, j - TAMANIO_BLOQUES, string_length(datosAAgregar));
-	}
-	else {
-		return string_substring(datosActuales, j - TAMANIO_BLOQUES, TAMANIO_BLOQUES);
-	}
-}
-
-int obtenerTamanioNuevoDeArchivo(int offset, ValoresArchivo* valores, int size) {
-	if (valores->Tamanio > offset) {
-		return valores->Tamanio + size;
-	}
-	else {
-		return offset + size;
-	}
-}
-
 void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int socketFD){
 	char* pathAEscribir = string_new();
 	string_append(&pathAEscribir, ARCHIVOSPATH);
 	string_append(&pathAEscribir, path);
 	if (validarArchivo(pathAEscribir, 0)) {
-		ValoresArchivo valores;
-		obtenerValoresDeArchivo(pathAEscribir, &valores);
-		int nuevoTamanioDeArchivoQueSeNecesita = obtenerTamanioNuevoDeArchivo(offset, &valores, size);
-		int cantidadDeBloquesNecesitados = calcularCantidadDeBloques(nuevoTamanioDeArchivoQueSeNecesita) - calcularCantidadDeBloques(valores.Tamanio);
-		reservarBloques(cantidadDeBloquesNecesitados, pathAEscribir, nuevoTamanioDeArchivoQueSeNecesita, &valores);
-		ValoresArchivo nuevosValores;
-		obtenerValoresDeArchivo(pathAEscribir, &nuevosValores);
-		char* datosActuales = obtenerTodosLosDatosDeBloques(&nuevosValores);
+		ValoresArchivo* valores = obtenerValoresDeArchivo(pathAEscribir);
+		int nuevoTamanioDeArchivo;
+		if (valores->Tamanio > offset) {
+			nuevoTamanioDeArchivo = valores->Tamanio + size;
+		}
+		else {
+			nuevoTamanioDeArchivo = offset + size;
+		}
+
+		ValoresArchivo* nuevosValores = reservarBloques(pathAEscribir, nuevoTamanioDeArchivo, valores);
+		char* datosActuales = obtenerTodosLosDatosDeBloques(nuevosValores);
 		int i;
+		for (i = offset; i < nuevoTamanioDeArchivo; i++) {
+			datosActuales[i] = buffer[i];
+			i++;
+		}
+
 		int j = 0;
-		for (i = offset; i < nuevoTamanioDeArchivoQueSeNecesita; i++) {
-			datosActuales[i] = buffer[j];
+		int posicion;
+		FILE* file = fopen(obtenerPathABloque(i), "w+");
+		//lleno todos los bloques hasta el anteultimo
+		while (j < list_size(nuevosValores->Bloques) - 1) {
+			posicion = TAMANIO_BLOQUES*(j+1);
+			fputs(string_substring(datosActuales, posicion - TAMANIO_BLOQUES, TAMANIO_BLOQUES), file);
 			j++;
 		}
-		int cantidadDeBloques = calcularCantidadDeBloques(nuevosValores.Tamanio);
-		for (i = 0; i < cantidadDeBloques; i++) {
-			FILE* file = fopen(obtenerPathABloque(i), "w+");
-			fputs(obtenerTextoParaBloque(i, cantidadDeBloques, datosActuales, buffer), file);
-			fclose(file);
-		}
+		//el ultimo bloque lo lleno hasta donde llegue el buffer
+		fputs(string_substring(datosActuales, j - TAMANIO_BLOQUES, string_length(buffer)), file);
+		fclose(file);
+
 		if (socketFD != 0) {
-			EnviarDatos(socketFD,FS,(void*)1,sizeof(uint32_t));
+			EnviarDatos(socketFD, FS, NULL, 0);
 		}
+		free(nuevosValores);
+		free(valores);
+		free(datosActuales);
 	}
 	else {
-		EnviarDatos(socketFD,FS,0,sizeof(uint32_t));
+		EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
 	}
+	free(pathAEscribir);
 }
 
 int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete) {
@@ -378,38 +376,24 @@ void accion(Paquete* paquete, int socketFD){
 	}
 }
 
-void archivoMetadata() {
-	if( access( METADATAFILE , F_OK ) != -1 ) {
-	    // file exists
-		int contadorDeVariables = 0;
-			int c;
-			FILE *file;
-			file = fopen(METADATAFILE, "r");
-			if (file) {
-				while ((c = getc(file)) != EOF)
-					if (c == '=')
-					{
-						if (contadorDeVariables == 2)
-						{
-							char buffer[10000];
-							MAGIC_NUMBER = fgets(buffer, sizeof buffer, file);
-							strtok(MAGIC_NUMBER, "\n");
-							contadorDeVariables++;
-						}
-						if (contadorDeVariables == 1)
-						{
-							fscanf(file, "%i", &CANTIDAD_BLOQUES);
-							contadorDeVariables++;
-						}
-						if (contadorDeVariables == 0) {
-							fscanf(file, "%i", &TAMANIO_BLOQUES);
-							contadorDeVariables++;
-						}
-					}
-				fclose(file);
-			}
-	} else {
+bool esCorrectoArchivoMetadata() {
+	t_config* conf = config_create(METADATAFILE);
+	bool esCorrectoCantidadDeKeys = config_keys_amount(conf) == 3;
+	bool existeMagicNumber = config_has_property(conf, "MAGIC_NUMBER");
+	bool existeCantidadDeBloques = config_has_property(conf, "CANTIDAD_BLOQUES");
+	bool existeTamanioDeBloques = config_has_property(conf, "TAMANIO_BLOQUES");
+	config_destroy(conf);
+	return esCorrectoCantidadDeKeys && existeCantidadDeBloques && existeMagicNumber && existeTamanioDeBloques;
+}
 
+void archivoMetadata() {
+	if(existeArchivo(METADATAFILE) && esCorrectoArchivoMetadata()) {
+		t_config* conf = config_create(METADATAFILE);
+		MAGIC_NUMBER = config_get_string_value(conf, "MAGIC_NUMBER");
+		CANTIDAD_BLOQUES = config_get_int_value(conf, "CANTIDAD_BLOQUES");
+		TAMANIO_BLOQUES = config_get_int_value(conf, "TAMANIO_BLOQUES");
+		config_destroy(conf);
+	} else {
 	    FILE* metadata = fopen(METADATAFILE, "a");
 	    fputs("TAMANIO_BLOQUES=", metadata);
 	    printf("Ingrese tamanio de bloques: \n");
@@ -418,6 +402,7 @@ void archivoMetadata() {
 	    string_append(&strTamanioBloques, "\n");
 	    fputs(strTamanioBloques, metadata);
 	    TAMANIO_BLOQUES = atoi(strTamanioBloques);
+	    free(strTamanioBloques);
 
 	    fputs("CANTIDAD_BLOQUES=", metadata);
 	    printf("Ingrese cantidad de bloques: \n");
@@ -426,12 +411,14 @@ void archivoMetadata() {
 	    string_append(&strCantidadBloques, "\n");
 	    fputs(strCantidadBloques, metadata);
 	    CANTIDAD_BLOQUES = atoi(strCantidadBloques);
+	    free(strCantidadBloques);
 
 	    fputs("MAGIC_NUMBER=", metadata);
 	    printf("Ingrese magic number: \n");
 	    char* strMAGIC_NUMBER = string_new();
 	    scanf("%s", strMAGIC_NUMBER);
 	    MAGIC_NUMBER = string_duplicate(strMAGIC_NUMBER);
+	    free(strMAGIC_NUMBER);
 
 	    fputs(MAGIC_NUMBER, metadata);
 	    fclose(metadata);
@@ -441,8 +428,7 @@ void archivoMetadata() {
 void archivoBitmap() {
 	int i;
 	bitmapArray = malloc (CANTIDAD_BLOQUES * sizeof (bitmapArray[0]));
-	if( access( BITMAPFILE , F_OK ) != -1 ) {
-		// file exists
+	if(existeArchivo(BITMAPFILE)) {
 		FILE* bitmap = fopen(BITMAPFILE, "a");
 		char* stringBitmap = leerTodoElArchivo(BITMAPFILE);
 		int i;
@@ -450,6 +436,7 @@ void archivoBitmap() {
 			bitmapArray[i] = (int) strtol(&stringBitmap[i], (char **)NULL, 10);
 		}
 		fclose(bitmap);
+		free(stringBitmap);
 	}
 	else {
 		FILE* bitmap = fopen(BITMAPFILE, "a");
@@ -462,25 +449,26 @@ void archivoBitmap() {
 }
 
 void crearEstructurasDeCarpetas() {
-	if (stat(PUNTO_MONTAJE, &st) == -1) {
-		mkdir(PUNTO_MONTAJE, 0777);
+	if (!existeDirectorio(PUNTO_MONTAJE)) {
+		crearDirectorio(PUNTO_MONTAJE);
 	}
+
 	METADATAPATH = string_duplicate(PUNTO_MONTAJE);
 	string_append(&METADATAPATH, "Metadata/");
-	if (stat(METADATAPATH, &st) == -1) {
-		mkdir(METADATAPATH, 0777);
+	if (!existeDirectorio(METADATAPATH)) {
+		crearDirectorio(METADATAPATH);
 	}
 
 	ARCHIVOSPATH = string_duplicate(PUNTO_MONTAJE);
 	string_append(&ARCHIVOSPATH, "Archivos/");
-	if (stat(ARCHIVOSPATH, &st) == -1) {
-		mkdir(ARCHIVOSPATH, 0777);
+	if (!existeDirectorio(ARCHIVOSPATH)) {
+		crearDirectorio(ARCHIVOSPATH);
 	}
 
 	BLOQUESPATH = string_duplicate(PUNTO_MONTAJE);
 	string_append(&BLOQUESPATH, "Bloques/");
-	if (stat(BLOQUESPATH, &st) == -1) {
-		mkdir(BLOQUESPATH, 0777);
+	if (!existeDirectorio(BLOQUESPATH)) {
+		crearDirectorio(BLOQUESPATH);
 	}
 
 	METADATAFILE = string_duplicate(METADATAPATH);
