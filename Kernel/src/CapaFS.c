@@ -398,3 +398,28 @@ uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
+
+
+t_list* obtenerTablaArchivosDeUnProceso(uint32_t PID)
+{
+	int i = 0;
+	void* result = NULL;
+	t_list* tablaArchivosProceso = NULL;
+
+	while(i < list_size(ArchivosProcesos) && result == NULL)
+	{
+		tablaArchivosProceso = list_get(ArchivosProcesos, i);
+
+		result = (archivoProceso*) list_find(tablaArchivosProceso, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
+
+		i++;
+	}
+
+	return tablaArchivosProceso;
+}
+
+
+t_list* obtenerTablaArchivosGlobales()
+{
+	return ArchivosGlobales;
+}
