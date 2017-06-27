@@ -287,6 +287,8 @@ void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 
 t_puntero primitiva_reservar(t_valor_variable espacio){
 	t_puntero pointer = *(t_puntero*)ReservarBloqueMemoriaDinamica(espacio);
+	pcb.cantBytesAlocados += espacio + sizeof(bool) + sizeof(uint32_t); //Seria el tamanio a reservar + el tamanio del HeapMetadata que tiene un bool y un uint32_t
+	pcb.cantidadAccionesAlocar++;
 	pcb.cantidadSyscallEjecutadas++;
 	pcb.ProgramCounter++;
 	return pointer;
@@ -300,6 +302,8 @@ void primitiva_liberar(t_puntero puntero){
 	//Este result es para indicar si salio todo bien o no,pero no seria necesario
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
+	//pcb.cantBytesLiberados+=?
+	pcb.cantidadAccionesLiberar++;
 	pcb.cantidadSyscallEjecutadas++;
 	pcb.ProgramCounter++;
 }

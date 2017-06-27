@@ -61,6 +61,10 @@ typedef struct {
 	uint32_t cantidadDeRafagasEjecutadasHistorica; //esto se hace en cpu
 	uint32_t cantidadDeRafagasEjecutadas; //esto se manda en send de cpu
 	uint32_t cantidadSyscallEjecutadas;
+	uint32_t cantidadAccionesAlocar;
+	uint32_t cantidadAccionesLiberar;
+	uint32_t cantBytesAlocados;
+	uint32_t cantBytesLiberados;
 }__attribute__((packed)) BloqueControlProceso;
 
 typedef struct {

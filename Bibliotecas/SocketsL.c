@@ -501,9 +501,20 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 
 	void* pcbSerializado = malloc(tam);
 
+	//Serialización cantBytesLiberados
+	*((uint32_t*)pcbSerializado) = pecebe->cantBytesLiberados;
+	//Serialización cantBytesAlocados
+	*((uint32_t*)pcbSerializado) = pecebe->cantBytesAlocados;
+	//Serialización cantidadAccionesLiberar
+	*((uint32_t*)pcbSerializado) = pecebe->cantidadAccionesLiberar;
+	//Serialización cantidadAccionesAlocar
+	*((uint32_t*)pcbSerializado) = pecebe->cantidadAccionesAlocar;
+	//Serialización cantidadSyscallEjecutadas
+	*((uint32_t*)pcbSerializado) = pecebe->cantidadSyscallEjecutadas;
+	pcbSerializado += sizeof(uint32_t);
 	//Serialización etiquetas_size
 	*((t_size*)pcbSerializado) = pecebe->etiquetas_size;
-	pcbSerializado += sizeof(uint32_t);
+	pcbSerializado += sizeof(t_size);
 	//Serialización etiquetas
 	memcpy(pcbSerializado, pecebe->etiquetas, pecebe->etiquetas_size);
 	pcbSerializado += pecebe->etiquetas_size;
@@ -606,6 +617,16 @@ void RecibirPCB(BloqueControlProceso* pecebe, int socketFD, char receptor[11]){
 	pcb_Create(pecebe, 0);
 	void* pcbSerializado = paquete.Payload;
 	//cargar pcb
+	pecebe->cantBytesLiberados = *(uint32_t*)pcbSerializado;
+	pcbSerializado += sizeof(uint32_t);
+	pecebe->cantBytesAlocados = *(uint32_t*)pcbSerializado;
+	pcbSerializado += sizeof(uint32_t);
+	pecebe->cantidadAccionesLiberar = *(uint32_t*)pcbSerializado;
+	pcbSerializado += sizeof(uint32_t);
+	pecebe->cantidadAccionesAlocar = *(uint32_t*)pcbSerializado;
+	pcbSerializado += sizeof(uint32_t);
+	pecebe->cantidadSyscallEjecutadas = *(uint32_t*)pcbSerializado;
+	pcbSerializado += sizeof(uint32_t);
 	pecebe->etiquetas_size = *(t_size*)pcbSerializado;
 	pcbSerializado += sizeof(t_size);
 	memcpy(pecebe->etiquetas, pcbSerializado, pecebe->etiquetas_size);
