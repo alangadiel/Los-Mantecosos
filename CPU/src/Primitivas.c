@@ -253,10 +253,7 @@ void primitiva_retornar(t_valor_variable retorno){
 	TODO: EN PRINCIPIO ELIMINO EL ULTIMO REGISTRO DE STACK, VER QUE PASA SI PARA UNA FUNCION HAY MAS DE UN REGISTRO
 	*/
 	list_remove(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
-
 }
-
-
 
 //PRIMITIVAS KERNEL
 void primitiva_wait(t_nombre_semaforo identificador_semaforo){

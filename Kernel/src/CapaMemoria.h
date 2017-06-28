@@ -2,6 +2,7 @@
 #define CAPAMEMORIA_H_
 
 #include "Service.h"
+#include "Threads.h"
 
 typedef struct {
  uint32_t size;

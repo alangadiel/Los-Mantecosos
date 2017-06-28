@@ -395,7 +395,7 @@ void archivoMetadata() {
 
 void archivoBitmap() {
 	int i;
-	bitmapArray = malloc (CANTIDAD_BLOQUES * sizeof (bitmapArray[0])); //TODO revisar
+	bitmapArray = malloc (CANTIDAD_BLOQUES * sizeof(int)); //TODO revisar
 	if(existeArchivo(BITMAPFILE)) {
 		FILE* bitmap = fopen(BITMAPFILE, "a");
 		char* stringBitmap = leerTodoElArchivo(BITMAPFILE);

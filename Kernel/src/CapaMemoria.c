@@ -10,7 +10,7 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 		bool estado;
 		uint32_t sizeBloque;
 		bool encontroLibre = false;
-		uint32_t punteroAlPrimerBloqueDisponible;
+		//uint32_t punteroAlPrimerBloqueDisponible;
 
 		/*int offsetOcupado = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
 		if(offsetOcupado<0) //HUBO ERROR
@@ -49,7 +49,7 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 			metaOcupado.size = cantAReservar;
 
 			if(IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offset, sizeof(HeapMetadata), &metaOcupado)==false){
-				FinalizarPrograma(PID,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+				FinalizarPrograma(PID,EXCEPCIONDEMEMORIA);
 				return -1;
 			}
 
@@ -72,7 +72,7 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 		}
 	}
 	else{
-		FinalizarPrograma(PID,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+		FinalizarPrograma(PID,EXCEPCIONDEMEMORIA);
 		return -1;
 	}
 
@@ -128,14 +128,14 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP.nroPagina,cantTotal,socket);
 			}
 			else{
-				FinalizarPrograma(PID,NOSEPUEDENASIGNARMASPAGINAS,INDEX_EJECUTANDO);
+				FinalizarPrograma(PID,NOSEPUEDENASIGNARMASPAGINAS);
 			}
 			//Destruyo la lista PagesProcess
 			list_destroy_and_destroy_elements(pagesProcess,free);
 		}
 	}
 	else{ //Debe finalizar el programa pq quiere reservar mas de lo permitido
-		FinalizarPrograma(Ejecutando,PID,SOLICITUDMASGRANDEQUETAMANIOPAGINA,INDEX_EJECUTANDO,socket);
+		FinalizarPrograma(PID,SOLICITUDMASGRANDEQUETAMANIOPAGINA);
 		//TODO: Avisar a la CPU del programa finalizado
 		// EL TP DICE QUE HAY QUE PEDIR OTRA PAGINA
 	}
@@ -168,12 +168,12 @@ void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos
 		if(hayAlgunBloqueUsado==false){
 			//No se encontro algun bloque ocupado: Hay que liberar la pagina
 			if(IM_LiberarPagina(socketFD,KERNEL,pid,pos.NumeroDePagina)==false){
-				FinalizarPrograma(pid,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+				FinalizarPrograma(pid,EXCEPCIONDEMEMORIA);
 			}
 		}
 	}
 	else{
-		FinalizarPrograma(pid,EXCEPCIONDEMEMORIA,INDEX_EJECUTANDO);
+		FinalizarPrograma(pid,EXCEPCIONDEMEMORIA);
 	}
 
 }
