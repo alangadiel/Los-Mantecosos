@@ -59,7 +59,7 @@ void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0 && paquete->header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
 		if (strcmp(paquete->header.emisor, emisor) == 0) {
-			printf("\nConectado con el servidor %s\n", emisor);
+			printf("Conectado con el servidor %s\n", emisor);
 			if(strcmp(paquete->header.emisor, MEMORIA) == 0){
 				paquete->Payload = malloc(paquete->header.tamPayload);
 				resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);

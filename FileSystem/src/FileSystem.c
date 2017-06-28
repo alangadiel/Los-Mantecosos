@@ -322,34 +322,6 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 	free(pathAEscribir);
 }
 
-int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete) {
-	paquete->Payload = malloc(1);
-	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
-	if (resul > 0) { //si no hubo error
-		if (paquete->header.tipoMensaje == ESHANDSHAKE) {
-			if (strcmp(paquete->header.emisor,KERNEL) == 0) {
-				printf("Se establecio conexion con %s\n", paquete->header.emisor);
-				EnviarHandshake(socketFD, FS);
-			}
-			else {
-				Paquete paquete;
-				paquete.header.tipoMensaje = ESERROR;
-				paquete.header.tamPayload = sizeof(uint32_t);
-				strcpy(paquete.header.emisor, FS);
-				paquete.Payload=0;
-				EnviarPaquete(socketFD, &paquete);
-			}
-		} else {
-			if (strcmp(paquete->header.emisor, KERNEL) == 0) {
-				paquete->Payload = realloc(paquete->Payload,
-						paquete->header.tamPayload);
-				resul = RecibirDatos(paquete->Payload, socketFD,
-						paquete->header.tamPayload);
-			}
-		}
-	}
-	return resul;
-}
 
 void accion(Paquete* paquete, int socketFD){
 	switch ((*(uint32_t*)paquete->Payload)){
@@ -484,6 +456,26 @@ void LiberarVariables() {
 	free(BLOQUESPATH);
 	free(bitmapArray);
 	free(MAGIC_NUMBER);
+}
+
+int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete) {
+	paquete->Payload = malloc(1);
+	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
+	if (resul > 0) { //si no hubo error
+		if (paquete->header.tipoMensaje == ESHANDSHAKE) {
+			if (strcmp(paquete->header.emisor,KERNEL) == 0) {
+				printf("Se establecio conexion con %s\n", paquete->header.emisor);
+				EnviarHandshake(socketFD, FS);
+			}
+			else
+				EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
+		} else {
+			if (strcmp(paquete->header.emisor, KERNEL) == 0) {
+				accion(paquete, socketFD);
+			}
+		}
+	}
+	return resul;
 }
 
 int main(void) {

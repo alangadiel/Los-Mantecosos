@@ -19,7 +19,7 @@ t_list * SocketsProcesos;
 
 void obtenerValoresArchivoConfiguracion() {
 	t_config* arch = config_create("ArchivoConfiguracion.txt");
-	IP_KERNEL = config_get_string_value(arch, "IP_KERNEL");
+	IP_KERNEL = string_duplicate(config_get_string_value(arch, "IP_KERNEL"));
 	PUERTO_KERNEL = config_get_int_value(arch, "PUERTO_KERNEL");
 	config_destroy(arch);
 }
@@ -210,5 +210,7 @@ int main(void) {
 	pthread_t userInterface;
 	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,&socketFD);
 	pthread_join(userInterface, NULL);
+	free(IP_KERNEL);
+
 	return 0;
 }

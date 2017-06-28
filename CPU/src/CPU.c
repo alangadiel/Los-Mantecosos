@@ -46,9 +46,9 @@ AnSISOP_kernel kernel_functions = {
 
 void obtenerValoresArchivoConfiguracion(){
 	t_config* arch = config_create("ArchivoConfiguracion.txt");
-	IP_KERNEL = config_get_string_value(arch, "IP_KERNEL");
+	IP_KERNEL = string_duplicate(config_get_string_value(arch, "IP_KERNEL"));
 	PUERTO_KERNEL = config_get_int_value(arch, "PUERTO_KERNEL");
-	IP_MEMORIA = config_get_string_value(arch, "IP_MEMORIA");
+	IP_MEMORIA = string_duplicate(config_get_string_value(arch, "IP_MEMORIA"));
 	PUERTO_MEMORIA = config_get_int_value(arch, "PUERTO_MEMORIA");
 	config_destroy(arch);
 }
@@ -198,5 +198,7 @@ int main(void) {
 
 	pcb_Destroy(&pcb);
 	pthread_join(consola, NULL);
+	free(IP_KERNEL); free(IP_MEMORIA);
+
 	return 0;
 }
