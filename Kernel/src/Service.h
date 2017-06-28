@@ -72,6 +72,14 @@ extern int socketConMemoria;
 extern int socketConFS;
 
 //Variables archivo de configuracion
+extern char* IP_PROG;
+extern int PUERTO_PROG;
+extern int PUERTO_CPU;
+extern char* IP_MEMORIA;
+extern int PUERTO_MEMORIA;
+extern char* IP_FS;
+extern int PUERTO_FS;
+
 extern int QUANTUM;
 extern int QUANTUM_SLEEP;
 extern char* ALGORITMO;
@@ -93,14 +101,10 @@ extern pthread_mutex_t mutexSemaforos;
 extern pthread_mutex_t mutexVariablesCompartidas;
 extern pthread_mutex_t mutexPaginasPorProceso;
 
-void imprimirArchivoConfiguracion();
-char* ObtenerTextoDeArchivoSinCorchetes(FILE* f);
-
 void CrearListasEstados();
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos);
-void LimpiarListas();
+void LiberarVariablesYListas();
 void CrearListas();
-
 void obtenerError(int exitCode);
 
 #endif /* SERVICE_H_ */

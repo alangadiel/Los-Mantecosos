@@ -33,9 +33,9 @@ void obtenerValoresArchivoConfiguracion() {
 	MARCO_SIZE=config_get_int_value(arch, "MARCO_SIZE");
 	ENTRADAS_CACHE=config_get_int_value(arch, "ENTRADAS_CACHE");
 	CACHE_X_PROC=config_get_int_value(arch, "CACHE_X_PROC");
-	REEMPLAZO_CACHE=config_get_string_value(arch, "REEMPLAZO_CACHE");
+	REEMPLAZO_CACHE=string_duplicate(config_get_string_value(arch, "REEMPLAZO_CACHE"));
 	RETARDO_MEMORIA=config_get_int_value(arch, "RETARDO_MEMORIA");
-	IP=config_get_string_value(arch, "IP");
+	IP=string_duplicate(config_get_string_value(arch, "IP"));
 	config_destroy(arch);
 }
 
@@ -57,7 +57,6 @@ int main(void) {
 	ContenidoMemoria = BloquePrincipal + tamEstructurasAdm; //guardo el puntero donde empieza el contenido
 	cantPagAsignadas = 0;
 
-
 	InicializarTablaDePagina();
 
 	pthread_t hiloConsola;
@@ -66,8 +65,11 @@ int main(void) {
 	ServidorConcurrente(IP, PUERTO, MEMORIA, &listaHilos, &end, accion);
 
 	pthread_join(hiloConsola, NULL);
+
+	//Liberar memoria
 	list_destroy_and_destroy_elements(tablaCache, free);
-	free(BloquePrincipal);
+	free(BloquePrincipal); free(IP); free(REEMPLAZO_CACHE);
+
 	exit(3); //TODO: ¿Esto va? Se supone que termina todos los hilos del proceso.
 	return 0;
 }

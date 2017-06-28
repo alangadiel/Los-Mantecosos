@@ -21,8 +21,8 @@ bool end;
 uint32_t TamanioPagina;
 int pidAFinalizar;
 
-int socketConMemoria;
-int socketConFS;
+int socketConMemoria = -1;
+int socketConFS = -1;
 
 pthread_mutex_t mutexQueueNuevos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueListos = PTHREAD_MUTEX_INITIALIZER;
@@ -36,6 +36,15 @@ pthread_mutex_t mutexSemaforos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexVariablesCompartidas = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexPaginasPorProceso = PTHREAD_MUTEX_INITIALIZER;
 
+//Variables archivo de configuracion
+char* IP_PROG;
+int PUERTO_PROG;
+int PUERTO_CPU;
+char* IP_MEMORIA;
+int PUERTO_MEMORIA;
+char* IP_FS;
+int PUERTO_FS;
+
 int QUANTUM;
 int QUANTUM_SLEEP;
 char* ALGORITMO;
@@ -44,19 +53,6 @@ char** SEM_IDS;
 char** SEM_INIT;
 char** SHARED_VARS;
 int STACK_SIZE;
-
-char* ObtenerTextoDeArchivoSinCorchetes(FILE* f) //Para obtener los valores de los arrays del archivo de configuracion
-{
-	char buffer[10000];
-	char *line = fgets(buffer,sizeof buffer,f);
-	int length = string_length(line)-3;
-	char *texto = string_substring(line,1,length);
-
-	texto  = strtok(texto,",");
-
-	return texto;
-}
-
 
 void CrearListas() {
 	Nuevos = queue_create();
@@ -80,7 +76,7 @@ void CrearListas() {
 	list_add_all(Estados,EstadosConProgramasFinalizables);
 	list_add(Estados,Finalizados);
 }
-void LimpiarListas() {
+void LiberarVariablesYListas() {
 	queue_destroy_and_destroy_elements(Nuevos,free);
 	queue_destroy_and_destroy_elements(Listos,free);
 	queue_destroy_and_destroy_elements(Ejecutando,free);
@@ -94,6 +90,14 @@ void LimpiarListas() {
 	list_destroy_and_destroy_elements(Semaforos,free);
 	list_destroy_and_destroy_elements(PIDsPorSocketConsola, free);
 	list_destroy_and_destroy_elements(CPUsConectadas, free);
+
+	free(IP_PROG);
+	free(IP_MEMORIA);
+	free(IP_FS);
+	free(ALGORITMO);
+	free(SEM_IDS);
+	free(SEM_INIT);
+	free(SHARED_VARS);
 }
 
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos){

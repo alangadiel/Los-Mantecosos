@@ -3,7 +3,7 @@
 
 int PUERTO;
 char* PUNTO_MONTAJE;
-char* IP = "127.0.0.1";
+char* IP;
 char* METADATAPATH;
 char* METADATAFILE;
 char* BITMAPFILE;
@@ -63,8 +63,9 @@ ValoresArchivo* obtenerValoresDeArchivo(char* pathArchivo) {
 
 void obtenerValoresArchivoConfiguracion() {
 	t_config* arch = config_create("ArchivoConfiguracion.txt");
-	PUNTO_MONTAJE = config_get_string_value(arch, "PUNTO_MONTAJE");
+	PUNTO_MONTAJE = string_duplicate(config_get_string_value(arch, "PUNTO_MONTAJE"));
 	PUERTO = config_get_int_value(arch, "PUERTO");
+	IP = string_duplicate(config_get_string_value(arch, "IP"));
 	config_destroy(arch);
 }
 
@@ -328,12 +329,7 @@ int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete)
 		if (paquete->header.tipoMensaje == ESHANDSHAKE) {
 			if (strcmp(paquete->header.emisor,KERNEL) == 0) {
 				printf("Se establecio conexion con %s\n", paquete->header.emisor);
-				Paquete paquete;
-				paquete.header.tipoMensaje = ESHANDSHAKE;
-				paquete.header.tamPayload = sizeof(uint32_t);
-				strcpy(paquete.header.emisor, FS);
-				paquete.Payload = (void*)1;
-				EnviarPaquete(socketFD, &paquete);
+				EnviarHandshake(socketFD, FS);
 			}
 			else {
 				Paquete paquete;
@@ -389,7 +385,7 @@ bool esCorrectoArchivoMetadata() {
 void archivoMetadata() {
 	if(existeArchivo(METADATAFILE) && esCorrectoArchivoMetadata()) {
 		t_config* conf = config_create(METADATAFILE);
-		MAGIC_NUMBER = config_get_string_value(conf, "MAGIC_NUMBER");
+		MAGIC_NUMBER = string_duplicate(config_get_string_value(conf, "MAGIC_NUMBER"));
 		CANTIDAD_BLOQUES = config_get_int_value(conf, "CANTIDAD_BLOQUES");
 		TAMANIO_BLOQUES = config_get_int_value(conf, "TAMANIO_BLOQUES");
 		config_destroy(conf);
@@ -427,7 +423,7 @@ void archivoMetadata() {
 
 void archivoBitmap() {
 	int i;
-	bitmapArray = malloc (CANTIDAD_BLOQUES * sizeof (bitmapArray[0]));
+	bitmapArray = malloc (CANTIDAD_BLOQUES * sizeof (bitmapArray[0])); //TODO revisar
 	if(existeArchivo(BITMAPFILE)) {
 		FILE* bitmap = fopen(BITMAPFILE, "a");
 		char* stringBitmap = leerTodoElArchivo(BITMAPFILE);
@@ -478,12 +474,25 @@ void crearEstructurasDeCarpetas() {
 	string_append(&BITMAPFILE, "Bitmap.bin");
 }
 
+void LiberarVariables() {
+	free(PUNTO_MONTAJE);
+	free(IP);
+	free(METADATAPATH);
+	free(METADATAFILE);
+	free(BITMAPFILE);
+	free(ARCHIVOSPATH);
+	free(BLOQUESPATH);
+	free(bitmapArray);
+	free(MAGIC_NUMBER);
+}
+
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	crearEstructurasDeCarpetas();
 	archivoMetadata();
 	archivoBitmap();
-	Servidor(IP, PUERTO, MEMORIA, accion, RecibirPaqueteFileSystem);
+	Servidor(IP, PUERTO, FS, accion, RecibirPaqueteFileSystem);
+	LiberarVariables();
 	return 0;
 }

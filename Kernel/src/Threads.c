@@ -91,7 +91,7 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp, Paquete* paq
 
 		if(salioTodoBien == false)
 		{
-			FinalizarPrograma(bcp->PID, EXCEPCIONDEMEMORIA, socketConMemoria);
+			FinalizarPrograma(bcp->PID, EXCEPCIONDEMEMORIA);
 		}
 	}
 }
@@ -131,7 +131,7 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 }
 
 
-BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion, int socketFD)
+BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 {
 	BloqueControlProceso* pcbRemovido = NULL;
 	bool hayEstructurasNoLiberadas = false;
@@ -198,7 +198,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion, int socke
 	}
 	else{
 		if(index==INDEX_EJECUTANDO)
-			FinalizarPrograma(PID,tipoFinalizacion,socketFD);
+			FinalizarPrograma(PID,tipoFinalizacion);
 		else if(index==-1){
 			pthread_mutex_unlock(&mutexFinalizarPrograma);
 			return pcbRemovido;
@@ -240,10 +240,10 @@ bool ProcesoNoEstaEjecutandoseActualmente(int pidAFinalizar)
 }
 
 
-bool KillProgram(int pidAFinalizar, int tipoFinalizacion, int socket)
+bool KillProgram(int pidAFinalizar, int tipoFinalizacion)
 {
 	void* result = NULL;
-	result = FinalizarPrograma(pidAFinalizar, tipoFinalizacion, socket);
+	result = FinalizarPrograma(pidAFinalizar, tipoFinalizacion);
 
 	if(result == NULL)
 	{
@@ -406,14 +406,14 @@ void accion(void* socket)
 						else
 						{
 							//Sacar programa de la lista de nuevos y meterlo en la lista de finalizado con su respectivo codigo de error
-							FinalizarPrograma(pcb->PID,NOSEPUDIERONRESERVARRECURSOS, socketConMemoria);
+							FinalizarPrograma(pcb->PID,NOSEPUDIERONRESERVARRECURSOS);
 							EnviarMensaje(socketConectado, "No se pudo guardar el programa porque no hay espacio suficiente", KERNEL);
 						}
 					}
 					else
 					{
 						//El grado de multiprogramacion no te deja agregar otro proceso
-						FinalizarPrograma(pcb->PID,NOSEPUDIERONRESERVARRECURSOS, socketConMemoria);
+						FinalizarPrograma(pcb->PID,NOSEPUDIERONRESERVARRECURSOS);
 						EnviarMensaje(socketConectado, "No se pudo guardar el programa porque se alcanzo el grado de multiprogramacion", KERNEL);
 					}
 				}
@@ -532,7 +532,7 @@ void accion(void* socket)
 							}
 							else
 							{
-								FinalizarPrograma(PID, ERRORSINDEFINIR, socketConMemoria);
+								FinalizarPrograma(PID, ERRORSINDEFINIR);
 							}
 						break;
 
@@ -566,7 +566,7 @@ void accion(void* socket)
 							}
 							else
 							{
-								FinalizarPrograma(PID, ERRORSINDEFINIR, socketConMemoria);
+								FinalizarPrograma(PID, ERRORSINDEFINIR);
 							}
 
 						break;
@@ -651,7 +651,7 @@ void accion(void* socket)
 						case FINEJECUCIONPROGRAMA:
 							PID = ((uint32_t*)paquete.Payload)[1];
 							//Finalizar programa
-							FinalizarPrograma(PID, FINALIZACIONNORMAL, socketConectado);
+							FinalizarPrograma(PID, FINALIZACIONNORMAL);
 						break;
 					}
 				}
@@ -667,7 +667,7 @@ void accion(void* socket)
 				if(strcmp(paquete.header.emisor, CONSOLA) == 0)
 				{
 					pidAFinalizar = *(uint32_t*)paquete.Payload;
-					bool finalizadoConExito = KillProgram(pidAFinalizar, DESCONECTADODESDECOMANDOCONSOLA, socketConectado);
+					bool finalizadoConExito = KillProgram(pidAFinalizar, DESCONECTADODESDECOMANDOCONSOLA);
 
 					if(finalizadoConExito == true)
 					{
@@ -695,7 +695,7 @@ void accion(void* socket)
 					pthread_mutex_unlock(&mutexQueueEjecutando);
 					if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas)
 					{
-						FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL, socketConMemoria);
+						FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
 					}
 					else
 					{

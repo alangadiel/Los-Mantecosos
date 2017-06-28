@@ -1,11 +1,11 @@
 #include "UserInterface.h"
 
-void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator)
+void MostrarProcesosDeUnaCola(t_queue* cola,char* discriminator)
 {
-	printf("Procesos de la lista: %s \n",discriminator);
+	printf("Procesos de la cola: %s \n",discriminator);
 	int index=0;
-	for (index = 0; index < list_size(lista); index++) {
-		BloqueControlProceso* proceso = (BloqueControlProceso*)list_get(lista,index);
+	for (index = 0; index < list_size(cola->elements); index++) {
+		BloqueControlProceso* proceso = (BloqueControlProceso*)list_get(cola->elements,index);
 
 		if (strcmp(discriminator, FINALIZADOS) == 0) {
 			printf("\tProceso N°: %d",proceso->PID);
@@ -20,19 +20,19 @@ void MostrarProcesosDeUnaLista(t_list* lista,char* discriminator)
 void MostrarTodosLosProcesos()
 {
 	pthread_mutex_lock(&mutexQueueNuevos);
-	MostrarProcesosDeUnaLista(Nuevos,NUEVOS);
+	MostrarProcesosDeUnaCola(Nuevos,NUEVOS);
 	pthread_mutex_unlock(&mutexQueueNuevos);
 	pthread_mutex_lock(&mutexQueueListos);
-	MostrarProcesosDeUnaLista(Listos,LISTOS);
+	MostrarProcesosDeUnaCola(Listos,LISTOS);
 	pthread_mutex_unlock(&mutexQueueListos);
 	pthread_mutex_lock(&mutexQueueEjecutando);
-	MostrarProcesosDeUnaLista(Ejecutando,EJECUTANDO);
+	MostrarProcesosDeUnaCola(Ejecutando,EJECUTANDO);
 	pthread_mutex_unlock(&mutexQueueEjecutando);
 	pthread_mutex_lock(&mutexQueueBloqueados);
-	MostrarProcesosDeUnaLista(Bloqueados,BLOQUEADOS);
+	MostrarProcesosDeUnaCola(Bloqueados,BLOQUEADOS);
 	pthread_mutex_unlock(&mutexQueueBloqueados);
 	pthread_mutex_lock(&mutexQueueFinalizados);
-	MostrarProcesosDeUnaLista(Finalizados,FINALIZADOS);
+	MostrarProcesosDeUnaCola(Finalizados,FINALIZADOS);
 	pthread_mutex_unlock(&mutexQueueFinalizados);
 }
 
@@ -84,15 +84,15 @@ void userInterfaceHandler(uint32_t* socketFD) {
 		else if (strcmp(command, "mostrar_procesos") == 0) {
 			scanf("%s", lista);
 			if(strcmp(lista,NUEVOS)==0)
-				MostrarProcesosDeUnaLista(Nuevos,NUEVOS);
+				MostrarProcesosDeUnaCola(Nuevos,NUEVOS);
 			else if(strcmp(lista,LISTOS)==0)
-				MostrarProcesosDeUnaLista(Listos,LISTOS);
+				MostrarProcesosDeUnaCola(Listos,LISTOS);
 			else if(strcmp(lista,EJECUTANDO)==0)
-				MostrarProcesosDeUnaLista(Ejecutando,EJECUTANDO);
+				MostrarProcesosDeUnaCola(Ejecutando,EJECUTANDO);
 			else if(strcmp(lista,BLOQUEADOS)==0)
-				MostrarProcesosDeUnaLista(Bloqueados,BLOQUEADOS);
+				MostrarProcesosDeUnaCola(Bloqueados,BLOQUEADOS);
 			else if(strcmp(lista,FINALIZADOS)==0)
-				MostrarProcesosDeUnaLista(Finalizados,FINALIZADOS);
+				MostrarProcesosDeUnaCola(Finalizados,FINALIZADOS);
 
 			else if(strcmp(lista,"TODAS")==0)
 				MostrarTodosLosProcesos();

@@ -4,6 +4,7 @@ uint32_t TamanioPaginaMemoria;
 void Servidor(char* ip, int puerto, char nombre[11],
 		void (*accion)(Paquete* paquete, int socketFD),
 		int (*RecibirPaquete)(int socketFD, char receptor[11], Paquete* paquete)) {
+	printf("Iniciando Servidor %s\n", nombre);
 	int SocketEscucha = StartServidor(ip, puerto);
 	fd_set master; // conjunto maestro de descriptores de fichero
 	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
@@ -52,7 +53,7 @@ void Servidor(char* ip, int puerto, char nombre[11],
 
 void ServidorConcurrente(char* ip, int puerto, char nombre[11], t_list** listaDeHilos,
 		bool* terminar, void (*accionHilo)(void* socketFD)) {
-
+	printf("Iniciando Servidor %s\n", nombre);
 	*terminar = false;
 	*listaDeHilos = list_create();
 	int socketFD = StartServidor(ip, puerto);
@@ -76,13 +77,14 @@ void ServidorConcurrente(char* ip, int puerto, char nombre[11], t_list** listaDe
 	printf("Apagando Servidor");
 	close(socketFD);
 	//libera los items de lista de hilos , destruye la lista y espera a que termine cada hilo.
-	list_destroy_and_destroy_elements(*listaDeHilos,
-			LAMBDA(void _(void* elem) { pthread_join(((structHilo*)elem)->hilo, NULL); free(elem);}));
+	list_destroy_and_destroy_elements(*listaDeHilos, LAMBDA(void _(void* elem) {
+			pthread_join(((structHilo*)elem)->hilo, NULL);
+			free(elem); }));
 
 }
 
-int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11], char cliente[11],
-		void RecibirElHandshake(int socketFD, char emisor[11])) {
+int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11],
+		char cliente[11], void RecibirElHandshake(int socketFD, char emisor[11])) {
 	int socketFD = socket(AF_INET, SOCK_STREAM, 0);
 
 	struct sockaddr_in direccionKernel;
@@ -91,14 +93,13 @@ int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11],
 	direccionKernel.sin_port = htons(puertoAConectar);
 	direccionKernel.sin_addr.s_addr = inet_addr(ipAConectar);
 	memset(&(direccionKernel.sin_zero), '\0', 8);
-	if (connect(socketFD, (struct sockaddr *) &direccionKernel,
-			sizeof(struct sockaddr))>=0){
-		EnviarHandshake(socketFD, cliente);
-		RecibirElHandshake(socketFD, servidor);
-		return socketFD;
-	}else{
-		return -1;
-	}
+
+	while (connect(socketFD, (struct sockaddr *) &direccionKernel,	sizeof(struct sockaddr))<0)
+		sleep(1); //Espera un segundo y se vuelve a tratar de conectar.
+	EnviarHandshake(socketFD, cliente);
+	RecibirElHandshake(socketFD, servidor);
+	return socketFD;
+
 }
 
 int StartServidor(char* MyIP, int MyPort) // obtener socket a la escucha

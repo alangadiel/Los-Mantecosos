@@ -2,6 +2,7 @@
 #include "SocketsL.h"
 
 void imprimirArchivoConfiguracion() {
+	printf("Contenido del Archivo de Configuracion:\n");
 	int c;
 	FILE *file;
 	file = fopen("ArchivoConfiguracion.txt", "r");
@@ -11,6 +12,7 @@ void imprimirArchivoConfiguracion() {
 		}
 		fclose(file);
 	}
+	putchar('\n'); putchar('\n');
 }
 
 char* getWord(char* string, int pos) {
