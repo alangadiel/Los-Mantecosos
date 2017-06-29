@@ -124,6 +124,63 @@ void userInterfaceHandler(uint32_t* socketFD) {
 		else if (strcmp(command, "reanudar_planificacion") == 0){
 			planificacion_detenida = false;
 		}
+		else if (strcmp(command, "mostrar_tabla_de_archivos_de_proceso") == 0) {
+			scanf("%d", &pidConsulta);
+			t_list* tablaProceso = list_create();
+
+			tablaProceso = obtenerTablaArchivosDeUnProceso(pidConsulta);
+
+			if(tablaProceso != NULL)
+			{
+				printf("\nProceso %d:\n", pidConsulta);
+
+				for(int i = 0; i < list_size(tablaProceso); i++)
+				{
+					archivoProceso* archProceso = malloc(sizeof(archivoProceso));
+
+					archProceso = list_get(tablaProceso, i);
+
+					printf("FD %d:\n", archProceso->FD);
+					printf("Flag Creacion %d:\n", archProceso->flags.creacion);
+					printf("Flag Escritura %d:\n", archProceso->flags.escritura);
+					printf("Flag Lectura %d:\n", archProceso->flags.lectura);
+					printf("FD Global %d:\n", archProceso->globalFD);
+					printf("Offset del archivo %d:\n", archProceso->offsetArchivo);
+
+					free(archProceso);
+				}
+			}
+			else
+			{
+				printf("El proceso %d no tiene archivos abiertos\n", pidConsulta);
+			}
+
+			list_destroy(tablaProceso);
+		}
+		else if (strcmp(command, "mostrar_tabla_de_archivos_global") == 0) {
+			t_list* tablaGlobal = list_create();
+
+			tablaGlobal = obtenerTablaArchivosGlobales();
+
+			if(tablaGlobal != NULL)
+			{
+				for(int i = 0; i < list_size(tablaGlobal); i++)
+				{
+					archivoGlobal* archGlobal = malloc(sizeof(archivoGlobal));
+
+					archGlobal = list_get(tablaGlobal, i);
+
+					printf("\nPath %s:\n", archGlobal->pathArchivo);
+					printf("Cantidad de aperturas %d:\n", archGlobal->cantAperturas);
+
+					free(archGlobal);
+				}
+			}
+			else
+			{
+				printf("No hay una tabla global de archivos creada");
+			}
+		}
 		else {
 			printf("No se conoce el mensaje %s\n", orden);
 		}
