@@ -312,6 +312,7 @@ bool IM_InicializarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog,
 	free(datos);
 	Paquete paquete;
 	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
+	printf("todo ok");
 	bool r = true;
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
 	free(paquete.Payload);

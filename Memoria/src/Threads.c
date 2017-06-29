@@ -14,7 +14,8 @@ uint32_t FrameLookup(uint32_t pid, uint32_t pag){
 	return frame;
 }
 uint32_t cuantasPagTiene(uint32_t pid){
-	uint32_t c, i;
+	uint32_t c = 0;
+	uint32_t i;
 	pthread_mutex_lock( &mutexTablaPagina);
 	for(i=0; i < cantPagAsignadas; i++){
 		if(TablaDePagina[i].PID == pid)
@@ -65,8 +66,9 @@ void agregarACache(uint32_t pid, uint32_t numPag){
 }
 
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
-	pthread_mutex_lock( &mutexTablaPagina );
+	uint32_t result;
 	if (pid != 0 && cuantasPagTiene(pid) == 0 && cantPagAsignadas + cantPag < MARCOS) {
+		pthread_mutex_lock( &mutexTablaPagina );
 		//si no existe el proceso y hay lugar en la memoria
 		int i;
 
@@ -79,10 +81,12 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 			cantPagAsignadas++;
 		}
 		pthread_mutex_unlock( &mutexTablaPagina );
-		EnviarDatos(socketFD, MEMORIA, NULL, 0);
+		printf("todo ok");
+		result = 1;
+		EnviarDatos(socketFD, MEMORIA, &result , sizeof(uint32_t));
 	} else {
-		pthread_mutex_unlock( &mutexTablaPagina );
-		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
+		result = 0;
+		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
 	}
 }
 
@@ -127,8 +131,8 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 }
 
 void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
-	pthread_mutex_lock( &mutexTablaPagina );
 	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cuantasPagTiene(pid) > 0) {
+		pthread_mutex_lock( &mutexTablaPagina );
 		int i;
 		for (i = cuantasPagTiene(pid); i < cantPagParaAsignar; i++) {
 			//lo agregamos a la tabla
@@ -138,10 +142,9 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 			TablaDePagina[frame].Pag = i;
 			cantPagAsignadas++;
 		}
-		pthread_mutex_lock( &mutexTablaPagina );
+		pthread_mutex_unlock( &mutexTablaPagina );
 		EnviarDatos(socketFD, MEMORIA, NULL, 0);
 	} else {
-		pthread_mutex_lock( &mutexTablaPagina );
 		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
 	}
 }

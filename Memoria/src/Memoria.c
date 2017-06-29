@@ -23,7 +23,7 @@ bool end;
 
 //semaforos
 pthread_mutex_t mutexTablaCache = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutexTablaPagina = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexTablaPagina = PTHREAD_MUTEX_INITIALIZER ;
 pthread_mutex_t mutexContenidoMemoria = PTHREAD_MUTEX_INITIALIZER;
 
 void obtenerValoresArchivoConfiguracion() {
