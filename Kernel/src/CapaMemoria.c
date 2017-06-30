@@ -170,12 +170,54 @@ void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos
 			if(IM_LiberarPagina(socketFD,KERNEL,pid,pos.NumeroDePagina)==false){
 				FinalizarPrograma(pid,EXCEPCIONDEMEMORIA);
 			}
+			else {
+				BloqueControlProceso* PCB = buscarProcesoEnColas(pid);
+
+				if(PCB != NULL)
+				{
+					PCB->cantBytesLiberados += sizeBloqueALiberar;
+				}
+			}
 		}
 	}
 	else{
 		FinalizarPrograma(pid,EXCEPCIONDEMEMORIA);
 	}
 
+}
+
+
+BloqueControlProceso buscarProcesoEnColas(uint32_t pid)
+{
+	BloqueControlProceso* pcb = (BloqueControlProceso*)list_find(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+
+	if (pcb != NULL)
+	{
+		return pcb;
+	}
+
+	pcb = (BloqueControlProceso*)list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+
+	if (pcb != NULL)
+	{
+		return pcb;
+	}
+
+	pcb = (BloqueControlProceso*)list_find(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+
+	if (pcb != NULL)
+	{
+		return pcb;
+	}
+
+	pcb = (BloqueControlProceso*)list_find(Listos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+
+	if (pcb != NULL)
+	{
+		return pcb;
+	}
+
+	return NULL;
 }
 
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
