@@ -133,8 +133,8 @@ void userInterfaceHandler(uint32_t* socketFD) {
 			if(tablaProceso != NULL)
 			{
 				printf("\nProceso %d:\n", pidConsulta);
-
-				for(int i = 0; i < list_size(tablaProceso); i++)
+				int i;
+				for(i = 0; i < list_size(tablaProceso); i++)
 				{
 					archivoProceso* archProceso = malloc(sizeof(archivoProceso));
 
@@ -164,7 +164,8 @@ void userInterfaceHandler(uint32_t* socketFD) {
 
 			if(tablaGlobal != NULL)
 			{
-				for(int i = 0; i < list_size(tablaGlobal); i++)
+				int i;
+				for(i = 0; i < list_size(tablaGlobal); i++)
 				{
 					archivoGlobal* archGlobal = malloc(sizeof(archivoGlobal));
 
