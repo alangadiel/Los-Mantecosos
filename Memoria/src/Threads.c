@@ -81,7 +81,7 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 			cantPagAsignadas++;
 		}
 		pthread_mutex_unlock( &mutexTablaPagina );
-		printf("todo ok");
+		printf("Nuevo programa iniciado en memoria con PID %u.\n", pid);
 		result = 1;
 		EnviarDatos(socketFD, MEMORIA, &result , sizeof(uint32_t));
 	} else {

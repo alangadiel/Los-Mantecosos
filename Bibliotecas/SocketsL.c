@@ -34,7 +34,7 @@ void Servidor(char* ip, int puerto, char nombre[11],
 						FD_SET(nuevoSocket, &master); // añadir al conjunto maestro
 						if (nuevoSocket > fdmax)
 							fdmax = nuevoSocket; // actualizar el máximo
-						printf("\nNueva conexion de %s en " "socket %d\n",
+						printf("\nConectando con %s en " "socket %d\n",
 								inet_ntoa(remoteaddr.sin_addr), nuevoSocket);
 					}
 				} else {
@@ -260,6 +260,7 @@ int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir) {
 	if (recibido < 0) {
 		perror("Error de Recepcion, no se pudo leer el mensaje\n");
 		close(socketFD); // ¡Hasta luego!
+		exit(1);
 	} else if (recibido == 0) {
 		printf("Fin de Conexion en socket %d\n", socketFD);
 		close(socketFD); // ¡Hasta luego!
@@ -311,7 +312,7 @@ bool IM_InicializarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog,
 	free(datos);
 	Paquete paquete;
 	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
-	printf("todo ok");
+	printf("El programa con PID %u se inicializo en Memoria.\n", ID_Prog);
 	bool r = true;
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
 	free(paquete.Payload);

@@ -265,7 +265,7 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int s
 	printf("Cant paginas asignadas para el codigo: %d \n",pcb->PaginasDeCodigo);
 	pthread_mutex_lock(&mutexQueueNuevos);
 	//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
-	list_remove_by_condition((t_list*)Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
+	list_remove_by_condition(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
 	pthread_mutex_unlock(&mutexQueueNuevos);
 	pthread_mutex_lock(&mutexQueueListos);
 	queue_push(Listos, pcb);
@@ -696,7 +696,7 @@ void accion(void* socket)
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
 					RecibirPCB(pcb, socketConectado, KERNEL);
 					pthread_mutex_lock(&mutexQueueEjecutando);
-					list_remove_by_condition((t_list*)Ejecutando,  LAMBDA(bool _(void* item) {
+					list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
 						return ((BloqueControlProceso*)item)->PID == pcb->PID;
 					}));
 					pthread_mutex_unlock(&mutexQueueEjecutando);
