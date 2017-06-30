@@ -227,7 +227,7 @@ void RecibirHandshake_DeMemoria(int socketFD, char emisor[11]){
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0 && paquete->header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
 		if (strcmp(paquete->header.emisor, emisor) == 0) {
-				printf("\nConectado con el servidor!\n");
+				printf("\nConectado con el servidor Memoria\n");
 				if(strcmp(paquete->header.emisor, MEMORIA) == 0){
 					paquete->Payload = malloc(paquete->header.tamPayload);
 					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
@@ -261,8 +261,7 @@ int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir) {
 		perror("Error de Recepcion, no se pudo leer el mensaje\n");
 		close(socketFD); // ¡Hasta luego!
 	} else if (recibido == 0) {
-		printf("\nSocket %d: ", socketFD);
-		perror("Fin de Conexion, se cerro la conexion\n");
+		printf("Fin de Conexion en socket %d\n", socketFD);
 		close(socketFD); // ¡Hasta luego!
 	}
 
