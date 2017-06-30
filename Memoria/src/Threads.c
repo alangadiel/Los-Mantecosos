@@ -110,27 +110,29 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam
 void AlmacenarBytes(Paquete paquete, int socketFD) {
 	//Los datos son parametros
 	//Parámetros: PID, #página, offset, tamaño y buffer.
-
-	if(DATOS[2]>0 && cuantasPagTiene(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
+	uint32_t result=0;
+	if(DATOS[2]>=0 && cuantasPagTiene(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
 		//esperar tiempo definido por arch de config
 		sleep(RETARDO_MEMORIA);
 		//buscar pagina
 		void* pagina = ContenidoMemoria + MARCO_SIZE * FrameLookup(DATOS[1], DATOS[2]);
 		pthread_mutex_lock( &mutexContenidoMemoria );
 		//escribir en pagina
-		memcpy(pagina + DATOS[3],(void*) DATOS[5], DATOS[4]);
+		memcpy(pagina + DATOS[3],paquete.Payload+(sizeof(uint32_t)*5), DATOS[4]);
 		pthread_mutex_unlock( &mutexContenidoMemoria );
-		printf("Datos Almacenados: %*s", DATOS[4],(char*) DATOS[5]);
+		printf("Datos Almacenados del proceso N°: %u\n", DATOS[1]);
 		//actualizar cache
 		if (!estaEnCache(DATOS[1], DATOS[2])) {
 			agregarACache(DATOS[1], DATOS[2]);
 		}
-		EnviarDatos(socketFD, MEMORIA, NULL, 0);
+		result = 1;
+		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
 	} else
-		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
+		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
 }
 
 void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
+	uint32_t result=0;
 	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cuantasPagTiene(pid) > 0) {
 		pthread_mutex_lock( &mutexTablaPagina );
 		int i;
@@ -143,13 +145,16 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 			cantPagAsignadas++;
 		}
 		pthread_mutex_unlock( &mutexTablaPagina );
-		EnviarDatos(socketFD, MEMORIA, NULL, 0);
+		result = 1;
+		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
 	} else {
-		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
+		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
 	}
 }
 
 void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
+	uint32_t result=0;
+
 	if(cuantasPagTiene(pid) > 0) {
 		pthread_mutex_lock( &mutexTablaPagina );
 		cantPagAsignadas--;
@@ -161,13 +166,14 @@ void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
 		list_remove_and_destroy_by_condition(tablaCache, LAMBDA(bool _(void* elem) {
 				return ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==numPag; }), free);
 		pthread_mutex_unlock( &mutexTablaCache );
-		EnviarDatos(socketFD, MEMORIA, NULL, 0);
+		result =1;
+		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
 	} else
-		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
+		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
 }
 
 void FinalizarPrograma(uint32_t pid, int socketFD) {
-
+	uint32_t result=0;
 	uint32_t cantPag = cuantasPagTiene(pid);
 	if(cantPag > 0) {
 
@@ -183,9 +189,10 @@ void FinalizarPrograma(uint32_t pid, int socketFD) {
 		}
 		pthread_mutex_unlock( &mutexTablaCache );
 		pthread_mutex_unlock( &mutexTablaPagina );
-		EnviarDatos(socketFD, MEMORIA, NULL, 0);
+		result=1;
+		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
 	} else
-		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
+		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
 }
 
 int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {

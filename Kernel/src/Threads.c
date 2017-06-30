@@ -72,9 +72,9 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp, Paquete* paq
 	int i = 0, j = 0;
 	bool salioTodoBien = true;
 
-	while(i < bcp->PaginasDeCodigo && salioTodoBien == false)
+	while(i < bcp->PaginasDeCodigo && salioTodoBien == true)
 	{
-		char* str;
+		char* str = string_new();
 
 		if(i+1 != bcp->PaginasDeCodigo)
 		{
@@ -93,6 +93,8 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp, Paquete* paq
 		{
 			FinalizarPrograma(bcp->PID, EXCEPCIONDEMEMORIA);
 		}
+		free(str);
+		i++;
 	}
 }
 
@@ -384,9 +386,8 @@ void accion(void* socket)
 				case ESSTRING:
 				if(strcmp(paquete.header.emisor, CONSOLA) == 0)
 				{
-					double tamaniCodigoEnPaginas = paquete.header.tamPayload / TamanioPagina;
+					double tamaniCodigoEnPaginas = paquete.header.tamPayload / (double)TamanioPagina;
 					double tamanioCodigoYStackEnPaginas = ceil(tamaniCodigoEnPaginas) + STACK_SIZE;
-
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
 					//TODO: Falta free, pero OJO, hay que ver la forma de ponerlo y que siga andando
 					CrearNuevoProceso(pcb,&ultimoPID,Nuevos);
