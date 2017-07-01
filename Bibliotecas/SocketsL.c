@@ -502,6 +502,7 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 				sizeof(t_size) * 2;
 
 	void* pcbSerializado = malloc(tam);
+	void* pcbDuplicado = pcbSerializado;
 
 	//Serialización cantBytesLiberados
 	*((uint32_t*)pcbSerializado) = pecebe->cantBytesLiberados;
@@ -611,9 +612,11 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 
 
 	//Lo envio
-	pcbSerializado -= tam;
-	EnviarDatos(socketCliente, emisor, pcbSerializado, tam);
-	free(pcbSerializado);
+	//pcbSerializado -= tam;
+	//EnviarDatos(socketCliente, emisor, pcbSerializado, tam);
+	EnviarDatosTipo(socketCliente,emisor,pcbDuplicado,tam,ESPCB);
+	//free(pcbSerializado);
+	free(pcbDuplicado);
 }
 
 void RecibirPCB(BloqueControlProceso* pecebe, int socketFD, char receptor[11]){
