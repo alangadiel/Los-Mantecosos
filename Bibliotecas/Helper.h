@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <parser/parser.h>
+#include <ctype.h>
 
 typedef struct {
 	uint32_t NumeroDePagina;
@@ -39,22 +40,22 @@ typedef struct {
 }__attribute__((packed)) Variable; //de AnSISOP
 
 typedef struct {
-	t_list* Argumentos; //lista de uInt32
-	t_list* Variables; //Desplazamiento, lista de uInt32
+	t_list* Argumentos; //lista de Variable
+	t_list* Variables; //Desplazamiento, lista de Variable
 	uint32_t DireccionDeRetorno;
 	PosicionDeMemoria PosVariableDeRetorno;
-}__attribute__((packed)) IndiceStack;
+}__attribute__((packed)) regIndiceStack;
 
 typedef struct {
-	uint32_t PID;
-	uint32_t ProgramCounter;
-	uint32_t PaginasDeCodigo;
 	t_list* IndiceDeCodigo;    //Cada elemento seria un array de 2 ints
 	t_dictionary* IndiceDeEtiquetas;
 	t_list* IndiceDelStack; //lista de IndiceStack
-	int32_t ExitCode;
-	t_size etiquetas_size;
 	char* etiquetas;
+	t_size etiquetas_size;
+	int32_t ExitCode;
+	uint32_t PID;
+	uint32_t ProgramCounter;
+	uint32_t PaginasDeCodigo;
 	uint32_t cantidad_de_etiquetas;
 	uint32_t cantidad_de_funciones;
 	uint32_t cantidadDeRafagasAEjecutar; //esto se manda en send de kernel
@@ -66,6 +67,25 @@ typedef struct {
 	uint32_t cantBytesAlocados;
 	uint32_t cantBytesLiberados;
 }__attribute__((packed)) BloqueControlProceso;
+
+typedef struct {
+	//CUANDO MODFIQUEN EL PCB MODIFIQUEN ESTE IGUAL, PERO SIN LOS PUNTEROS
+	t_size etiquetas_size;
+	int32_t ExitCode;
+	uint32_t PID;
+	uint32_t ProgramCounter;
+	uint32_t PaginasDeCodigo;
+	uint32_t cantidad_de_etiquetas;
+	uint32_t cantidad_de_funciones;
+	uint32_t cantidadDeRafagasAEjecutar; //esto se manda en send de kernel
+	uint32_t cantidadDeRafagasEjecutadasHistorica; //esto se hace en cpu
+	uint32_t cantidadDeRafagasEjecutadas; //esto se manda en send de cpu
+	uint32_t cantidadSyscallEjecutadas;
+	uint32_t cantidadAccionesAlocar;
+	uint32_t cantidadAccionesLiberar;
+	uint32_t cantBytesAlocados;
+	uint32_t cantBytesLiberados;
+}__attribute__((packed)) IntsDelPCB;
 
 typedef struct {
 	int socketCPU;

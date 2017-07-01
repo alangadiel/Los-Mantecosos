@@ -74,48 +74,39 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	return result;
 }
 
-void CrearRegistroStack(IndiceStack* is){
+void CrearRegistroStack(regIndiceStack* is){
 	is->Argumentos = list_create();
 	is->Variables = list_create();
-	is->PosVariableDeRetorno = NewPosicionDeMemoriaVacia();
-}
-PosicionDeMemoria NewPosicionDeMemoriaVacia(){
-	PosicionDeMemoria res;
-	res.NumeroDePagina =NULL;
-	res.Offset=NULL;
-	res.Tamanio = NULL;
-	return res;
 }
 
 //primitivas basicas
 t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 	//Obtengo el ultimo contexto de ejecucion, donde guardara la/s variable/s a definir
-	int ultimoStackPointer =-4;
-	IndiceStack is;
+	regIndiceStack* is;
 	void* res = list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
 	if(res!=NULL){
-		is=*(IndiceStack*)list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
-		//Obtengo el ultimo stackpointer
-		void* result = list_get(is.Variables,list_size(is.Variables)-1);
-		if(result!=NULL){
-			Variable ultimaVar = *(Variable*)result;
-			ultimoStackPointer = ultimaVar.Posicion.NumeroDePagina*TamanioPaginaMemoria+ultimaVar.Posicion.Offset;
-		}
+		is=list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
 	}
 	else {
 		//No hay ningun registro de stack hasta el momento
-		CrearRegistroStack(&is);
+		is = malloc(sizeof(regIndiceStack));
+		CrearRegistroStack(is);
+		list_add(pcb.IndiceDelStack, is);
 	}
-	int nuevoStackPointer = ultimoStackPointer+sizeof(int);
+	ultimoOffSetVariablesStack += sizeof(int);
 	Variable varNueva;
 	PosicionDeMemoria pos;
-	pos.NumeroDePagina=nuevoStackPointer/TamanioPaginaMemoria;
+	pos.NumeroDePagina=ultimoOffSetVariablesStack/TamanioPaginaMemoria;
 	pos.Tamanio = sizeof(int);
 	//Como se que cada variable son enteros bytes, el offset siempre se incrementa en 4
-	pos.Offset = nuevoStackPointer % TamanioPaginaMemoria;
+	pos.Offset = ultimoOffSetVariablesStack % TamanioPaginaMemoria;
 	varNueva.Posicion=pos;
 	varNueva.ID=identificador_variable;
-	list_add(is.Variables,&varNueva);
+	if(isdigit(identificador_variable)){//si es un numero
+		list_add(is->Argumentos,&varNueva);
+	} else {
+		list_add(is->Variables,&varNueva);
+	}
 	pcb.ProgramCounter++;
 	return ultimoOffSetVariablesStack;
 }
@@ -125,7 +116,7 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	void* result = NULL;
 	int j=0;
 	while(j< list_size(pcb.IndiceDelStack) && result==NULL){
-		IndiceStack* is = (IndiceStack*)list_get(pcb.IndiceDelStack,j);
+		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,j);
 		result = (Variable*)list_find(is->Variables,
 						LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
 		j++;
@@ -182,23 +173,24 @@ void primitiva_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
 
 }
 void primitiva_llamarSinRetorno(t_nombre_etiqueta etiqueta){
-		IndiceStack nuevoIs;
+		regIndiceStack* nuevoIs=malloc(sizeof(regIndiceStack));
 		//Entrada del indice de codigo a donde se debe regresar
-		nuevoIs.DireccionDeRetorno = pcb.ProgramCounter;
+		nuevoIs->DireccionDeRetorno = pcb.ProgramCounter;
 		//La proxima instruccion a ejecutar es la de la funcion en cuestion
 		primitiva_irAlLabel(etiqueta);
-
+		//agregar al indiceDeStack 
+		list_add(pcb.IndiceDelStack, nuevoIs);
 }
 
 void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
-	IndiceStack nuevoIs;
+	regIndiceStack* nuevoIs=malloc(sizeof(regIndiceStack));
 	//Entrada del indice de codigo a donde se debe regresar
-	nuevoIs.DireccionDeRetorno = pcb.ProgramCounter;
+	nuevoIs->DireccionDeRetorno = pcb.ProgramCounter;
 	//La posicion donde se almacenara es aquella que empieza en el puntero donde_retornar
 	void *result = NULL;
 	int i=0;
 	while(i< list_size(pcb.IndiceDelStack) && result == NULL){
-		IndiceStack* is = (IndiceStack*)list_get(pcb.IndiceDelStack,i);
+		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,i);
 		result = list_find(is->Variables,
 				LAMBDA(bool _(void*item){
 			return TamanioPaginaMemoria* ((Variable*)item)->Posicion.NumeroDePagina +((Variable*)item)->Posicion.Offset==donde_retornar;
@@ -206,9 +198,11 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 		i++;
 	}
 
-	nuevoIs.PosVariableDeRetorno = ((Variable*)result)->Posicion;
+	nuevoIs->PosVariableDeRetorno = ((Variable*)result)->Posicion;
 	//La proxima instruccion a ejecutar es la de la funcion en cuestion
 	primitiva_irAlLabel(etiqueta);
+	//agregar al indiceDeStack
+	list_add(pcb.IndiceDelStack, nuevoIs);
 }
 
 //TODAS LAS FUNCIONES RETORNAR UN VALOR, NO EXISTE EL CONCEPTO DE PROCEDIMIENTO: LO DICE EL TP
@@ -221,42 +215,16 @@ void primitiva_finalizar(void){
 
 void primitiva_retornar(t_valor_variable retorno){
 	//Obtengo la ultima instruccion de retorno del stack
-	int i=0;
-	void *result=NULL;
-	while(i< list_size(pcb.IndiceDelStack)){
-		IndiceStack* is = (IndiceStack*)list_get(pcb.IndiceDelStack,i);
-		if(is->DireccionDeRetorno!=NULL){
-			result = is->DireccionDeRetorno;
-		}
-		i++;
-	}
-	pcb.ProgramCounter = *(uint32_t*)result;
-	//Le asigno a la variable de retorno, el valor de retorno correspondiente
-
-	//Obtengo la variable en cuestion
-	int j=0;
-	PosicionDeMemoria res=NewPosicionDeMemoriaVacia();
-	while(j< list_size(pcb.IndiceDelStack)){
-		IndiceStack* is = (IndiceStack*)list_get(pcb.IndiceDelStack,j);
-		//Forma de verificar si la estructura PosicionDeMemoria esta vacio o no
-		if(is->PosVariableDeRetorno.NumeroDePagina != NULL && is->PosVariableDeRetorno.Offset != NULL && is->PosVariableDeRetorno.Tamanio != NULL){
-			res = is->PosVariableDeRetorno;
-		}
-		j++;
-	}
-	PosicionDeMemoria pos = res;
+	regIndiceStack* is = list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+	pcb.ProgramCounter = is->DireccionDeRetorno;
 	//Guardo el valor de retorno en la variable correspondiente
-	primitiva_asignar(pos.Offset,retorno);
-
-	/*Elimino el registro del stack de la funcion
-	TODO: EN PRINCIPIO ELIMINO EL ULTIMO REGISTRO DE STACK, VER QUE PASA SI PARA UNA FUNCION HAY MAS DE UN REGISTRO
-	*/
+	primitiva_asignar(is->PosVariableDeRetorno.Offset,retorno);
 	list_remove(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
 }
 
 //PRIMITIVAS KERNEL
 void primitiva_wait(t_nombre_semaforo identificador_semaforo){
-	//TODO: Programar en kernel para que decida si bloquear o no el semaforo
+
 		int tamDatos = sizeof(uint32_t)*2+ string_length(identificador_semaforo)+1;
 		void* datos = malloc(tamDatos);
 		((uint32_t*) datos)[0] = WAITSEM;
@@ -269,7 +237,7 @@ void primitiva_wait(t_nombre_semaforo identificador_semaforo){
 }
 
 void primitiva_signal(t_nombre_semaforo identificador_semaforo){
-	//TODO: Programar en kernel para que decida si desbloquear o no los procesos frenados
+
 		int tamDatos = sizeof(uint32_t)*2+ string_length(identificador_semaforo)+1;
 		void* datos = malloc(tamDatos);
 		((uint32_t*) datos)[0] = SIGNALSEM;

@@ -142,6 +142,40 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 	return punteroAlPrimerDisponible;
 }
 
+BloqueControlProceso* buscarProcesoEnColas(uint32_t pid)
+{
+	BloqueControlProceso* pcb = (BloqueControlProceso*)list_find(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+
+	if (pcb != NULL)
+	{
+		return pcb;
+	}
+
+	pcb = (BloqueControlProceso*)list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+
+	if (pcb != NULL)
+	{
+		return pcb;
+	}
+
+	pcb = (BloqueControlProceso*)list_find(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+
+	if (pcb != NULL)
+	{
+		return pcb;
+	}
+
+	pcb = (BloqueControlProceso*)list_find(Listos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+
+	if (pcb != NULL)
+	{
+		return pcb;
+	}
+
+	return NULL;
+}
+
+
 void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos)
 {
 	void* datosPagina = IM_LeerDatos(socketFD,KERNEL,pid,pos.NumeroDePagina,0,TamanioPagina);
@@ -184,40 +218,6 @@ void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos
 		FinalizarPrograma(pid,EXCEPCIONDEMEMORIA);
 	}
 
-}
-
-
-BloqueControlProceso buscarProcesoEnColas(uint32_t pid)
-{
-	BloqueControlProceso* pcb = (BloqueControlProceso*)list_find(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
-
-	if (pcb != NULL)
-	{
-		return pcb;
-	}
-
-	pcb = (BloqueControlProceso*)list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
-
-	if (pcb != NULL)
-	{
-		return pcb;
-	}
-
-	pcb = (BloqueControlProceso*)list_find(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
-
-	if (pcb != NULL)
-	{
-		return pcb;
-	}
-
-	pcb = (BloqueControlProceso*)list_find(Listos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
-
-	if (pcb != NULL)
-	{
-		return pcb;
-	}
-
-	return NULL;
 }
 
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
