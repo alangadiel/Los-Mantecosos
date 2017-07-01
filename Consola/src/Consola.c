@@ -177,7 +177,7 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 	while (!fin) {
 		char command[100];
 		char parametro[100];
-		printf("\n\nIngrese SOLO el comando: \n");
+		printf("\n\nIngrese una orden: \n");
 		scanf("%99s", command);
 		/*char* command = getWord(str, 0);
 		char* parameter = getWord(str, 1);*/

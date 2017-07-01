@@ -72,9 +72,9 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp, Paquete* paq
 	int i = 0, j = 0;
 	bool salioTodoBien = true;
 
-	while(i < bcp->PaginasDeCodigo && salioTodoBien == false)
+	while(i < bcp->PaginasDeCodigo && salioTodoBien == true)
 	{
-		char* str;
+		char* str = string_new();
 
 		if(i+1 != bcp->PaginasDeCodigo)
 		{
@@ -93,6 +93,8 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp, Paquete* paq
 		{
 			FinalizarPrograma(bcp->PID, EXCEPCIONDEMEMORIA);
 		}
+		free(str);
+		i++;
 	}
 }
 
@@ -101,7 +103,7 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	t_metadata_program* metaProgram = metadata_desde_literal((char*)paquete->Payload);
 	int i = 0;
 
-	while(i<string_length(metaProgram->etiquetas))
+	while(i<metaProgram->instrucciones_size)
 	{
 		int *registroIndice = malloc(sizeof(uint32_t)*2);
 
@@ -111,23 +113,27 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 		list_add(pcb->IndiceDeCodigo,registroIndice);
 
 		i++;
+		free(registroIndice);
 	}
 
 	//Inicializar indice de etiquetas
 	i = 0;
 
 	// Leer metadataprogram.c a ver como desarrollaron esto
-	char **etiquetasEncontradas = string_n_split(metaProgram->etiquetas,metaProgram->cantidad_de_etiquetas+metaProgram->cantidad_de_funciones,(char*)metaProgram->instrucciones_size);
-	string_iterate_lines(etiquetasEncontradas,
-			LAMBDA(void _(char* item) {
-		t_puntero_instruccion pointer = metadata_buscar_etiqueta(item,metaProgram->etiquetas, metaProgram->etiquetas_size);
-		dictionary_put(pcb->IndiceDeEtiquetas, item, &pointer);
+	if(metaProgram->etiquetas_size>0){
+		char **etiquetasEncontradas = string_n_split(metaProgram->etiquetas,metaProgram->cantidad_de_etiquetas+metaProgram->cantidad_de_funciones,(char*)metaProgram->instrucciones_size);
+		string_iterate_lines(etiquetasEncontradas,
+				LAMBDA(void _(char* item) {
+			t_puntero_instruccion pointer = metadata_buscar_etiqueta(item,metaProgram->etiquetas, metaProgram->etiquetas_size);
+			dictionary_put(pcb->IndiceDeEtiquetas, item, &pointer);
 
-	}));
-	pcb->cantidad_de_etiquetas = metaProgram->cantidad_de_etiquetas;
-	pcb->cantidad_de_funciones = metaProgram->cantidad_de_funciones;
-	pcb->etiquetas_size= metaProgram->etiquetas_size;
-	strcpy(pcb->etiquetas,metaProgram->etiquetas);
+		}));
+		pcb->cantidad_de_etiquetas = metaProgram->cantidad_de_etiquetas;
+		pcb->cantidad_de_funciones = metaProgram->cantidad_de_funciones;
+		pcb->etiquetas_size= metaProgram->etiquetas_size;
+		strcpy(pcb->etiquetas,metaProgram->etiquetas);
+	}
+
 }
 
 
@@ -258,11 +264,10 @@ bool KillProgram(int pidAFinalizar, int tipoFinalizacion)
 
 void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int socketFD, double tamanioTotalPaginas)
 {
-	pcb->PaginasDeCodigo = (uint32_t)tamanioTotalPaginas;
 	printf("Cant paginas asignadas para el codigo: %d \n",pcb->PaginasDeCodigo);
 	pthread_mutex_lock(&mutexQueueNuevos);
 	//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
-	list_remove_by_condition((t_list*)Nuevos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
+	list_remove_by_condition(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
 	pthread_mutex_unlock(&mutexQueueNuevos);
 	pthread_mutex_lock(&mutexQueueListos);
 	queue_push(Listos, pcb);
@@ -320,36 +325,39 @@ void dispatcher()
 		for (i = 0; i < list_size(listCPUsLibres); i++)
 		{
 			BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
-			DatosCPU* cpuAUsar = (DatosCPU*)list_get(listCPUsLibres, 0);
+			if(PCBAMandar!=NULL){
+				DatosCPU* cpuAUsar = (DatosCPU*)list_get(listCPUsLibres, 0);
 
-			uint32_t cantidadDeRafagas;
-			uint32_t cantidadDeRafagasRestantes = PCBAMandar->IndiceDeCodigo->elements_count - PCBAMandar->cantidadDeRafagasEjecutadas;
+						uint32_t cantidadDeRafagas;
+						uint32_t cantidadDeRafagasRestantes = PCBAMandar->IndiceDeCodigo->elements_count - PCBAMandar->cantidadDeRafagasEjecutadasHistorica;
 
-			if (strcmp(ALGORITMO, "FIFO") == 0)
-			{
-				cantidadDeRafagas = cantidadDeRafagasRestantes;
+						if (strcmp(ALGORITMO, "FIFO") == 0)
+						{
+							cantidadDeRafagas = cantidadDeRafagasRestantes;
+						}
+						else if (strcmp(ALGORITMO, "RR") == 0)
+						{
+							if (cantidadDeRafagasRestantes < QUANTUM)
+							{
+								cantidadDeRafagas = cantidadDeRafagasRestantes;
+							}
+							else
+							{
+								cantidadDeRafagas = QUANTUM;
+							}
+						}
+						PCBAMandar->cantidadDeRafagasAEjecutar = cantidadDeRafagas;
+						PCBAMandar->cantidadDeRafagasEjecutadas = 0;
+
+						EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar);
+
+						cpuAUsar->isFree = false;
+						pthread_mutex_lock(&mutexQueueEjecutando);
+						queue_push(Ejecutando, PCBAMandar);
+						pthread_mutex_unlock(&mutexQueueEjecutando);
+						//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
 			}
-			else if (strcmp(ALGORITMO, "RR") == 0)
-			{
-				if (cantidadDeRafagasRestantes < QUANTUM)
-				{
-					cantidadDeRafagas = cantidadDeRafagasRestantes;
-				}
-				else
-				{
-					cantidadDeRafagas = QUANTUM;
-				}
-			}
-			PCBAMandar->cantidadDeRafagasAEjecutar = cantidadDeRafagas;
-			PCBAMandar->cantidadDeRafagasEjecutadas = 0;
 
-			EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar);
-
-			cpuAUsar->isFree = false;
-			pthread_mutex_lock(&mutexQueueEjecutando);
-			queue_push(Ejecutando, PCBAMandar);
-			pthread_mutex_unlock(&mutexQueueEjecutando);
-			//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
 		}
 	}
 }
@@ -378,9 +386,8 @@ void accion(void* socket)
 				case ESSTRING:
 				if(strcmp(paquete.header.emisor, CONSOLA) == 0)
 				{
-					double tamaniCodigoEnPaginas = paquete.header.tamPayload / TamanioPagina;
+					double tamaniCodigoEnPaginas = paquete.header.tamPayload / (double)TamanioPagina;
 					double tamanioCodigoYStackEnPaginas = ceil(tamaniCodigoEnPaginas) + STACK_SIZE;
-
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
 					//TODO: Falta free, pero OJO, hay que ver la forma de ponerlo y que siga andando
 					CrearNuevoProceso(pcb,&ultimoPID,Nuevos);
@@ -395,12 +402,13 @@ void accion(void* socket)
 
 						if(pudoCargarse == true)
 						{
-							PonerElProgramaComoListo(pcb,&paquete, socketConectado, tamaniCodigoEnPaginas);
 							//Ejecuto el metadata program
 							CargarInformacionDelCodigoDelPrograma(pcb, &paquete);
-
+							pcb->PaginasDeCodigo = (uint32_t)ceil(tamaniCodigoEnPaginas);
 							//Solicito a la memoria que me guarde el codigo del programa(dependiendo cuantas paginas se requiere para el codigo
 							GuardarCodigoDelProgramaEnLaMemoria(pcb, &paquete);
+							PonerElProgramaComoListo(pcb,&paquete, socketConectado, tamaniCodigoEnPaginas);
+
 							EnviarDatos(socketConectado, KERNEL, &(pcb->PID), sizeof(uint32_t));
 						}
 						else
@@ -689,7 +697,7 @@ void accion(void* socket)
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
 					RecibirPCB(pcb, socketConectado, KERNEL);
 					pthread_mutex_lock(&mutexQueueEjecutando);
-					list_remove_by_condition((t_list*)Ejecutando,  LAMBDA(bool _(void* item) {
+					list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
 						return ((BloqueControlProceso*)item)->PID == pcb->PID;
 					}));
 					pthread_mutex_unlock(&mutexQueueEjecutando);

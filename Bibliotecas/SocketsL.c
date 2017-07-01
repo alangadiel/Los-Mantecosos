@@ -34,7 +34,7 @@ void Servidor(char* ip, int puerto, char nombre[11],
 						FD_SET(nuevoSocket, &master); // añadir al conjunto maestro
 						if (nuevoSocket > fdmax)
 							fdmax = nuevoSocket; // actualizar el máximo
-						printf("\nNueva conexion de %s en " "socket %d\n",
+						printf("\nConectando con %s en " "socket %d\n",
 								inet_ntoa(remoteaddr.sin_addr), nuevoSocket);
 					}
 				} else {
@@ -227,7 +227,7 @@ void RecibirHandshake_DeMemoria(int socketFD, char emisor[11]){
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0 && paquete->header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
 		if (strcmp(paquete->header.emisor, emisor) == 0) {
-				printf("\nConectado con el servidor!\n");
+				printf("\nConectado con el servidor Memoria\n");
 				if(strcmp(paquete->header.emisor, MEMORIA) == 0){
 					paquete->Payload = malloc(paquete->header.tamPayload);
 					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
@@ -260,9 +260,9 @@ int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir) {
 	if (recibido < 0) {
 		perror("Error de Recepcion, no se pudo leer el mensaje\n");
 		close(socketFD); // ¡Hasta luego!
+		exit(1);
 	} else if (recibido == 0) {
-		printf("\nSocket %d: ", socketFD);
-		perror("Fin de Conexion, se cerro la conexion\n");
+		printf("Fin de Conexion en socket %d\n", socketFD);
 		close(socketFD); // ¡Hasta luego!
 	}
 
@@ -312,6 +312,7 @@ bool IM_InicializarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog,
 	free(datos);
 	Paquete paquete;
 	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
+	printf("El programa con PID %u se inicializo en Memoria.\n", ID_Prog);
 	bool r = true;
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
 	free(paquete.Payload);
@@ -597,14 +598,17 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	}
 
 	//Serialización Índice De Etiquetas
-	char** etiquetas = string_n_split(pecebe->etiquetas,
-			pecebe->cantidad_de_etiquetas + pecebe->cantidad_de_funciones ,(char*)&sizeIndCod);
-	string_iterate_lines(etiquetas, LAMBDA(void _(char* etiqueta) {
-		t_puntero_instruccion* instruccion = dictionary_get(pecebe->IndiceDeEtiquetas, etiqueta);
-		*((t_puntero_instruccion*)pcbSerializado) = *instruccion;
-		pcbSerializado += sizeof(t_puntero_instruccion);
-	}));
-	free(etiquetas);
+	if(pecebe->etiquetas_size > 0){
+		char** etiquetas = string_n_split(pecebe->etiquetas,
+				pecebe->cantidad_de_etiquetas + pecebe->cantidad_de_funciones ,(char*)&sizeIndCod);
+		string_iterate_lines(etiquetas, LAMBDA(void _(char* etiqueta) {
+			t_puntero_instruccion* instruccion = dictionary_get(pecebe->IndiceDeEtiquetas, etiqueta);
+			*((t_puntero_instruccion*)pcbSerializado) = *instruccion;
+			pcbSerializado += sizeof(t_puntero_instruccion);
+		}));
+		free(etiquetas);
+	}
+
 
 	//Lo envio
 	pcbSerializado -= tam;
