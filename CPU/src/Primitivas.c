@@ -79,10 +79,23 @@ void CrearRegistroStack(regIndiceStack* is){
 	is->Variables = list_create();
 }
 
+int32_t obtenerUltimoOffset(regIndiceStack* regIS){
+	int32_t r = -sizeof(uint32_t);
+	Variable* ultimoArg = (Variable*)list_get(regIS->Argumentos,list_size(regIS->Argumentos)-1);
+	Variable* ultimoVar = (Variable*)list_get(regIS->Variables,list_size(regIS->Variables)-1);
+	if(ultimoVar!=NULL)
+		r = ultimoVar->Posicion.NumeroDePagina*ultimoVar->Posicion.Tamanio + ultimoVar->Posicion.Offset;
+	if(ultimoArg!=NULL){
+		uint32_t ultimaDirVirtualArg = ultimoArg->Posicion.NumeroDePagina*ultimoArg->Posicion.Tamanio + ultimoArg->Posicion.Offset;
+		if(ultimaDirVirtualArg>r)
+			r = ultimaDirVirtualArg;
+	}
+	return r;
+}
 //primitivas basicas
 t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 	//Obtengo el ultimo contexto de ejecucion, donde guardara la/s variable/s a definir
-	regIndiceStack* is;
+	regIndiceStack* is=malloc(sizeof(regIndiceStack));
 	void* res = list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
 	if(res!=NULL){
 		is=list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
@@ -93,6 +106,7 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 		CrearRegistroStack(is);
 		list_add(pcb.IndiceDelStack, is);
 	}
+	ultimoOffSetVariablesStack = obtenerUltimoOffset(is);
 	ultimoOffSetVariablesStack += sizeof(int);
 	Variable varNueva;
 	PosicionDeMemoria pos;

@@ -7,7 +7,7 @@
 	#include "SocketsL.h"
 	#include "CPU.h"
 uint32_t numeroDePagina;
-uint32_t ultimoOffSetVariablesStack;
+int32_t ultimoOffSetVariablesStack;
 
 	t_puntero primitiva_definirVariable(t_nombre_variable variable);
 	t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable);
