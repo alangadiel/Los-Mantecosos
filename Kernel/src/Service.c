@@ -64,6 +64,7 @@ void CrearListas() {
 	Estados = list_create();
 	EstadosConProgramasFinalizables = list_create();
 	ArchivosGlobales = list_create();
+	ArchivosProcesos = list_create();
 	VariablesCompartidas = list_create();
 	Semaforos = list_create();
 	PIDsPorSocketConsola = list_create();

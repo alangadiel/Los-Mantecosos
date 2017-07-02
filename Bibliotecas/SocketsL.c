@@ -140,29 +140,6 @@ int StartServidor(char* MyIP, int MyPort) // obtener socket a la escucha
 	return SocketEscucha;
 }
 
-void EnviarDatos(int socketFD, char emisor[11], void* datos, int tamDatos) {
-	Paquete* paquete = malloc(sizeof(Paquete));
-	paquete->header.tipoMensaje = ESDATOS;
-	paquete->header.tamPayload = tamDatos;
-	strcpy(paquete->header.emisor, emisor);
-	paquete->Payload = datos;
-
-	EnviarPaquete(socketFD, paquete);
-
-	free(paquete);
-}
-
-void EnviarDatosTipo(int socketFD, char emisor[11], void* datos, int tamDatos, int tipoMensaje){
-	Paquete* paquete = malloc(sizeof(Paquete));
-	paquete->header.tipoMensaje = tipoMensaje;
-	paquete->header.tamPayload = tamDatos;
-	strcpy(paquete->header.emisor, emisor);
-	paquete->Payload = datos;
-
-	EnviarPaquete(socketFD, paquete);
-
-	free(paquete);
-}
 void EnviarPaquete(int socketCliente, Paquete* paquete) {
 	int cantAEnviar = sizeof(Header) + paquete->header.tamPayload;
 	void* datos = malloc(cantAEnviar);
@@ -185,6 +162,22 @@ void EnviarPaquete(int socketCliente, Paquete* paquete) {
 	free(datos);
 }
 
+void EnviarDatosTipo(int socketFD, char emisor[11], void* datos, int tamDatos, int tipoMensaje){
+	Paquete* paquete = malloc(sizeof(Paquete));
+	paquete->header.tipoMensaje = tipoMensaje;
+	strcpy(paquete->header.emisor, emisor);
+	uint32_t r = 0;
+	if(tamDatos<=0 || datos==NULL){
+		paquete->header.tamPayload = sizeof(uint32_t);
+		paquete->Payload = &r;
+	} else {
+		paquete->header.tamPayload = tamDatos;
+		paquete->Payload = datos;
+	}
+	EnviarPaquete(socketFD, paquete);
+
+	free(paquete);
+}
 void EnviarMensaje(int socketFD, char* msg, char emisor[11]) {
 	Paquete paquete;
 	strcpy(paquete.header.emisor, emisor);
@@ -205,6 +198,10 @@ void EnviarHandshake(int socketFD, char emisor[11]) {
 	EnviarPaquete(socketFD, paquete);
 
 	free(paquete);
+}
+
+void EnviarDatos(int socketFD, char emisor[11], void* datos, int tamDatos) {
+	EnviarDatosTipo(socketFD, emisor, datos, tamDatos, ESDATOS);
 }
 
 void RecibirHandshake(int socketFD, char emisor[11]) {

@@ -214,13 +214,9 @@ bool ProcesoNoEstaEjecutandoseActualmente(int pidAFinalizar)
 	for (i = 0; i < list_size(CPUsConectadas); i++)
 	{
 		DatosCPU* cpu = (DatosCPU*) list_get(CPUsConectadas, i);
-		Paquete* paquete = malloc(sizeof(Paquete));
 
-		paquete->header.tipoMensaje = ESTAEJECUTANDO;
+		EnviarDatosTipo(cpu->socketCPU, KERNEL, NULL,0, ESTAEJECUTANDO);
 
-		EnviarPaquete(cpu->socketCPU, paquete);
-
-		free(paquete);
 
 		Paquete* paquete2 = malloc(sizeof(Paquete));
 

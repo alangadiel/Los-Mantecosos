@@ -106,7 +106,6 @@ int ConectarAServidor(int puertoAConectar, char* ipAConectar, char servidor[11],
 void EnviarHandshake(int socketFD, char emisor[11]);
 void EnviarDatos(int socketFD, char emisor[11], void* datos, int tamDatos);
 void EnviarDatosTipo(int socketFD, char emisor[11], void* datos, int tamDatos, int tipoMensaje);
-void EnviarPaquete(int socketCliente, Paquete* paquete);
 void EnviarMensaje(int socketFD, char* msg, char emisor[11]);
 
 void RecibirHandshake(int socketFD, char emisor[11]);

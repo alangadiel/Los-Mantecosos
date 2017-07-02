@@ -92,7 +92,7 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam, int socketFD) {
 	//valido los parametros
-	if(numPag>0 && cuantasPagTiene(pid)>=numPag && offset+tam < MARCO_SIZE) {
+	if(numPag>=0 && cuantasPagTiene(pid)>=numPag && offset+tam < MARCO_SIZE) {
 		//si no esta en chache, esperar tiempo definido por arch de config
 		if (!estaEnCache(pid, numPag)) {
 			sleep(RETARDO_MEMORIA);
@@ -104,8 +104,10 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam
 		pthread_mutex_lock( &mutexContenidoMemoria );
 		EnviarDatos(socketFD, MEMORIA, datosSolicitados, tam);
 		pthread_mutex_unlock( &mutexContenidoMemoria );
-	} else
-		EnviarDatosTipo(socketFD, MEMORIA, NULL, 0, ESERROR);
+	} else {
+		uint32_t r = 0;
+		EnviarDatosTipo(socketFD, MEMORIA, &r, sizeof(uint32_t), ESERROR);
+	}
 }
 void AlmacenarBytes(Paquete paquete, int socketFD) {
 	//Los datos son parametros
