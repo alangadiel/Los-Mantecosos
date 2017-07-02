@@ -117,8 +117,8 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	for(i=0;i<metaProgram->instrucciones_size; i++)
 	{
 		RegIndiceCodigo *prueba =list_get(pcb->IndiceDeCodigo,i);
-		printf("Start: %d ",prueba->start);
-		printf("Longitud: %d\n",prueba->offset);
+		printf("Start: %u ",prueba->start);
+		printf("Longitud: %u\n",prueba->offset);
 		free(prueba);
 	}
 
@@ -415,8 +415,8 @@ void accion(void* socket)
 							for(i=0;i<list_size(pcb->IndiceDeCodigo); i++)
 								{
 									RegIndiceCodigo *prueba =(RegIndiceCodigo*)list_get(pcb->IndiceDeCodigo,i);
-									printf("Start: %d ",prueba->start);
-									printf("Longitud: %d\n",prueba->offset);
+									printf("Start: %u ",prueba->start);
+									printf("Longitud: %u\n",prueba->offset);
 									free(prueba);
 								}
 							pcb->PaginasDeCodigo = (uint32_t)ceil(tamaniCodigoEnPaginas);
