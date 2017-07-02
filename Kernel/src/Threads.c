@@ -512,7 +512,7 @@ void accion(void* socket)
 								semaf->valorSemaforo--;
 
 								BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
-								RecibirPCB(pcb, socketConectado, KERNEL);
+								RecibirPCB(pcb, paquete.Payload, KERNEL);
 
 								if (semaf->valorSemaforo < 0)
 								{ //se bloquea
@@ -695,7 +695,7 @@ void accion(void* socket)
 				if(strcmp(paquete.header.emisor, CPU) == 0)
 				{
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
-					RecibirPCB(pcb, socketConectado, KERNEL);
+					RecibirPCB(pcb, paquete.Payload, KERNEL);
 					pthread_mutex_lock(&mutexQueueEjecutando);
 					list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
 						return ((BloqueControlProceso*)item)->PID == pcb->PID;

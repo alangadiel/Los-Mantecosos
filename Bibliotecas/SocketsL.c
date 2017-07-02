@@ -489,9 +489,7 @@ uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, 
 void serializar(void** pcbSerializado, void* datos, uint32_t tam,uint32_t* tamTotal){
 	*tamTotal+=tam;
 	*pcbSerializado = realloc(*pcbSerializado, *tamTotal);
-	memcpy(*pcbSerializado, datos, tam);
-	*pcbSerializado+=tam;
-
+	memcpy(*pcbSerializado + (*tamTotal-tam), datos, tam);
 }
 
 void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe) {
@@ -503,6 +501,7 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	//uint32_t sizeIndEtiq = dictionary_size(pecebe->IndiceDeEtiquetas);
 
 	void* pcbSerializado = NULL;
+	//void* posActual = NULL;
 	IntsDelPCB ints;
 	ints.etiquetas_size = pecebe->etiquetas_size;
 	ints.ExitCode = pecebe->ExitCode;
@@ -566,7 +565,6 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	}
 
 	//Lo envio
-	pcbSerializado -= tamTotal;
 	EnviarDatosTipo(socketCliente,emisor,pcbSerializado,tamTotal,ESPCB);
 	free(pcbSerializado);
 }
@@ -576,14 +574,11 @@ void deserializar(void** pcbSerializado, void* datos, uint32_t tam,uint32_t* tam
 	*tamTotal+=tam;
 	memcpy(datos,*pcbSerializado, tam);
 	*pcbSerializado+=tam;
-
 }
 
-void RecibirPCB(BloqueControlProceso* pecebe, int socketFD, char receptor[11]){
-	Paquete paquete;
-	RecibirPaqueteCliente(socketFD, receptor, &paquete);
+void RecibirPCB(BloqueControlProceso* pecebe, void* payload, char receptor[11]){
 	pcb_Create(pecebe, 0);
-	void* pcbSerializado = paquete.Payload;
+	void* pcbSerializado = payload;
 
 	//cargar pcb
 	int i = 0;
@@ -662,6 +657,6 @@ void RecibirPCB(BloqueControlProceso* pecebe, int socketFD, char receptor[11]){
 		}));
 		free(etiquetas);
 	}
-	free(paquete.Payload);
+	free(payload);
 }
 

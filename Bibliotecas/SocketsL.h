@@ -176,7 +176,7 @@ bool IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog);
 
 void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe);
 
-void RecibirPCB(BloqueControlProceso* pecebe, int socketFD, char receptor[11]);
+void RecibirPCB(BloqueControlProceso* pecebe, void* payload, char receptor[11]);
 uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path);
 uint32_t FS_CrearPrograma(int socketFD, char emisor[11], char* path);
 uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path);

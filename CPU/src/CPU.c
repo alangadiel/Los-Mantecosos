@@ -173,7 +173,7 @@ int main(void) {
 			}
 			break;
 			case ESPCB:	{
-				RecibirPCB(&pcb, socketKernel, CPU);
+				RecibirPCB(&pcb, paquete.Payload, CPU);
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = true;
 				int i=0;
