@@ -170,7 +170,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos)
 		else
 		{
 			//TODO: Avisarle a la CPU que termino
-			FinalizarPrograma(PID, CREARARCHIVOSINPERMISOS, socketConMemoria);
+			FinalizarPrograma(PID, CREARARCHIVOSINPERMISOS);
 			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -10 (El programa intentó crear un archivo sin permisos)
 		}
 	}
@@ -179,7 +179,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos)
 }
 
 
-uint32_t leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
+void leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 {
 	void* result = NULL;
 	int i = 0;
@@ -204,25 +204,25 @@ uint32_t leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 		{
 			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->FD - 3); //El -3 es porque los FD empiezan desde 3
 
-			uint32_t archivoFueLeido = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo);
+			FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo);
 
 			archivoProc->offsetArchivo += sizeArchivo;
 
 			list_replace(ArchivosProcesos, FD - 3, archivoProc);
 
-			return archivoFueLeido;
+
 		}
 		else
 		{
 			free(archivoProc);
 
-			FinalizarPrograma(PID, LEERARCHIVOSINPERMISOS, socketConFS);
+			FinalizarPrograma(PID, LEERARCHIVOSINPERMISOS);
 			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -3
 		}
 	}
 	else
 	{
-		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE, socketConFS);
+		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
 		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
@@ -264,13 +264,13 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* 
 		{
 			free(archivoProc);
 
-			FinalizarPrograma(PID, ESCRIBIRARCHIVOSINPERMISO, socketConFS);
+			FinalizarPrograma(PID, ESCRIBIRARCHIVOSINPERMISO);
 			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -4
 		}
 	}
 	else
 	{
-		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE, socketConFS);
+		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
 		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
@@ -314,7 +314,7 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 	}
 	else
 	{
-		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE, socketConFS);
+		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
 		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
@@ -359,7 +359,7 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
 	}
 	else
 	{
-		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE, socketConFS);
+		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
 		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
@@ -394,7 +394,7 @@ uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 	}
 	else
 	{
-		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE, socketConFS);
+		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
 		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }

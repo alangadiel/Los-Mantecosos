@@ -134,17 +134,13 @@ int startProgram(char* programPath) {
 }
 
 void endProgram(uint32_t pid,uint32_t* socketgeneral) {
-	Paquete paquete;
-	strcpy(paquete.header.emisor, CONSOLA);
-	paquete.header.tipoMensaje = KILLPROGRAM;
-	paquete.header.tamPayload = sizeof(uint32_t);
-	paquete.Payload = &pid;
+
 	printf("pid a eliminar : %d\n",pid);
 	SocketProceso* sp = (SocketProceso*)list_find(SocketsProcesos,LAMBDA(bool _(void* item) { return ((SocketProceso*)item)->pid == pid; }));
 	if(sp!=NULL){
 		printf("socket: %d\n",sp->socket);
 		printf("pid: %d\n",sp->pid);
-		EnviarPaquete(sp->socket, &paquete);
+		EnviarDatosTipo(sp->socket, CONSOLA, &pid, sizeof(uint32_t), KILLPROGRAM);
 
 		Paquete nuevoPaquete;
 		while(RecibirPaqueteCliente(sp->socket, CONSOLA, &nuevoPaquete)<0);
