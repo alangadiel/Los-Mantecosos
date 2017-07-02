@@ -67,13 +67,13 @@ void obtenerLinea(char* instruccion, uint32_t* registro){
 	}
 	free(datos);
 }
-void obtenerLineaAEjecutar(char *instruccion,uint32_t*registro){
+void obtenerLineaAEjecutar(char *instruccion,RegIndiceCodigo*registro){
 	/*Suponiendo que una instruccion nunca nos va a ocupar mas de 2 paginas
 	TODO: puede pasar que una instruccion ocupe mas de 2 paginas?
 	Si es asi, habria que hacer otra funcion */
-	uint32_t paginaInicial = registro[0]/TamanioPaginaMemoria;
-	uint32_t offsetPaginaInicial = registro[0]%TamanioPaginaMemoria;
-	uint32_t cantTotalALeer = registro[1];
+	uint32_t paginaInicial = registro->start/TamanioPaginaMemoria;
+	uint32_t offsetPaginaInicial = registro->start%TamanioPaginaMemoria;
+	uint32_t cantTotalALeer = registro->offset;
 	uint32_t cantPaginasALeer;
 
 	if(offsetPaginaInicial + cantTotalALeer > TamanioPaginaMemoria)
@@ -178,8 +178,8 @@ int main(void) {
 				estadoActual.ejecutando = true;
 				int i=0;
 				while(i< pcb.cantidadDeRafagasAEjecutar && !primitivaBloqueante) {
-					uint32_t* registro = (uint32_t*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
-					char instruccion[registro[1]];
+					RegIndiceCodigo* registro = (RegIndiceCodigo*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
+					char instruccion[registro->offset];
 					obtenerLineaAEjecutar(instruccion, registro);
 					analizadorLinea(instruccion,&functions,&kernel_functions);
 					pcb.cantidadDeRafagasEjecutadasHistorica++;

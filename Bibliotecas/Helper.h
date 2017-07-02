@@ -45,7 +45,10 @@ typedef struct {
 	uint32_t DireccionDeRetorno;
 	PosicionDeMemoria PosVariableDeRetorno;
 }__attribute__((packed)) regIndiceStack;
-
+typedef struct {
+	t_puntero_instruccion start;
+	t_size offset;
+} __attribute__((packed)) RegIndiceCodigo;
 typedef struct {
 	t_list* IndiceDeCodigo;    //Cada elemento seria un array de 2 ints
 	t_dictionary* IndiceDeEtiquetas;
