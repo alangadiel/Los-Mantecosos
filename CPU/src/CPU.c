@@ -116,8 +116,8 @@ void obtenerLineaAEjecutar(char *instruccion,RegIndiceCodigo*registro){
 		{
 			cantALeerEnPagina = cantTotalALeer;
 		}
-
-		string_append(&datos,(char*)IM_LeerDatos(socketMemoria, CPU, pcb.PID, paginaInicial + i, offsetPaginaALeer, cantALeerEnPagina));
+		char* linea = IM_LeerDatos(socketMemoria, CPU, pcb.PID, paginaInicial + i, offsetPaginaALeer, cantALeerEnPagina);
+		string_append(&datos,linea);
 
 		cantTotalALeer -= cantALeerEnPagina;
 

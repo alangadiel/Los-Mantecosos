@@ -10,10 +10,19 @@ void dumpMemoryContent() {
 		sprintf(nombreDelArchivo, "Contenido de la memoria en %s", t);
 		free(t);
 		FILE* file = fopen(nombreDelArchivo, "w");
-		pthread_mutex_lock( &mutexContenidoMemoria );
-		printf("%*s\n", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
-		fprintf(file, "%*s", tamanioTotalBytesMemoria, (char*)ContenidoMemoria);
-		pthread_mutex_unlock( &mutexContenidoMemoria );
+		uint32_t i;
+		for(i=0; i<MARCOS; i++){
+			pthread_mutex_lock( &mutexTablaPagina );
+			uint32_t pid = TablaDePagina[i].PID;
+			pthread_mutex_unlock( &mutexTablaPagina );
+			if(pid!=0) {
+				char* contenido = ContenidoMemoria + (i * MARCO_SIZE);
+				pthread_mutex_lock( &mutexContenidoMemoria );
+				printf("%*s", MARCO_SIZE, contenido);
+				fprintf(file, "%*s", MARCO_SIZE, contenido);
+				pthread_mutex_unlock( &mutexContenidoMemoria );
+			}
+		}
 		fclose(file);
 	}
 }
@@ -31,11 +40,11 @@ void dumpMemoryContentOfPID(uint32_t pid) {
 		FILE* file = fopen(nombreDelArchivo, "w");
 		uint32_t i;
 		for(i=0; i<cantPag; i++){
-			pthread_mutex_lock( &mutexContenidoMemoria );
 			char* contenido = ContenidoMemoria + (FrameLookup(pid, i) * MARCO_SIZE);
-			pthread_mutex_unlock( &mutexContenidoMemoria );
+			pthread_mutex_lock( &mutexContenidoMemoria );
 			printf("%*s", MARCO_SIZE, contenido);
 			fprintf(file, "%*s", MARCO_SIZE, contenido);
+			pthread_mutex_unlock( &mutexContenidoMemoria );
 		}
 		fclose(file);
 	}

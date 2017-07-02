@@ -111,18 +111,7 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 		registroIndice->offset= metaProgram->instrucciones_serializado[i].offset;
 
 		list_add(pcb->IndiceDeCodigo,registroIndice);
-
 	}
-
-	for(i=0;i<metaProgram->instrucciones_size; i++)
-	{
-		RegIndiceCodigo *prueba =list_get(pcb->IndiceDeCodigo,i);
-		printf("Start: %u ",prueba->start);
-		printf("Longitud: %u\n",prueba->offset);
-		free(prueba);
-	}
-
-
 	//Inicializar indice de etiquetas
 	i = 0;
 
@@ -411,14 +400,7 @@ void accion(void* socket)
 						{
 							//Ejecuto el metadata program
 							CargarInformacionDelCodigoDelPrograma(pcb, &paquete);
-							int i;
-							for(i=0;i<list_size(pcb->IndiceDeCodigo); i++)
-								{
-									RegIndiceCodigo *prueba =(RegIndiceCodigo*)list_get(pcb->IndiceDeCodigo,i);
-									printf("Start: %u ",prueba->start);
-									printf("Longitud: %u\n",prueba->offset);
-									free(prueba);
-								}
+
 							pcb->PaginasDeCodigo = (uint32_t)ceil(tamaniCodigoEnPaginas);
 							//Solicito a la memoria que me guarde el codigo del programa(dependiendo cuantas paginas se requiere para el codigo
 							GuardarCodigoDelProgramaEnLaMemoria(pcb, &paquete);

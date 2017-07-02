@@ -329,14 +329,13 @@ void* IM_LeerDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 	((uint32_t*) datos)[4] = cantBytes;
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	free(datos);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, paquete) <= 0);
+	Paquete paquete;
+	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
 	void* r;
-	if(paquete->header.tipoMensaje == ESERROR)
+	if(paquete.header.tipoMensaje == ESERROR)
 		r = NULL;
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = paquete->Payload;
-	free(paquete);
+	else if(paquete.header.tipoMensaje == ESDATOS)
+		r = paquete.Payload;
 	return r;
 }
 bool IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
