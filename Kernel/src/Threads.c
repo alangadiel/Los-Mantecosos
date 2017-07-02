@@ -18,7 +18,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 	if (pcb != NULL)
 	{
 		*index = INDEX_NUEVOS;
-
+		pthread_mutex_unlock(&mutexQueueNuevos);
 		return pcb;
 	}
 	pthread_mutex_unlock(&mutexQueueNuevos);
@@ -35,6 +35,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 	}
 	else{
 		*index = INDEX_EJECUTANDO;
+		pthread_mutex_unlock(&mutexQueueEjecutando);
 		return NULL;
 	}
 	pthread_mutex_unlock(&mutexQueueEjecutando);
@@ -46,7 +47,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 	if (pcb != NULL)
 	{
 		*index = INDEX_BLOQUEADOS;
-
+		pthread_mutex_unlock(&mutexQueueBloqueados);
 		return pcb;
 	}
 	pthread_mutex_unlock(&mutexQueueBloqueados);
@@ -57,7 +58,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 	if (pcb != NULL)
 	{
 		*index = INDEX_LISTOS;
-
+		pthread_mutex_unlock(&mutexQueueListos);
 		return pcb;
 	}
 	pthread_mutex_unlock(&mutexQueueListos);
@@ -139,7 +140,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 	bool hayEstructurasNoLiberadas = false;
 	int index;
 	pthread_mutex_lock(&mutexFinalizarPrograma);
-
+	//TODO: revisar toda la funcion, no hay q usar recursividad para la espara activa, sino un while. y la zona critica del mutex deberia ser mas chica;
 	finalizarProgramaCapaFS(PID);
 
 	//Aca hace la liberacion de memoria uri, fijate si podes hacer una funcion finalizarProgramaCapaMemoria, sino hace aca normal
@@ -200,6 +201,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 	}
 	else{
 		if(index==INDEX_EJECUTANDO)
+			pthread_mutex_unlock(&mutexFinalizarPrograma);
 			FinalizarPrograma(PID,tipoFinalizacion);
 	}
 	pthread_mutex_unlock(&mutexFinalizarPrograma);
@@ -256,8 +258,6 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int s
 	printf("Cant paginas asignadas para el codigo: %d \n",pcb->PaginasDeCodigo);
 	pthread_mutex_lock(&mutexQueueNuevos);
 	//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
-	int i=0;
-
 	list_remove_by_condition(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
 
 	pthread_mutex_unlock(&mutexQueueNuevos);
