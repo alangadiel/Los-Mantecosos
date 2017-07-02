@@ -502,7 +502,7 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	t_size sizeIndCod = list_size(pecebe->IndiceDeCodigo);
 	//uint32_t sizeIndEtiq = dictionary_size(pecebe->IndiceDeEtiquetas);
 
-	void* pcbSerializado;
+	void* pcbSerializado = NULL;
 	IntsDelPCB ints;
 	ints.etiquetas_size = pecebe->etiquetas_size;
 	ints.ExitCode = pecebe->ExitCode;
