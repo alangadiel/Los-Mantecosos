@@ -524,7 +524,7 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	//Serialización IndiceDeCodigo
 	serializar(&pcbSerializado,&sizeIndCod, sizeof(uint32_t), &tamTotal);
 	for (i = 0; i < sizeIndCod; i++){
-		RegIndiceCodigo* elem = list_get(pecebe->IndiceDeCodigo, i);
+		RegIndiceCodigo* elem = (RegIndiceCodigo*)list_get(pecebe->IndiceDeCodigo, i);
 		serializar(&pcbSerializado,elem, sizeof(RegIndiceCodigo), &tamTotal);
 	}
 	//Serialización IndiceDelStack
