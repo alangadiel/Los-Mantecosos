@@ -117,8 +117,8 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	for(i=0;i<metaProgram->instrucciones_size; i++)
 	{
 		RegIndiceCodigo *prueba =list_get(pcb->IndiceDeCodigo,i);
-		printf("Start: %d",prueba->start);
-		printf("Longitud: %d",prueba->offset);
+		printf("Start: %d ",prueba->start);
+		printf("Longitud: %d\n",prueba->offset);
 		free(prueba);
 	}
 
@@ -271,7 +271,10 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int s
 	printf("Cant paginas asignadas para el codigo: %d \n",pcb->PaginasDeCodigo);
 	pthread_mutex_lock(&mutexQueueNuevos);
 	//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
+	int i=0;
+
 	list_remove_by_condition(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));
+
 	pthread_mutex_unlock(&mutexQueueNuevos);
 	pthread_mutex_lock(&mutexQueueListos);
 	queue_push(Listos, pcb);
@@ -408,6 +411,14 @@ void accion(void* socket)
 						{
 							//Ejecuto el metadata program
 							CargarInformacionDelCodigoDelPrograma(pcb, &paquete);
+							int i;
+							for(i=0;i<list_size(pcb->IndiceDeCodigo); i++)
+								{
+									RegIndiceCodigo *prueba =(RegIndiceCodigo*)list_get(pcb->IndiceDeCodigo,i);
+									printf("Start: %d ",prueba->start);
+									printf("Longitud: %d\n",prueba->offset);
+									free(prueba);
+								}
 							pcb->PaginasDeCodigo = (uint32_t)ceil(tamaniCodigoEnPaginas);
 							//Solicito a la memoria que me guarde el codigo del programa(dependiendo cuantas paginas se requiere para el codigo
 							GuardarCodigoDelProgramaEnLaMemoria(pcb, &paquete);
