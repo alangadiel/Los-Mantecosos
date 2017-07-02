@@ -103,24 +103,23 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 	t_metadata_program* metaProgram = metadata_desde_literal((char*)paquete->Payload);
 	int i = 0;
 
-	while(i<metaProgram->instrucciones_size)
+	for(i=0;i<metaProgram->instrucciones_size; i++)
 	{
-		RegIndiceCodigo registroIndice;
+		RegIndiceCodigo* registroIndice = malloc(sizeof(RegIndiceCodigo));
 
-		registroIndice.start= metaProgram->instrucciones_serializado[i].start;
-		registroIndice.offset= metaProgram->instrucciones_serializado[i].offset;
+		registroIndice->start= metaProgram->instrucciones_serializado[i].start;
+		registroIndice->offset= metaProgram->instrucciones_serializado[i].offset;
 
-		list_add(pcb->IndiceDeCodigo,&registroIndice);
-		i++;
+		list_add(pcb->IndiceDeCodigo,registroIndice);
+
 	}
-	i=0;
-	while(i<metaProgram->instrucciones_size)
+
+	for(i=0;i<metaProgram->instrucciones_size; i++)
 	{
-		RegIndiceCodigo *prueba =(RegIndiceCodigo *)list_get(pcb->IndiceDeCodigo,i);
+		RegIndiceCodigo *prueba =list_get(pcb->IndiceDeCodigo,i);
 		printf("Start: %d",prueba->start);
 		printf("Longitud: %d",prueba->offset);
 		free(prueba);
-		i++;
 	}
 
 
@@ -213,12 +212,9 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 	else{
 		if(index==INDEX_EJECUTANDO)
 			FinalizarPrograma(PID,tipoFinalizacion);
-		else if(index==-1){
-			pthread_mutex_unlock(&mutexFinalizarPrograma);
-			return pcbRemovido;
-		}
 	}
 	pthread_mutex_unlock(&mutexFinalizarPrograma);
+	return pcbRemovido;
 }
 
 

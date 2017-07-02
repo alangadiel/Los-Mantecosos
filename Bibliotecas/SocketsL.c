@@ -524,8 +524,8 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	//Serialización IndiceDeCodigo
 	serializar(&pcbSerializado,&sizeIndCod, sizeof(uint32_t), &tamTotal);
 	for (i = 0; i < sizeIndCod; i++){
-		uint32_t* elem = list_get(pecebe->IndiceDeCodigo, i);
-		serializar(&pcbSerializado,elem, sizeof(uint32_t)*2, &tamTotal);
+		RegIndiceCodigo* elem = list_get(pecebe->IndiceDeCodigo, i);
+		serializar(&pcbSerializado,elem, sizeof(RegIndiceCodigo), &tamTotal);
 	}
 	//Serialización IndiceDelStack
 	serializar(&pcbSerializado,&sizeIndStack, sizeof(uint32_t), &tamTotal);
@@ -610,8 +610,8 @@ void RecibirPCB(BloqueControlProceso* pecebe, void* payload, char receptor[11]){
 	//deserialización IndiceDeCodigo
 	deserializar(&pcbSerializado,&sizeIndCod, sizeof(uint32_t), &tamTotal);
 	for (i = 0; i < sizeIndCod; i++){
-		uint32_t* elem = malloc(sizeof(uint32_t)*2);
-		deserializar(&pcbSerializado,elem, sizeof(uint32_t)*2, &tamTotal);
+		RegIndiceCodigo* elem = malloc(sizeof(RegIndiceCodigo));
+		deserializar(&pcbSerializado,elem, sizeof(RegIndiceCodigo), &tamTotal);
 		list_add(pecebe->IndiceDeCodigo, elem);
 	}
 	//deserialización IndiceDelStack
