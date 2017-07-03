@@ -10,7 +10,7 @@ bool primitivaBloqueante = false;
 bool ejecutando;
 bool DesconectarCPU = false;
 typedef struct {
-	uint32_t ejecutando;
+	bool ejecutando;
 	BloqueControlProceso pcb;
 } EstadoActualDeLaCpu;
 
@@ -161,9 +161,9 @@ int main(void) {
 		Paquete paquete;
 		while (RecibirPaqueteCliente(socketKernel, CPU, &paquete)<=0);
 		switch(paquete.header.tipoMensaje) {
-			case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
+			/*case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
 				DesconectarCPU = true;
-			break;
+			break;*/
 			case ESTAEJECUTANDO: {
 				int tamDatos = sizeof(uint32_t) +sizeof(bool);
 				void* datos = malloc(tamDatos);
@@ -182,6 +182,7 @@ int main(void) {
 					char instruccion[registro->offset];
 					obtenerLineaAEjecutar(instruccion, registro);
 					analizadorLinea(instruccion,&functions,&kernel_functions);
+					pcb.ProgramCounter++;
 					pcb.cantidadDeRafagasEjecutadasHistorica++;
 					pcb.cantidadDeRafagasEjecutadas++;
 					i++;

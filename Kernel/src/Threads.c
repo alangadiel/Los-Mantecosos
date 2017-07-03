@@ -12,6 +12,8 @@ int ultimoPID = 0;
 
 BloqueControlProceso* removerPidDeListas(int pid, int* index)
 {
+
+	//Nuevos
 	pthread_mutex_lock(&mutexQueueNuevos);
 	BloqueControlProceso* pcb = (BloqueControlProceso*)list_remove_by_condition(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
 
@@ -23,24 +25,18 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 	}
 	pthread_mutex_unlock(&mutexQueueNuevos);
 
+	//Ejecutando
 	pthread_mutex_lock(&mutexQueueEjecutando);
-	if (ProcesoNoEstaEjecutandoseActualmente(pid)){
-		pcb = (BloqueControlProceso*)list_remove_by_condition(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
-
-		if (pcb != NULL)
-		{
-			*index = INDEX_EJECUTANDO;
-			return pcb;
-		}
-	}
-	else{
+	while(ProcesoEstaEjecutandoseActualmente(pid)==true);
+	pcb = (BloqueControlProceso*)list_remove_by_condition(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+	if (pcb != NULL)
+	{
 		*index = INDEX_EJECUTANDO;
-		pthread_mutex_unlock(&mutexQueueEjecutando);
-		return NULL;
+		return pcb;
 	}
 	pthread_mutex_unlock(&mutexQueueEjecutando);
 
-
+	//Bloqueados
 	pthread_mutex_lock(&mutexQueueBloqueados);
 	pcb = (BloqueControlProceso*)list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
 
@@ -51,7 +47,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 		return pcb;
 	}
 	pthread_mutex_unlock(&mutexQueueBloqueados);
-
+	//Listos
 	pthread_mutex_lock(&mutexQueueListos);
 	pcb = (BloqueControlProceso*)list_remove_by_condition(Listos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
 
@@ -198,18 +194,19 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 				pcbRemovido->ExitCode = EXCEPCIONDEMEMORIA;
 			}
 		}
+		free(pagesProcess);
 	}
-	else{
+	/*else{
 		if(index==INDEX_EJECUTANDO)
 			pthread_mutex_unlock(&mutexFinalizarPrograma);
 			FinalizarPrograma(PID,tipoFinalizacion);
-	}
+	}*/
 	pthread_mutex_unlock(&mutexFinalizarPrograma);
 	return pcbRemovido;
 }
 
 
-bool ProcesoNoEstaEjecutandoseActualmente(int pidAFinalizar)
+bool ProcesoEstaEjecutandoseActualmente(int pidAFinalizar)
 {
 	int i;
 	pthread_mutex_lock(&mutexCPUsConectadas);
@@ -227,7 +224,7 @@ bool ProcesoNoEstaEjecutandoseActualmente(int pidAFinalizar)
 		bool estaEjecutando = ((bool*)paquete2->Payload)[0];
 		uint32_t PID = *(uint32_t*)( paquete2->Payload+sizeof(bool));
 
-		if (PID == pidAFinalizar && estaEjecutando == false)
+		if (PID == pidAFinalizar && estaEjecutando == true)
 		{
 			return true;
 		}
@@ -526,7 +523,7 @@ void accion(void* socket)
 								else
 								{
 									//si hay un wait, se mete otra vez en la cola de listos
-									pcb->ProgramCounter++;
+									//pcb->ProgramCounter++;
 									pthread_mutex_lock(&mutexQueueListos);
 									list_add_in_index(Listos->elements, 0, pcb);
 									pthread_mutex_unlock(&mutexQueueListos);
@@ -558,7 +555,7 @@ void accion(void* socket)
 									pthread_mutex_unlock(&mutexSemaforos);
 									pthread_mutex_lock(&mutexQueueBloqueados);
 									BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == pid; }));
-									pcbDesbloqueado->ProgramCounter++;
+									//pcbDesbloqueado->ProgramCounter++;
 									pthread_mutex_unlock(&mutexQueueBloqueados);
 									pthread_mutex_lock(&mutexQueueListos);
 									queue_push(Listos, pcbDesbloqueado);

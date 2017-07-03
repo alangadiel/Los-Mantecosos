@@ -125,7 +125,7 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 			printf("Id: %c\n",var->ID);
 	}*/
 
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 	return ultimoOffSetVariablesStack;
 }
 
@@ -135,15 +135,15 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	int j=0;
 	while(j< list_size(pcb.IndiceDelStack) && result==NULL){
 		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,j);
-		int k;
+		/*int k;
 		for (k = 0; k < list_size(is->Variables); k++) {
 			Variable* var = (Variable*)list_get(is->Variables,k);
 			printf("Id: %c\n",var->ID);
-		}
+		}*/
 		result = (Variable*)list_find(is->Variables,LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
 		j++;
 	}
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 	if(result==NULL)
 		return -1;
 	else
@@ -158,7 +158,7 @@ t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 	int offset = puntero%TamanioPaginaMemoria;
 	void* dato = IM_LeerDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int));
 	t_valor_variable val = *(t_valor_variable*)dato;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 
 	return val;
 }
@@ -168,7 +168,7 @@ void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
 	int nroPag = puntero/TamanioPaginaMemoria;
 	int offset = puntero%TamanioPaginaMemoria;
 	IM_GuardarDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int),&val);
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 
 
 }
@@ -177,7 +177,7 @@ t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
 	t_valor_variable result = PedirValorVariableCompartida(variable);
 	t_valor_variable val = *(t_valor_variable*)result;
 	pcb.cantidadSyscallEjecutadas++;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 	return val;
 }
 
@@ -185,7 +185,7 @@ t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, 
 	t_valor_variable result = AsignarValorVariableCompartida(variable,valor);
 	t_valor_variable val = *(t_valor_variable*)result;
 	pcb.cantidadSyscallEjecutadas++;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 	return val;
 }
 
@@ -268,7 +268,7 @@ void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 		EnviarDatos(socketKernel,CPU,datos,tamDatos);
 		free(datos);
 		pcb.cantidadSyscallEjecutadas++;
-		pcb.ProgramCounter++;
+		//pcb.ProgramCounter++;
 }
 
 t_puntero primitiva_reservar(t_valor_variable espacio){
@@ -276,7 +276,7 @@ t_puntero primitiva_reservar(t_valor_variable espacio){
 	pcb.cantBytesAlocados += espacio + sizeof(bool) + sizeof(uint32_t); //Seria el tamanio a reservar + el tamanio del HeapMetadata que tiene un bool y un uint32_t
 	pcb.cantidadAccionesAlocar++;
 	pcb.cantidadSyscallEjecutadas++;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 	return pointer;
 }
 void primitiva_liberar(t_puntero puntero){
@@ -291,12 +291,12 @@ void primitiva_liberar(t_puntero puntero){
 	//pcb.cantBytesLiberados+=?
 	pcb.cantidadAccionesLiberar++;
 	pcb.cantidadSyscallEjecutadas++;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 }
 t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
 	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags);
 	pcb.cantidadSyscallEjecutadas++;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 	return fd;
 }
 void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
@@ -308,7 +308,7 @@ void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 
 }
 void primitiva_cerrar(t_descriptor_archivo descriptor_archivo){
@@ -320,7 +320,7 @@ void primitiva_cerrar(t_descriptor_archivo descriptor_archivo){
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 
 }
 void primitiva_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion){
@@ -334,7 +334,7 @@ void primitiva_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_vari
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 
 }
 void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
@@ -348,7 +348,7 @@ void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informaci
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 
 }
 void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio){
@@ -361,5 +361,5 @@ void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informaci
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
-	pcb.ProgramCounter++;
+	//pcb.ProgramCounter++;
 }

@@ -66,6 +66,7 @@ void CrearListas() {
 	ArchivosGlobales = list_create();
 	ArchivosProcesos = list_create();
 	VariablesCompartidas = list_create();
+	PaginasPorProceso = list_create();
 	Semaforos = list_create();
 	PIDsPorSocketConsola = list_create();
 	CPUsConectadas = list_create();
