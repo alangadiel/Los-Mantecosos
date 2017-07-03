@@ -91,6 +91,7 @@ void LiberarVariablesYListas() {
 	list_destroy_and_destroy_elements(Semaforos,free);
 	list_destroy_and_destroy_elements(PIDsPorSocketConsola, free);
 	list_destroy_and_destroy_elements(CPUsConectadas, free);
+	list_destroy_and_destroy_elements(PaginasPorProceso, free);
 
 	free(IP_PROG);
 	free(IP_MEMORIA);

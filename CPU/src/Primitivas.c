@@ -14,7 +14,6 @@ void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos){
 }
 
 t_valor_variable PedirValorVariableCompartida(t_nombre_variable* nombre){
-	//TODO: Programar en kernel para que me devuelva el valor de una variable compartida
 	int tamDatos = sizeof(uint32_t)*2+ string_length(nombre)+1;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
@@ -25,7 +24,6 @@ t_valor_variable PedirValorVariableCompartida(t_nombre_variable* nombre){
 	return result;
 }
 t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valor_variable valor ){
-	//TODO: Programar en kernel para que me asigne el valor de una variable compartida y me devuelta el valor
 	int tamDatos = sizeof(uint32_t)*3+ string_length(nombre)+1;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
@@ -84,9 +82,9 @@ int32_t obtenerUltimoOffset(regIndiceStack* regIS){
 	Variable* ultimoArg = (Variable*)list_get(regIS->Argumentos,list_size(regIS->Argumentos)-1);
 	Variable* ultimoVar = (Variable*)list_get(regIS->Variables,list_size(regIS->Variables)-1);
 	if(ultimoVar!=NULL)
-		r = ultimoVar->Posicion.NumeroDePagina*ultimoVar->Posicion.Tamanio + ultimoVar->Posicion.Offset;
+		r = ultimoVar->Posicion->NumeroDePagina*ultimoVar->Posicion->Tamanio + ultimoVar->Posicion->Offset;
 	if(ultimoArg!=NULL){
-		uint32_t ultimaDirVirtualArg = ultimoArg->Posicion.NumeroDePagina*ultimoArg->Posicion.Tamanio + ultimoArg->Posicion.Offset;
+		uint32_t ultimaDirVirtualArg = ultimoArg->Posicion->NumeroDePagina*ultimoArg->Posicion->Tamanio + ultimoArg->Posicion->Offset;
 		if(ultimaDirVirtualArg>r)
 			r = ultimaDirVirtualArg;
 	}
@@ -108,19 +106,25 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 	}
 	ultimoOffSetVariablesStack = obtenerUltimoOffset(is);
 	ultimoOffSetVariablesStack += sizeof(int);
-	Variable varNueva;
-	PosicionDeMemoria pos;
-	pos.NumeroDePagina=ultimoOffSetVariablesStack/TamanioPaginaMemoria;
-	pos.Tamanio = sizeof(int);
+	Variable* varNueva = malloc(sizeof(Variable));
+	PosicionDeMemoria* pos = malloc(sizeof(PosicionDeMemoria));
+	pos->NumeroDePagina=ultimoOffSetVariablesStack/TamanioPaginaMemoria;
+	pos->Tamanio = sizeof(int);
 	//Como se que cada variable son enteros bytes, el offset siempre se incrementa en 4
-	pos.Offset = ultimoOffSetVariablesStack % TamanioPaginaMemoria;
-	varNueva.Posicion=pos;
-	varNueva.ID=identificador_variable;
+	pos->Offset = ultimoOffSetVariablesStack % TamanioPaginaMemoria;
+	varNueva->Posicion=pos;
+	varNueva->ID=identificador_variable;
 	if(isdigit(identificador_variable)){//si es un numero
-		list_add(is->Argumentos,&varNueva);
+		list_add(is->Argumentos,varNueva);
 	} else {
-		list_add(is->Variables,&varNueva);
+		list_add(is->Variables,varNueva);
 	}
+	/*int k;
+	for (k = 0; k < list_size(is->Variables); k++) {
+			Variable* var = (Variable*)list_get(is->Variables,k);
+			printf("Id: %c\n",var->ID);
+	}*/
+
 	pcb.ProgramCounter++;
 	return ultimoOffSetVariablesStack;
 }
@@ -131,8 +135,12 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	int j=0;
 	while(j< list_size(pcb.IndiceDelStack) && result==NULL){
 		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,j);
-		result = (Variable*)list_find(is->Variables,
-						LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
+		int k;
+		for (k = 0; k < list_size(is->Variables); k++) {
+			Variable* var = (Variable*)list_get(is->Variables,k);
+			printf("Id: %c\n",var->ID);
+		}
+		result = (Variable*)list_find(is->Variables,LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
 		j++;
 	}
 	pcb.ProgramCounter++;
@@ -141,7 +149,7 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	else
 	{
 		Variable* var = (Variable*)result;
-		return var->Posicion.NumeroDePagina*TamanioPaginaMemoria+ var->Posicion.Offset;
+		return var->Posicion->NumeroDePagina*TamanioPaginaMemoria+ var->Posicion->Offset;
 	}
 
 }
@@ -207,7 +215,7 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,i);
 		result = list_find(is->Variables,
 				LAMBDA(bool _(void*item){
-			return TamanioPaginaMemoria* ((Variable*)item)->Posicion.NumeroDePagina +((Variable*)item)->Posicion.Offset==donde_retornar;
+			return TamanioPaginaMemoria* ((Variable*)item)->Posicion->NumeroDePagina +((Variable*)item)->Posicion->Offset==donde_retornar;
 		}));
 		i++;
 	}
@@ -232,7 +240,7 @@ void primitiva_retornar(t_valor_variable retorno){
 	regIndiceStack* is = list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
 	pcb.ProgramCounter = is->DireccionDeRetorno;
 	//Guardo el valor de retorno en la variable correspondiente
-	primitiva_asignar(is->PosVariableDeRetorno.Offset,retorno);
+	primitiva_asignar(is->PosVariableDeRetorno->Offset,retorno);
 	list_remove(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
 }
 

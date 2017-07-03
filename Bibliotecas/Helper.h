@@ -35,15 +35,15 @@ typedef struct {
 }__attribute__((packed)) PosicionDeMemoria;
 
 typedef struct {
-	char ID; //el nombre de la variable
-	PosicionDeMemoria Posicion;
+	t_nombre_variable ID; //el nombre de la variable
+	PosicionDeMemoria* Posicion;
 }__attribute__((packed)) Variable; //de AnSISOP
 
 typedef struct {
 	t_list* Argumentos; //lista de Variable
 	t_list* Variables; //Desplazamiento, lista de Variable
 	uint32_t DireccionDeRetorno;
-	PosicionDeMemoria PosVariableDeRetorno;
+	PosicionDeMemoria* PosVariableDeRetorno;
 }__attribute__((packed)) regIndiceStack;
 typedef struct {
 	t_puntero_instruccion start;

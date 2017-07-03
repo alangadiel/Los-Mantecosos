@@ -69,7 +69,6 @@ void pcb_Create(BloqueControlProceso* pecebe, uint32_t pid_actual){
 }
 
 void pcb_Destroy(BloqueControlProceso* pecebe){
-	//Creo el pcb y lo guardo en la lista de nuevos
 	free(pecebe->etiquetas);
 	list_destroy_and_destroy_elements(pecebe->IndiceDeCodigo,free);
 	list_destroy_and_destroy_elements(pecebe->IndiceDelStack,free);

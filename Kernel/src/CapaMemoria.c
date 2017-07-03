@@ -115,17 +115,17 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 				if(maximoNroPag< elem->nroPagina)	maximoNroPag = elem->nroPagina;
 			}
 			pthread_mutex_unlock(&mutexPaginasPorProceso);
-			PaginaDelProceso nuevaPPP;
-			nuevaPPP.nroPagina = maximoNroPag+1;
-			nuevaPPP.espacioDisponible = TamanioPagina;
-			nuevaPPP.pid = PID;
+			PaginaDelProceso nuevaPPP = malloc(sizeof(PaginaDelProceso));
+			nuevaPPP->nroPagina = maximoNroPag+1;
+			nuevaPPP->espacioDisponible = TamanioPagina;
+			nuevaPPP->pid = PID;
 			pthread_mutex_lock(&mutexPaginasPorProceso);
-			list_add(PaginasPorProceso,&nuevaPPP);
+			list_add(PaginasPorProceso,nuevaPPP);
 			pthread_mutex_unlock(&mutexPaginasPorProceso);
 			//Le pido al Proceso Memoria que me guarde esta pagina para el proceso en cuestion
 			bool resultado = IM_AsignarPaginas(socket,KERNEL,PID,1);
 			if(resultado==true){
-				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP.nroPagina,cantTotal,socket);
+				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP->nroPagina,cantTotal,socket);
 			}
 			else{
 				FinalizarPrograma(PID,NOSEPUEDENASIGNARMASPAGINAS);

@@ -224,10 +224,10 @@ bool ProcesoNoEstaEjecutandoseActualmente(int pidAFinalizar)
 
 		RecibirPaqueteCliente(cpu->socketCPU, KERNEL, paquete2);
 
-		uint32_t terminoDeEjecutar = ((uint32_t*) paquete2->Payload)[0];
-		uint32_t PID = ((uint32_t*) paquete2->Payload)[1];
+		bool estaEjecutando = ((bool*)paquete2->Payload)[0];
+		uint32_t PID = *(uint32_t*)( paquete2->Payload+sizeof(bool));
 
-		if (PID == pidAFinalizar && terminoDeEjecutar == 1)
+		if (PID == pidAFinalizar && estaEjecutando == false)
 		{
 			return true;
 		}
@@ -313,13 +313,12 @@ void dispatcher()
 		t_list* listCPUsLibres = list_filter(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
 		pthread_mutex_unlock(&mutexCPUsConectadas);
 		int i;
-
-		for (i = 0; i < list_size(listCPUsLibres); i++)
-		{
-			BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
-			if(PCBAMandar!=NULL){
-				DatosCPU* cpuAUsar = (DatosCPU*)list_get(listCPUsLibres, 0);
-
+		if(queue_size(Listos)>0){
+			for (i = 0; i < list_size(listCPUsLibres); i++)
+				{
+					BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
+					if(PCBAMandar!=NULL){
+						DatosCPU* cpuAUsar = (DatosCPU*)list_get(listCPUsLibres, 0);
 						uint32_t cantidadDeRafagas;
 						uint32_t cantidadDeRafagasRestantes = PCBAMandar->IndiceDeCodigo->elements_count - PCBAMandar->cantidadDeRafagasEjecutadasHistorica;
 
@@ -348,9 +347,11 @@ void dispatcher()
 						queue_push(Ejecutando, PCBAMandar);
 						pthread_mutex_unlock(&mutexQueueEjecutando);
 						//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
-			}
+					}
 
+				}
 		}
+
 	}
 }
 

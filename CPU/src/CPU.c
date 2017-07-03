@@ -165,10 +165,10 @@ int main(void) {
 				DesconectarCPU = true;
 			break;
 			case ESTAEJECUTANDO: {
-				int tamDatos = sizeof(uint32_t) * 2;
+				int tamDatos = sizeof(uint32_t) +sizeof(bool);
 				void* datos = malloc(tamDatos);
-				((uint32_t*) datos)[0] = terminoElPrograma();
-				((uint32_t*) datos)[1] = estadoActual.pcb.PID;
+				memcpy(datos,&estadoActual.ejecutando,sizeof(bool));
+				memcpy(datos+sizeof(bool),&estadoActual.pcb.PID,sizeof(uint32_t));
 				EnviarDatos(socketKernel, CPU, datos, tamDatos);
 			}
 			break;
