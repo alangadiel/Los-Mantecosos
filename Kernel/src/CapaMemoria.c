@@ -115,7 +115,7 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 				if(maximoNroPag< elem->nroPagina)	maximoNroPag = elem->nroPagina;
 			}
 			pthread_mutex_unlock(&mutexPaginasPorProceso);
-			PaginaDelProceso nuevaPPP = malloc(sizeof(PaginaDelProceso));
+			PaginaDelProceso* nuevaPPP = malloc(sizeof(PaginaDelProceso));
 			nuevaPPP->nroPagina = maximoNroPag+1;
 			nuevaPPP->espacioDisponible = TamanioPagina;
 			nuevaPPP->pid = PID;

@@ -1,7 +1,10 @@
 #!/usr/bin/ansisop
+
 begin
 	variables a, b
-	a = 3
-	b = 5
-	a = b + 12
+	abrir b LC /unArchivo
+	alocar a 200
+	leer b a b 10
+	prints s b
+	#Sin cerrarlo
 end
