@@ -692,31 +692,34 @@ void accion(void* socket)
 				if(strcmp(paquete.header.emisor, CPU) == 0)
 				{
 					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
-					BloqueControlProceso* pcb = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
-					RecibirPCB(pcb, paquete.Payload, KERNEL);
+					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
+					if(pcb!=NULL){
+						RecibirPCB(pcb, paquete.Payload, KERNEL);
 
-					DatosCPU * datoscpu = list_find(CPUsConectadas,LAMBDA(bool _(void* item) {
-						return ((DatosCPU*)item)->socketCPU == socketConectado;
-					}));
-					datoscpu->isFree = true;
-
-					if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas)
-					{
-						FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
-					}
-					else
-					{
-						pthread_mutex_lock(&mutexQueueEjecutando);
-						list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
-							return ((BloqueControlProceso*)item)->PID == pcb->PID;
+						DatosCPU * datoscpu = list_find(CPUsConectadas,LAMBDA(bool _(void* item) {
+							return ((DatosCPU*)item)->socketCPU == socketConectado;
 						}));
-						pthread_mutex_unlock(&mutexQueueEjecutando);
+						datoscpu->isFree = true;
 
-						pthread_mutex_lock(&mutexQueueListos);
-						queue_push(Listos, pcb);
-						pthread_mutex_unlock(&mutexQueueListos);
+						if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas)
+						{
+							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
+						}
+						else
+						{
+							pthread_mutex_lock(&mutexQueueEjecutando);
+							list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
+								return ((BloqueControlProceso*)item)->PID == pcb->PID;
+							}));
+							pthread_mutex_unlock(&mutexQueueEjecutando);
+
+							pthread_mutex_lock(&mutexQueueListos);
+							queue_push(Listos, pcb);
+							pthread_mutex_unlock(&mutexQueueListos);
+						}
+					} else {
+						printf("Error al finalizar ejecucion");
 					}
-
 				}
 			break;
 		}

@@ -13,8 +13,6 @@ t_queue* Finalizados;
 t_queue* Bloqueados;
 t_queue* Ejecutando;
 t_queue* Listos;
-t_list* Estados;
-t_list* EstadosConProgramasFinalizables;
 bool planificacion_detenida;
 
 bool end;
@@ -60,9 +58,7 @@ void CrearListas() {
 	Bloqueados= queue_create();
 	Ejecutando= queue_create();
 	Listos= queue_create();
-	//Creo una lista de listas
-	Estados = list_create();
-	EstadosConProgramasFinalizables = list_create();
+
 	ArchivosGlobales = list_create();
 	ArchivosProcesos = list_create();
 	VariablesCompartidas = list_create();
@@ -70,13 +66,6 @@ void CrearListas() {
 	Semaforos = list_create();
 	PIDsPorSocketConsola = list_create();
 	CPUsConectadas = list_create();
-
-	list_add(EstadosConProgramasFinalizables,Nuevos);
-	list_add(EstadosConProgramasFinalizables,Listos);
-	list_add(EstadosConProgramasFinalizables,Ejecutando);
-	list_add(EstadosConProgramasFinalizables,Bloqueados);
-	list_add_all(Estados,EstadosConProgramasFinalizables);
-	list_add(Estados,Finalizados);
 }
 void LiberarVariablesYListas() {
 	queue_destroy_and_destroy_elements(Nuevos,free);
@@ -84,8 +73,6 @@ void LiberarVariablesYListas() {
 	queue_destroy_and_destroy_elements(Ejecutando,free);
 	queue_destroy_and_destroy_elements(Bloqueados,free);
 	queue_destroy_and_destroy_elements(Finalizados,free);
-	list_destroy_and_destroy_elements(Estados,free);
-	list_destroy_and_destroy_elements(EstadosConProgramasFinalizables,free);
 	list_destroy_and_destroy_elements(ArchivosGlobales,free);
 	list_destroy_and_destroy_elements(ArchivosProcesos,free);
 	list_destroy_and_destroy_elements(VariablesCompartidas,free);

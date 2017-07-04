@@ -39,6 +39,7 @@ void MostrarTodosLosProcesos()
 void ConsultarEstado(int pidAConsultar)
 {
 	BloqueControlProceso* result=NULL;
+	bool termino = false;
 	//Busco el proceso en todas las listas
 	pthread_mutex_lock(&mutexQueueNuevos);
 	result = list_find(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pidAConsultar; }));
@@ -59,6 +60,7 @@ void ConsultarEstado(int pidAConsultar)
 					pthread_mutex_lock(&mutexQueueFinalizados);
 					result = list_find(Finalizados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pidAConsultar; }));
 					pthread_mutex_unlock(&mutexQueueFinalizados);
+					termino = true;
 				}
 			}
 		}
@@ -67,11 +69,13 @@ void ConsultarEstado(int pidAConsultar)
 	if(result==NULL)
 		printf("No se encontro el proceso a consultar. Intente nuevamente");
 	else{
-		printf("Proceso N°: %d \n",result->PID);
-		printf("Paginas de codigo: %d \n",result->PaginasDeCodigo);
-		printf("Contador de programa: %d \n",result->ProgramCounter);
-		printf("Rafagas ejecutadas: %d \n",result->cantidadDeRafagasEjecutadas);
-		printf("Syscall ejecutadas: %d \n",result->cantidadSyscallEjecutadas);
+
+		printf("Proceso N°: %u \n",result->PID);
+		printf("Paginas de codigo: %u \n",result->PaginasDeCodigo);
+		printf("Contador de programa: %u \n",result->ProgramCounter);
+		printf("Rafagas ejecutadas: %u \n",result->cantidadDeRafagasEjecutadas);
+		printf("Syscall ejecutadas: %u \n",result->cantidadSyscallEjecutadas);
+		if(termino) obtenerError(result->ExitCode);
 	}
 }
 
