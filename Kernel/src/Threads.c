@@ -506,7 +506,7 @@ void accion(void* socket)
 								semaf->valorSemaforo--;
 
 								BloqueControlProceso* pcb = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
-								RecibirPCB(pcb, paquete.Payload, KERNEL);
+								RecibirPCB(pcb, paquete.Payload, paquete.header.tamPayload,KERNEL);
 
 								if (semaf->valorSemaforo < 0)
 								{ //se bloquea
@@ -694,7 +694,7 @@ void accion(void* socket)
 					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
 					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
 					if(pcb!=NULL){
-						RecibirPCB(pcb, paquete.Payload, KERNEL);
+						RecibirPCB(pcb, paquete.Payload, paquete.header.tamPayload,KERNEL);
 
 						DatosCPU * datoscpu = list_find(CPUsConectadas,LAMBDA(bool _(void* item) {
 							return ((DatosCPU*)item)->socketCPU == socketConectado;

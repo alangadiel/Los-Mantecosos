@@ -572,9 +572,10 @@ void deserializar(void** pcbSerializado, void* datos, uint32_t tam,uint32_t* tam
 	*pcbSerializado+=tam;
 }
 
-void RecibirPCB(BloqueControlProceso* pecebe, void* payload, char receptor[11]){
+void RecibirPCB(BloqueControlProceso* pecebe, void* payload, uint32_t tamPayload,char receptor[11]){
 	pcb_Create(pecebe, 0);
-	void* pcbSerializado = payload;
+	//void * pcbSerializado = malloc(tamPayload);
+	void *pcbSerializado = payload;
 
 	//cargar pcb
 	int i = 0;
@@ -653,5 +654,6 @@ void RecibirPCB(BloqueControlProceso* pecebe, void* payload, char receptor[11]){
 		}));
 		free(etiquetas);
 	}
+	//free(pcbSerializado);
 }
 
