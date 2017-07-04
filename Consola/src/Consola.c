@@ -127,9 +127,11 @@ void programHandler(void *programPath) {
 }
 
 int startProgram(char* programPath) {
+	//TODO: verificar que existe el archivo
 	pthread_t program;
 	pthread_create(&program, NULL, (void*)programHandler, programPath);
 	pthread_join(program, NULL);
+
 	return 0;
 }
 
