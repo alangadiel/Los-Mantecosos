@@ -92,8 +92,7 @@ extern char** SHARED_VARS;
 extern int STACK_SIZE;
 extern bool planificacion_detenida;
 
-extern pthread_cond_t condDispacher;
-extern pthread_mutex_t mutexDispacher;
+extern sem_t semDispacher;
 extern pthread_mutex_t mutexQueueNuevos;
 extern pthread_mutex_t mutexQueueListos;
 extern pthread_mutex_t mutexQueueEjecutando;

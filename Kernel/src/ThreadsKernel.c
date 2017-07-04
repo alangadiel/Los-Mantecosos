@@ -304,12 +304,11 @@ bool hayCPUsLibres(){
 
 void dispatcher()
 {
-	pthread_cond_init(&condDispacher, NULL);
-	pthread_mutex_lock(&mutexDispacher);
+	sem_init(&semDispacher, 0, 0);
 	while ( !planificacion_detenida)
 	{
 		if(queue_size(Listos)==0){
-			pthread_cond_wait(&condDispacher, &mutexDispacher);
+			sem_wait(&semDispacher);
 		}
 		else
 		{

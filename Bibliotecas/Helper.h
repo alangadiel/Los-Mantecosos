@@ -27,6 +27,10 @@
 #include <dirent.h>
 #include <parser/parser.h>
 #include <ctype.h>
+#include <semaphore.h>
+#include <assert.h>
+#include <errno.h>
+#include <signal.h>
 
 typedef struct {
 	uint32_t NumeroDePagina;
