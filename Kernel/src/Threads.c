@@ -142,7 +142,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 	bool hayEstructurasNoLiberadas = false;
 	int index;
 	pthread_mutex_lock(&mutexFinalizarPrograma);
-	//TODO: revisar toda la funcion, no hay q usar recursividad para la espara activa, sino un while. y la zona critica del mutex deberia ser mas chica;
+
 	finalizarProgramaCapaFS(PID);
 
 	//Aca hace la liberacion de memoria uri, fijate si podes hacer una funcion finalizarProgramaCapaMemoria, sino hace aca normal
@@ -384,7 +384,7 @@ void accion(void* socket)
 					double tamaniCodigoEnPaginas = paquete.header.tamPayload / (double)TamanioPagina;
 					double tamanioCodigoYStackEnPaginas = ceil(tamaniCodigoEnPaginas) + STACK_SIZE;
 					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
-					//TODO: Falta free, pero OJO, hay que ver la forma de ponerlo y que siga andando
+
 					CrearNuevoProceso(pcb,&ultimoPID,Nuevos);
 
 					AgregarAListadePidsPorSocket(pcb->PID, socketConectado);
@@ -505,13 +505,15 @@ void accion(void* socket)
 								Semaforo* semaf = (Semaforo*)result;
 								semaf->valorSemaforo--;
 
-								BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
+								BloqueControlProceso* pcb = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
 								RecibirPCB(pcb, paquete.Payload, KERNEL);
 
 								if (semaf->valorSemaforo < 0)
 								{ //se bloquea
 									pthread_mutex_lock(&mutexSemaforos);
-									list_add(semaf->listaDeProcesos, &PID);
+									uint32_t* pid = malloc(sizeof(uint32_t));
+									*pid=PID;
+									list_add(semaf->listaDeProcesos, pid);
 									pthread_mutex_unlock(&mutexSemaforos);
 									pthread_mutex_lock(&mutexQueueEjecutando);
 									list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
@@ -649,12 +651,13 @@ void accion(void* socket)
 
 							leerArchivo(FD, PID, tamanioArchivo);
 						break;
-
+						/*
 						case FINEJECUCIONPROGRAMA:
 							PID = ((uint32_t*)paquete.Payload)[1];
 							//Finalizar programa
 							FinalizarPrograma(PID, FINALIZACIONNORMAL);
 						break;
+						*/
 					}
 				}
 			break;
@@ -688,31 +691,35 @@ void accion(void* socket)
 				//termino la rafaga normalmente sin bloquearse
 				if(strcmp(paquete.header.emisor, CPU) == 0)
 				{
-					BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
+					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
+					BloqueControlProceso* pcb = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
 					RecibirPCB(pcb, paquete.Payload, KERNEL);
-					pthread_mutex_lock(&mutexQueueEjecutando);
-					list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
-						return ((BloqueControlProceso*)item)->PID == pcb->PID;
+
+					DatosCPU * datoscpu = list_find(CPUsConectadas,LAMBDA(bool _(void* item) {
+						return ((DatosCPU*)item)->socketCPU == socketConectado;
 					}));
-					pthread_mutex_unlock(&mutexQueueEjecutando);
+					datoscpu->isFree = true;
+
 					if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas)
 					{
 						FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
 					}
 					else
 					{
+						pthread_mutex_lock(&mutexQueueEjecutando);
+						list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
+							return ((BloqueControlProceso*)item)->PID == pcb->PID;
+						}));
+						pthread_mutex_unlock(&mutexQueueEjecutando);
+
 						pthread_mutex_lock(&mutexQueueListos);
 						queue_push(Listos, pcb);
 						pthread_mutex_unlock(&mutexQueueListos);
 					}
-					DatosCPU * datoscpu = list_find(CPUsConectadas,LAMBDA(bool _(void* item) {
-						return ((DatosCPU*)item)->socketCPU == socketConectado;
-					}));
-					datoscpu->isFree = false;
+
 				}
 			break;
 		}
-
 		free(paquete.Payload);
 	}
 

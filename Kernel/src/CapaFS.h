@@ -31,5 +31,6 @@ void leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo);
 uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion);
 uint32_t borrarArchivo(uint32_t FD, uint32_t PID);
 void finalizarProgramaCapaFS(int PID);
+t_list* obtenerTablaArchivosDeUnProceso(uint32_t PID);
 
 #endif /* CAPAFS_H_ */

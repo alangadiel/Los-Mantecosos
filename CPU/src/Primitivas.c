@@ -230,9 +230,14 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 //TODAS LAS FUNCIONES RETORNAR UN VALOR, NO EXISTE EL CONCEPTO DE PROCEDIMIENTO: LO DICE EL TP
 void primitiva_finalizar(void){
 	//Si hay un solo registro de stack y se llama esta funcion, hay que finalizar el programa
-	if(list_size(pcb.IndiceDelStack)==1){
+
+	//if(list_size(pcb.IndiceDelStack)>1){
+	list_remove(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+
+	/*} else if(list_size(pcb.IndiceDelStack)==1){
 		FinDeEjecucionPrograma();
-	}
+	}*/
+
 }
 
 void primitiva_retornar(t_valor_variable retorno){
@@ -241,7 +246,7 @@ void primitiva_retornar(t_valor_variable retorno){
 	pcb.ProgramCounter = is->DireccionDeRetorno;
 	//Guardo el valor de retorno en la variable correspondiente
 	primitiva_asignar(is->PosVariableDeRetorno->Offset,retorno);
-	list_remove(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+
 }
 
 //PRIMITIVAS KERNEL

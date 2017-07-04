@@ -38,24 +38,40 @@ void MostrarTodosLosProcesos()
 
 void ConsultarEstado(int pidAConsultar)
 {
-	int i =0;
-	void* result=NULL;
+	BloqueControlProceso* result=NULL;
 	//Busco el proceso en todas las listas
-	while(i<list_size(Estados) && result==NULL){
-		t_list* lista = (t_list* )list_get(Estados,i);
-		result = list_find(lista,LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pidAConsultar; }));
-		i++;
+	pthread_mutex_lock(&mutexQueueNuevos);
+	result = list_find(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pidAConsultar; }));
+	pthread_mutex_unlock(&mutexQueueNuevos);
+	if(result==NULL) {
+		pthread_mutex_lock(&mutexQueueListos);
+		result = list_find(Listos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pidAConsultar; }));
+		pthread_mutex_unlock(&mutexQueueListos);
+		if(result==NULL) {
+			pthread_mutex_lock(&mutexQueueEjecutando);
+			result = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pidAConsultar; }));
+			pthread_mutex_unlock(&mutexQueueEjecutando);
+			if(result==NULL) {
+				pthread_mutex_lock(&mutexQueueBloqueados);
+				result = list_find(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pidAConsultar; }));
+				pthread_mutex_unlock(&mutexQueueBloqueados);
+				if(result==NULL) {
+					pthread_mutex_lock(&mutexQueueFinalizados);
+					result = list_find(Finalizados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pidAConsultar; }));
+					pthread_mutex_unlock(&mutexQueueFinalizados);
+				}
+			}
+		}
 	}
+
 	if(result==NULL)
 		printf("No se encontro el proceso a consultar. Intente nuevamente");
 	else{
-		BloqueControlProceso* proceso = (BloqueControlProceso*)result;
-		printf("Proceso N°: %d \n",proceso->PID);
-		printf("Paginas de codigo: %d \n",proceso->PaginasDeCodigo);
-		printf("Contador de programa: %d \n",proceso->ProgramCounter);
-		printf("Rafagas ejecutadas: %d \n",proceso->cantidadDeRafagasEjecutadas);
-		printf("Syscall ejecutadas: %d \n",proceso->cantidadSyscallEjecutadas);
-
+		printf("Proceso N°: %d \n",result->PID);
+		printf("Paginas de codigo: %d \n",result->PaginasDeCodigo);
+		printf("Contador de programa: %d \n",result->ProgramCounter);
+		printf("Rafagas ejecutadas: %d \n",result->cantidadDeRafagasEjecutadas);
+		printf("Syscall ejecutadas: %d \n",result->cantidadSyscallEjecutadas);
 	}
 }
 

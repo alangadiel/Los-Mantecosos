@@ -61,8 +61,10 @@ extern t_queue* Finalizados;
 extern t_queue* Bloqueados;
 extern t_queue* Ejecutando;
 extern t_queue* Listos;
+/*
 extern t_list* Estados;
 extern t_list* EstadosConProgramasFinalizables;
+*/
 
 extern bool end;
 extern int pidAFinalizar;

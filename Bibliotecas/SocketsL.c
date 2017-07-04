@@ -653,6 +653,5 @@ void RecibirPCB(BloqueControlProceso* pecebe, void* payload, char receptor[11]){
 		}));
 		free(etiquetas);
 	}
-	free(payload);
 }
 

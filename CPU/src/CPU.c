@@ -193,8 +193,8 @@ int main(void) {
 				estadoActual.ejecutando = false;
 			}
 			break;
-
 		}
+		free(paquete.Payload);
 	}
 
 	pcb_Destroy(&pcb);
