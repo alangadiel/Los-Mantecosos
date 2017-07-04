@@ -2,7 +2,8 @@
 #define USERINTERFACE_H_
 
 #include "Service.h"
-#include "Threads.h"
+#include "ThreadsKernel.h"
+#include "CapaFS.h"
 
 void ConsultarEstado(int pidAConsultar);
 void MostrarTodosLosProcesos();

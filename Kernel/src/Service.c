@@ -22,6 +22,8 @@ int pidAFinalizar;
 int socketConMemoria = -1;
 int socketConFS = -1;
 
+int ultimoPID = 0;
+pthread_cond_t condDispacher;
 pthread_mutex_t mutexQueueNuevos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueListos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueEjecutando = PTHREAD_MUTEX_INITIALIZER;
@@ -88,8 +90,33 @@ void LiberarVariablesYListas() {
 	free(SEM_IDS);
 	free(SEM_INIT);
 	free(SHARED_VARS);
+
+	pthread_mutex_destroy(&mutexDispacher);
+	pthread_mutex_destroy(&mutexQueueNuevos);
+	pthread_mutex_destroy(&mutexQueueListos);
+	pthread_mutex_destroy(&mutexQueueEjecutando);
+	pthread_mutex_destroy(&mutexQueueBloqueados);
+	pthread_mutex_destroy(&mutexQueueFinalizados);
+	pthread_mutex_destroy(&mutexFinalizarPrograma);
+	pthread_mutex_destroy(&mutexQueuesProcesos);
+	pthread_mutex_destroy(&mutexCPUsConectadas);
+	pthread_mutex_destroy(&mutexSemaforos);
+	pthread_mutex_destroy(&mutexVariablesCompartidas);
+	pthread_mutex_destroy(&mutexPaginasPorProceso);
 }
 
+void Evento_ListosRemove(){
+	pthread_mutex_lock(&mutexQueueListos);
+	if(list_size(Listos->elements)==0)
+		pthread_mutex_trylock(&mutexDispacher);
+	pthread_mutex_unlock(&mutexQueueListos);
+}
+void Evento_ListosAdd(){
+	pthread_mutex_lock(&mutexQueueListos);
+	if(list_size(Listos->elements)==0)
+		pthread_mutex_unlock(&mutexDispacher);
+	pthread_mutex_unlock(&mutexQueueListos);
+}
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos){
 	//Creo el pcb y lo guardo en la lista de nuevos
 	pcb_Create(pcb, *ultimoPid+1);

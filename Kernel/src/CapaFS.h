@@ -2,7 +2,7 @@
 #define CAPAFS_H_
 
 #include "Service.h"
-#include "Threads.h"
+#include "ThreadsKernel.h"
 
 typedef struct {
 	bool creacion;

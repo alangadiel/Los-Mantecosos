@@ -72,7 +72,7 @@ extern uint32_t TamanioPagina;
 
 extern int socketConMemoria;
 extern int socketConFS;
-
+int ultimoPID;
 //Variables archivo de configuracion
 extern char* IP_PROG;
 extern int PUERTO_PROG;
@@ -91,6 +91,8 @@ extern char** SEM_INIT;
 extern char** SHARED_VARS;
 extern int STACK_SIZE;
 extern bool planificacion_detenida;
+
+extern pthread_mutex_t mutexDispacher;
 extern pthread_mutex_t mutexQueueNuevos;
 extern pthread_mutex_t mutexQueueListos;
 extern pthread_mutex_t mutexQueueEjecutando;
@@ -108,5 +110,7 @@ void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos)
 void LiberarVariablesYListas();
 void CrearListas();
 void obtenerError(int exitCode);
+void Evento_ListosRemove();//para el dispacher
+void Evento_ListosAdd();
 
 #endif /* SERVICE_H_ */

@@ -107,7 +107,7 @@ void EnviarHandshake(int socketFD, char emisor[11]);
 void EnviarDatos(int socketFD, char emisor[11], void* datos, int tamDatos);
 void EnviarDatosTipo(int socketFD, char emisor[11], void* datos, int tamDatos, int tipoMensaje);
 void EnviarMensaje(int socketFD, char* msg, char emisor[11]);
-
+void EnviarPaquete(int socketCliente, Paquete* paquete);
 void RecibirHandshake(int socketFD, char emisor[11]);
 void RecibirHandshake_DeMemoria(int socketFD, char emisor[11]); //Retorna el tamanio de pagina
 int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir);

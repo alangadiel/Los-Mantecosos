@@ -1,5 +1,6 @@
 #include "UserInterface.h"
 
+
 void MostrarProcesosDeUnaCola(t_queue* cola,char* discriminator)
 {
 	printf("Procesos de la cola: %s \n",discriminator);

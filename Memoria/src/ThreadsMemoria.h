@@ -1,5 +1,5 @@
-#ifndef THREADS_H_
-#define THREADS_H_
+#ifndef THREADSMEMORIA_H_
+#define THREADSMEMORIA_H_
 
 #include "Memoria.h"
 
@@ -17,4 +17,4 @@ void FinalizarPrograma(uint32_t pid, int socketFD);
 int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete);
 void accion(void* socket);
 
-#endif /* THREADS_H_ */
+#endif /* THREADSMEMORIA_H_ */

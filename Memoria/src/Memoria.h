@@ -2,8 +2,8 @@
 #define MEMORIA_H_
 
 #include "SocketsL.h"
-#include "Threads.h"
 #include "Interface.h"
+#include "ThreadsMemoria.h"
 
 #define DATOS ((uint32_t*)paquete.Payload)
 #define TablaDePagina ((RegistroTablaPaginacion*)BloquePrincipal)

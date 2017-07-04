@@ -2,7 +2,7 @@
 #define INTERFACE_H_
 
 #include "Memoria.h"
-#include "Threads.h"
+#include "ThreadsMemoria.h"
 
 void userInterfaceHandler(void* socketFD);
 

@@ -1,5 +1,5 @@
-#ifndef THREADS_H_
-#define THREADS_H_
+#ifndef THREADSKERNEL_H_
+#define THREADSKERNEL_H_
 
 #include "Service.h"
 #include "CapaFS.h"
@@ -17,5 +17,9 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 void accion(void* socket);
 void dispatcher();
 bool ProcesoEstaEjecutandoseActualmente(int pidAFinalizar);
+void AgregarAListadePidsPorSocket(uint32_t PID, int socket);
+void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* paquete);
+void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp, Paquete* paquete);
+void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int socketFD, double tamanioTotalPaginas);
 
-#endif /* THREADS_H_ */
+#endif /* THREADSKERNEL_H_ */
