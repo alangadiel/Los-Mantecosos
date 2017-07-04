@@ -12,10 +12,11 @@ char* IP_KERNEL;
 int PUERTO_KERNEL;
 
 typedef struct {
-	uint32_t socket;
+	int socket;
 	uint32_t pid;
-} SocketProceso;
-t_list * SocketsProcesos;
+	pthread_t hilo;
+} structProceso;
+t_list * listaProcesos;
 
 bool existeArchivo(char* path) {
 	return access( path , F_OK ) != -1;
@@ -62,11 +63,11 @@ void programHandler(void *programPath) {
 				if(strcmp(paquete.header.emisor,KERNEL)==0){
 					pid = *((uint32_t*) paquete.Payload);
 					if(pid >= 1){
-						SocketProceso* sp = malloc(sizeof(SocketProceso));
+						structProceso* sp = malloc(sizeof(structProceso));
 						sp->pid = pid;
 						sp->socket = socketFD;
-						list_add(SocketsProcesos,sp);
-						SocketProceso* result = (SocketProceso*)list_get(SocketsProcesos,0);
+						list_add(listaProcesos,sp);
+						structProceso* result = (structProceso*)list_get(listaProcesos,0);
 						printf("socket: %d\n",result->socket);
 						printf("pid: %d\n",result->pid);
 						printf("El pid del nuevo programa es %d \n",pid);
@@ -86,9 +87,10 @@ void programHandler(void *programPath) {
 						free(sTiempoDeFin);
 						free(sTiempoDeInicio);
 						double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
-						printf("La duracion del programa en segundos es de %f\n",
-								diferencia);
-					fin = true;
+						printf("La duracion del programa en segundos es de %f\n", diferencia);
+						list_remove_and_destroy_by_condition(listaProcesos,
+								LAMBDA(bool _(void* elem) { return ((structProceso*)elem)->socket == socketFD; }), free);
+						fin = true;
 					}
 					else if (strcmp(string_substring_until(paquete.Payload,8),"imprimir") == 0) {
 						printf("%s\n", string_substring_from((char*)paquete.Payload,8));
@@ -132,9 +134,9 @@ void programHandler(void *programPath) {
 
 int startProgram(char* programPath) {
 	if (existeArchivo(programPath)) {
-		pthread_t program;
-		pthread_create(&program, NULL, (void*)programHandler, programPath);
-		pthread_join(program, NULL);
+		pthread_t* program = malloc(sizeof(pthread_t));
+		list_add(listaProcesos, program);
+		pthread_create(program, NULL, (void*)programHandler, programPath);
 	}
 	else {
 		printf("No existe el archivo\n");
@@ -142,7 +144,7 @@ int startProgram(char* programPath) {
 	return 0;
 }
 
-void endProgram(SocketProceso* sp) {
+void endProgram(structProceso* sp) {
 	printf("socket: %d\n",sp->socket);
 	printf("pid: %d\n",sp->pid);
 	EnviarDatosTipo(sp->socket, CONSOLA, &sp->pid, sizeof(uint32_t), KILLPROGRAM);
@@ -169,15 +171,15 @@ void clean() {
 
 void killAllPrograms() {
 	int i;
-	for (i = 0; i < list_size(SocketsProcesos); i++) {
-		SocketProceso* proceso = (SocketProceso*) list_get(SocketsProcesos, i);
+	for (i = 0; i < list_size(listaProcesos); i++) {
+		structProceso* proceso = (structProceso*) list_get(listaProcesos, i);
 		endProgram(proceso);
 		free(proceso);
 	}
 }
 
 void liberarMemoria() {
-	list_destroy_and_destroy_elements(SocketsProcesos, free);
+	list_destroy_and_destroy_elements(listaProcesos, free);
 	free(IP_KERNEL);
 }
 
@@ -189,15 +191,15 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 		printf("\n\nIngrese una orden: \n");
 		scanf("%99s", command);
 		if (strcmp(command, "start_program") == 0) {
-			printf("\n\nIngrese nombre de archivo: \n");
+
 			scanf("%99s", parametro);
 			startProgram(parametro);
 		}
 		if (strcmp(command, "end_program") == 0) {
-			printf("\n\nIngrese numero de programa: \n");
+
 			scanf("%99s", parametro);
 			uint32_t pid = atoi(parametro);
-			SocketProceso* sp = (SocketProceso*)list_find(SocketsProcesos,LAMBDA(bool _(void* item) { return ((SocketProceso*)item)->pid == pid; }));
+			structProceso* sp = (structProceso*)list_find(listaProcesos,LAMBDA(bool _(void* item) { return ((structProceso*)item)->pid == pid; }));
 			if (sp != NULL) {
 				printf("pid a eliminar : %d\n",sp->pid);
 				endProgram(sp);
@@ -221,9 +223,15 @@ int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
-	SocketsProcesos = list_create();
+	listaProcesos = list_create();
+
 	pthread_t userInterface;
 	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,&socketFD);
 	pthread_join(userInterface, NULL);
+
+	list_destroy_and_destroy_elements(listaProcesos, LAMBDA(void _(void* elem) {
+				pthread_join(((structProceso*)elem)->hilo, NULL);
+				free(elem); }));
+
 	return 0;
 }
