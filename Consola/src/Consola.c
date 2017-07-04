@@ -17,6 +17,10 @@ typedef struct {
 } SocketProceso;
 t_list * SocketsProcesos;
 
+bool existeArchivo(char* path) {
+	return access( path , F_OK ) != -1;
+}
+
 void obtenerValoresArchivoConfiguracion() {
 	t_config* arch = config_create("ArchivoConfiguracion.txt");
 	IP_KERNEL = string_duplicate(config_get_string_value(arch, "IP_KERNEL"));
@@ -58,7 +62,7 @@ void programHandler(void *programPath) {
 				if(strcmp(paquete.header.emisor,KERNEL)==0){
 					pid = *((uint32_t*) paquete.Payload);
 					if(pid >= 1){
-						SocketProceso* sp = malloc(sizeof(SocketProceso));     //TODO: Falta free
+						SocketProceso* sp = malloc(sizeof(SocketProceso));
 						sp->pid = pid;
 						sp->socket = socketFD;
 						list_add(SocketsProcesos,sp);
@@ -127,48 +131,55 @@ void programHandler(void *programPath) {
 }
 
 int startProgram(char* programPath) {
-	//TODO: verificar que existe el archivo
-	pthread_t program;
-	pthread_create(&program, NULL, (void*)programHandler, programPath);
-	pthread_join(program, NULL);
-
+	if (existeArchivo(programPath)) {
+		pthread_t program;
+		pthread_create(&program, NULL, (void*)programHandler, programPath);
+		pthread_join(program, NULL);
+	}
+	else {
+		printf("No existe el archivo\n");
+	}
 	return 0;
 }
 
-void endProgram(uint32_t pid,uint32_t* socketgeneral) {
+void endProgram(SocketProceso* sp) {
+	printf("socket: %d\n",sp->socket);
+	printf("pid: %d\n",sp->pid);
+	EnviarDatosTipo(sp->socket, CONSOLA, &sp->pid, sizeof(uint32_t), KILLPROGRAM);
 
-	printf("pid a eliminar : %d\n",pid);
-	SocketProceso* sp = (SocketProceso*)list_find(SocketsProcesos,LAMBDA(bool _(void* item) { return ((SocketProceso*)item)->pid == pid; }));
-	if(sp!=NULL){
-		printf("socket: %d\n",sp->socket);
-		printf("pid: %d\n",sp->pid);
-		EnviarDatosTipo(sp->socket, CONSOLA, &pid, sizeof(uint32_t), KILLPROGRAM);
+	Paquete nuevoPaquete;
+	while(RecibirPaqueteCliente(sp->socket, CONSOLA, &nuevoPaquete)<0);
+	free(sp);
 
-		Paquete nuevoPaquete;
-		while(RecibirPaqueteCliente(sp->socket, CONSOLA, &nuevoPaquete)<0);
-		free(sp);
-
-		if(nuevoPaquete.header.tipoMensaje==ESSTRING){
-			if(strcmp(nuevoPaquete.header.emisor,KERNEL)==0){
+	if(nuevoPaquete.header.tipoMensaje==ESSTRING){
+		if(strcmp(nuevoPaquete.header.emisor,KERNEL)==0){
 			char* result = (char*)nuevoPaquete.Payload;
 			printf("result: %s",result);
-
 			if (strcmp(result, "KILLEADO") == 0) {
-				printf("Se finalizo el programa N°: %d\n",pid);
+				printf("Se finalizo el programa N°: %d\n",sp->pid);
 			}
 		}
-	 }
-	free(nuevoPaquete.Payload);
 	}
-	else
-		printf("No se reconoce algun programa con ese PID");
+	free(nuevoPaquete.Payload);
 }
 
 void clean() {
-	system("clear"); // Clear screen and home cursor
+	system("clear");
 }
 
+void killAllPrograms() {
+	int i;
+	for (i = 0; i < list_size(SocketsProcesos); i++) {
+		SocketProceso* proceso = (SocketProceso*) list_get(SocketsProcesos, i);
+		endProgram(proceso);
+		free(proceso);
+	}
+}
 
+void liberarMemoria() {
+	list_destroy_and_destroy_elements(SocketsProcesos, free);
+	free(IP_KERNEL);
+}
 
 void userInterfaceHandler(uint32_t* socketGeneral) {
 	bool fin = false;
@@ -177,8 +188,6 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 		char parametro[100];
 		printf("\n\nIngrese una orden: \n");
 		scanf("%99s", command);
-		/*char* command = getWord(str, 0);
-		char* parameter = getWord(str, 1);*/
 		if (strcmp(command, "start_program") == 0) {
 			printf("\n\nIngrese nombre de archivo: \n");
 			scanf("%99s", parametro);
@@ -188,9 +197,18 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 			printf("\n\nIngrese numero de programa: \n");
 			scanf("%99s", parametro);
 			uint32_t pid = atoi(parametro);
-			endProgram(pid,socketGeneral);
+			SocketProceso* sp = (SocketProceso*)list_find(SocketsProcesos,LAMBDA(bool _(void* item) { return ((SocketProceso*)item)->pid == pid; }));
+			if (sp != NULL) {
+				printf("pid a eliminar : %d\n",sp->pid);
+				endProgram(sp);
+			}
+			else {
+				printf("No se reconoce algun programa con ese PID");
+			}
 		} else if (strcmp(command, "disconnect") == 0) {
 			fin = true;
+			killAllPrograms();
+			liberarMemoria();
 		} else if (strcmp(command, "clean") == 0) {
 			clean();
 		} else {
@@ -204,11 +222,8 @@ int main(void) {
 	imprimirArchivoConfiguracion();
 	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
 	SocketsProcesos = list_create();
-
 	pthread_t userInterface;
 	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,&socketFD);
 	pthread_join(userInterface, NULL);
-	free(IP_KERNEL);
-
 	return 0;
 }
