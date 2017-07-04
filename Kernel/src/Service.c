@@ -23,8 +23,7 @@ int socketConMemoria = -1;
 int socketConFS = -1;
 
 int ultimoPID = 0;
-pthread_cond_t condDispacher;
-pthread_mutex_t mutexDispacher = PTHREAD_MUTEX_INITIALIZER;
+sem_t semDispacher;
 pthread_mutex_t mutexQueueNuevos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueListos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueEjecutando = PTHREAD_MUTEX_INITIALIZER;
@@ -92,7 +91,7 @@ void LiberarVariablesYListas() {
 	free(SEM_INIT);
 	free(SHARED_VARS);
 
-	pthread_mutex_destroy(&mutexDispacher);
+	sem_destroy(&semDispacher);
 	pthread_mutex_destroy(&mutexQueueNuevos);
 	pthread_mutex_destroy(&mutexQueueListos);
 	pthread_mutex_destroy(&mutexQueueEjecutando);
@@ -116,7 +115,7 @@ void Evento_ListosRemove(){
 void Evento_ListosAdd(){
 	pthread_mutex_lock(&mutexQueueListos);
 	if(list_size(Listos->elements)==0)
-		pthread_cond_signal(&condDispacher);
+		sem_post(&semDispacher); //como un signal
 	pthread_mutex_unlock(&mutexQueueListos);
 }
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos){
