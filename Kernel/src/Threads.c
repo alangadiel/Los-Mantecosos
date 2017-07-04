@@ -27,12 +27,18 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 
 	//Ejecutando
 	pthread_mutex_lock(&mutexQueueEjecutando);
-	while(ProcesoEstaEjecutandoseActualmente(pid)==true);
-	pcb = (BloqueControlProceso*)list_remove_by_condition(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
-	if (pcb != NULL)
-	{
-		*index = INDEX_EJECUTANDO;
-		return pcb;
+	if(queue_size(Ejecutando)>0){
+		pthread_mutex_unlock(&mutexQueueEjecutando);
+
+		while(ProcesoEstaEjecutandoseActualmente(pid)==true);
+		pthread_mutex_lock(&mutexQueueEjecutando);
+		pcb = (BloqueControlProceso*)list_remove_by_condition(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
+		if (pcb != NULL)
+		{
+			*index = INDEX_EJECUTANDO;
+			pthread_mutex_unlock(&mutexQueueEjecutando);
+			return pcb;
+		}
 	}
 	pthread_mutex_unlock(&mutexQueueEjecutando);
 
@@ -210,22 +216,20 @@ bool ProcesoEstaEjecutandoseActualmente(int pidAFinalizar)
 {
 	int i;
 	pthread_mutex_lock(&mutexCPUsConectadas);
-	for (i = 0; i < list_size(CPUsConectadas); i++)
+	int sizeCpusConectadas = list_size(CPUsConectadas);
+	for (i = 0; i < sizeCpusConectadas; i++)
 	{
 		DatosCPU* cpu = (DatosCPU*) list_get(CPUsConectadas, i);
-
+/*
 		EnviarDatosTipo(cpu->socketCPU, KERNEL, NULL,0, ESTAEJECUTANDO);
-
-
 		Paquete* paquete2 = malloc(sizeof(Paquete));
-
 		RecibirPaqueteCliente(cpu->socketCPU, KERNEL, paquete2);
-
-		bool estaEjecutando = ((bool*)paquete2->Payload)[0];
-		uint32_t PID = *(uint32_t*)( paquete2->Payload+sizeof(bool));
-
-		if (PID == pidAFinalizar && estaEjecutando == true)
+		bool* estaEjecutando = ((bool*)paquete2->Payload)[0];
+		uint32_t* PID = (uint32_t*)( paquete2->Payload+sizeof(bool));
+*/
+		if (cpu->pid == pidAFinalizar && cpu->isFree == false)
 		{
+			pthread_mutex_unlock(&mutexCPUsConectadas);
 			return true;
 		}
 	}
@@ -340,6 +344,7 @@ void dispatcher()
 						EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar);
 
 						cpuAUsar->isFree = false;
+						cpuAUsar->pid = PCBAMandar->PID;
 						pthread_mutex_lock(&mutexQueueEjecutando);
 						queue_push(Ejecutando, PCBAMandar);
 						pthread_mutex_unlock(&mutexQueueEjecutando);
@@ -394,12 +399,10 @@ void accion(void* socket)
 						{
 							//Ejecuto el metadata program
 							CargarInformacionDelCodigoDelPrograma(pcb, &paquete);
-
 							pcb->PaginasDeCodigo = (uint32_t)ceil(tamaniCodigoEnPaginas);
 							//Solicito a la memoria que me guarde el codigo del programa(dependiendo cuantas paginas se requiere para el codigo
 							GuardarCodigoDelProgramaEnLaMemoria(pcb, &paquete);
 							PonerElProgramaComoListo(pcb,&paquete, socketConectado, tamaniCodigoEnPaginas);
-
 							EnviarDatos(socketConectado, KERNEL, &(pcb->PID), sizeof(uint32_t));
 						}
 						else
@@ -702,7 +705,10 @@ void accion(void* socket)
 						queue_push(Listos, pcb);
 						pthread_mutex_unlock(&mutexQueueListos);
 					}
-
+					DatosCPU * datoscpu = list_find(CPUsConectadas,LAMBDA(bool _(void* item) {
+						return ((DatosCPU*)item)->socketCPU == socketConectado;
+					}));
+					datoscpu->isFree = false;
 				}
 			break;
 		}

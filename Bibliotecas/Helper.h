@@ -93,6 +93,7 @@ typedef struct {
 typedef struct {
 	int socketCPU;
 	bool isFree;
+	uint32_t pid;
 } __attribute__((packed))DatosCPU;
 
 typedef struct {
