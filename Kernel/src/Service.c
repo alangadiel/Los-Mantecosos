@@ -24,6 +24,7 @@ int socketConFS = -1;
 
 int ultimoPID = 0;
 pthread_cond_t condDispacher;
+pthread_mutex_t mutexDispacher = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueNuevos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueListos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueEjecutando = PTHREAD_MUTEX_INITIALIZER;
@@ -104,17 +105,18 @@ void LiberarVariablesYListas() {
 	pthread_mutex_destroy(&mutexVariablesCompartidas);
 	pthread_mutex_destroy(&mutexPaginasPorProceso);
 }
-
+/*
 void Evento_ListosRemove(){
 	pthread_mutex_lock(&mutexQueueListos);
 	if(list_size(Listos->elements)==0)
 		pthread_mutex_trylock(&mutexDispacher);
 	pthread_mutex_unlock(&mutexQueueListos);
 }
+*/
 void Evento_ListosAdd(){
 	pthread_mutex_lock(&mutexQueueListos);
 	if(list_size(Listos->elements)==0)
-		pthread_mutex_unlock(&mutexDispacher);
+		pthread_cond_signal(&condDispacher);
 	pthread_mutex_unlock(&mutexQueueListos);
 }
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos){

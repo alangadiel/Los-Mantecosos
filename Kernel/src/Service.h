@@ -92,6 +92,7 @@ extern char** SHARED_VARS;
 extern int STACK_SIZE;
 extern bool planificacion_detenida;
 
+extern pthread_cond_t condDispacher;
 extern pthread_mutex_t mutexDispacher;
 extern pthread_mutex_t mutexQueueNuevos;
 extern pthread_mutex_t mutexQueueListos;
@@ -110,7 +111,7 @@ void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos)
 void LiberarVariablesYListas();
 void CrearListas();
 void obtenerError(int exitCode);
-void Evento_ListosRemove();//para el dispacher
-void Evento_ListosAdd();
+//void Evento_ListosRemove();
+void Evento_ListosAdd();//para el dispacher
 
 #endif /* SERVICE_H_ */

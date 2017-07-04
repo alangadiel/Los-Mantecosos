@@ -51,7 +51,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 	{
 		*index = INDEX_LISTOS;
 		pthread_mutex_unlock(&mutexQueueListos);
-		Evento_ListosRemove();
+		//Evento_ListosRemove();
 		return pcb;
 	}
 	pthread_mutex_unlock(&mutexQueueListos);
@@ -301,14 +301,15 @@ bool hayCPUsLibres(){
 	return list_any_satisfy(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
 }
 
-pthread_mutex_t mutexDispacher = PTHREAD_MUTEX_INITIALIZER;
 
 void dispatcher()
 {
+	pthread_cond_init(&condDispacher, NULL);
+	pthread_mutex_lock(&mutexDispacher);
 	while ( !planificacion_detenida)
 	{
 		if(queue_size(Listos)==0){
-			//pthread_mutex_lock(&mutexDispacher);
+			pthread_cond_wait(&condDispacher, &mutexDispacher);
 		}
 		else
 		{

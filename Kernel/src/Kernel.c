@@ -92,7 +92,6 @@ int main(void)
 		pthread_t hiloConsola;
 		pthread_create(&hiloConsola, NULL, (void*)userInterfaceHandler, &socketConMemoria);
 
-		pthread_mutex_trylock(&mutexDispacher);
 		pthread_t hiloDispatcher;
 		pthread_create(&hiloDispatcher, NULL, (void*)dispatcher, NULL);
 

@@ -4,6 +4,7 @@
 #include "Service.h"
 #include "CapaFS.h"
 #include "CapaMemoria.h"
+#include "ReceptorKernel.h"
 
 typedef struct {
 	uint32_t PID;
