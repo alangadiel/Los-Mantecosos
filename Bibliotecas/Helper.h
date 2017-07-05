@@ -40,7 +40,7 @@ typedef struct {
 
 typedef struct {
 	t_nombre_variable ID; //el nombre de la variable
-	PosicionDeMemoria* Posicion;
+	PosicionDeMemoria Posicion;
 }__attribute__((packed)) Variable; //de AnSISOP
 
 typedef struct {
@@ -63,6 +63,7 @@ typedef struct {
 	uint32_t PID;
 	uint32_t ProgramCounter;
 	uint32_t PaginasDeCodigo;
+	uint32_t cantTotalVariables;
 	uint32_t cantidad_de_etiquetas;
 	uint32_t cantidad_de_funciones;
 	uint32_t cantidadDeRafagasAEjecutar; //esto se manda en send de kernel
@@ -89,6 +90,7 @@ typedef struct {
 	uint32_t cantidadDeRafagasEjecutadas; //esto se manda en send de cpu
 	uint32_t cantidadSyscallEjecutadas;
 	uint32_t cantidadAccionesAlocar;
+	uint32_t cantTotalVariables;
 	uint32_t cantidadAccionesLiberar;
 	uint32_t cantBytesAlocados;
 	uint32_t cantBytesLiberados;

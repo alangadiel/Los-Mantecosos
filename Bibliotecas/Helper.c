@@ -63,6 +63,7 @@ void pcb_Create(BloqueControlProceso* pecebe, uint32_t pid_actual){
 	pecebe->cantidadAccionesAlocar = 0;
 	pecebe->cantidadAccionesLiberar = 0;
 	pecebe->cantidadSyscallEjecutadas = 0;
+	pecebe->cantTotalVariables=0;
 	pecebe->IndiceDeCodigo = list_create();
 	pecebe->IndiceDeEtiquetas = dictionary_create();
 	pecebe->IndiceDelStack = list_create();

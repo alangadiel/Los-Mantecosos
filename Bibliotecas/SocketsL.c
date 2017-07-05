@@ -1,5 +1,6 @@
 #include "SocketsL.h"
 uint32_t TamanioPaginaMemoria;
+uint32_t StackSizeEnPaginas;
 
 void Servidor(char* ip, int puerto, char nombre[11],
 		void (*accion)(Paquete* paquete, int socketFD),
@@ -229,6 +230,25 @@ void RecibirHandshake_DeMemoria(int socketFD, char emisor[11]){
 					paquete->Payload = malloc(paquete->header.tamPayload);
 					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 					TamanioPaginaMemoria = *((uint32_t*)paquete->Payload);
+					free(paquete->Payload);
+				}
+		} else
+			perror("Error, no se recibio un handshake del servidor esperado\n");
+	} else
+		perror("Error de Conexion, no se recibio un handshake\n");
+
+	free(paquete);
+}
+void RecibirHandshake_DeKernel(int socketFD, char emisor[11]){
+	Paquete* paquete =  malloc(sizeof(Paquete));
+	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
+	if (resul > 0 && paquete->header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
+		if (strcmp(paquete->header.emisor, emisor) == 0) {
+				printf("\nConectado con el servidor Kernel\n");
+				if(strcmp(paquete->header.emisor, KERNEL) == 0){
+					paquete->Payload = malloc(paquete->header.tamPayload);
+					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
+					StackSizeEnPaginas = *((uint32_t*)paquete->Payload);
 					free(paquete->Payload);
 				}
 		} else
@@ -510,6 +530,7 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	ints.cantidadDeRafagasEjecutadasHistorica = pecebe->cantidadDeRafagasEjecutadasHistorica;
 	ints.cantidadDeRafagasEjecutadas = pecebe->cantidadDeRafagasEjecutadas;
 	ints.cantidadSyscallEjecutadas = pecebe->cantidadSyscallEjecutadas;
+	ints.cantTotalVariables = pecebe->cantTotalVariables;
 	ints.cantidadAccionesAlocar = pecebe->cantidadAccionesAlocar;
 	ints.cantidadAccionesLiberar = pecebe->cantidadAccionesLiberar;
 	ints.cantBytesAlocados = pecebe->cantBytesAlocados;
@@ -595,6 +616,7 @@ void RecibirPCB(BloqueControlProceso* pecebe, void* payload, uint32_t tamPayload
 	pecebe->cantidadDeRafagasEjecutadasHistorica = ints.cantidadDeRafagasEjecutadasHistorica;
 	pecebe->cantidadDeRafagasEjecutadas = ints.cantidadDeRafagasEjecutadas;
 	pecebe->cantidadSyscallEjecutadas = ints.cantidadSyscallEjecutadas;
+	pecebe->cantTotalVariables = ints.cantTotalVariables;
 	pecebe->cantidadAccionesAlocar = ints.cantidadAccionesAlocar;
 	pecebe->cantidadAccionesLiberar = ints.cantidadAccionesLiberar;
 	pecebe->cantBytesAlocados = ints.cantBytesAlocados;

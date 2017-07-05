@@ -328,9 +328,12 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}));
 						datoscpu->isFree = true;
 
-						if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas)
+						if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas && pcb->ExitCode==FINALIZACIONNORMAL)
 						{
 							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
+						}
+						else if(pcb->ExitCode==STACKOVERFLOW){
+							FinalizarPrograma(pcb->PID, STACKOVERFLOW);
 						}
 						else
 						{

@@ -170,6 +170,9 @@ void obtenerError(int exitCode){
 		case NOSEPUEDENASIGNARMASPAGINAS:
 			printf(" (No se pueden asignar más páginas al proceso)\n");
 		break;
+		case STACKOVERFLOW:
+			printf(" (StackOverFlow)\n");
+		break;
 
 		case ERRORSINDEFINIR:
 			printf(" (Error sin definición)\n");

@@ -90,41 +90,45 @@ int32_t obtenerUltimoOffset(regIndiceStack* regIS){
 	}
 	return r;
 }
+bool hayLugarEnStack(){
+	return StackSizeEnPaginas * TamanioPaginaMemoria > pcb.cantTotalVariables*sizeof(int);
+}
+PosicionDeMemoria obtenerPosicionNueva(){
+	PosicionDeMemoria posReturn;
+	posReturn.Tamanio = sizeof(int);
+	int posRelativa = pcb.cantTotalVariables*sizeof(int);
+	posReturn.NumeroDePagina = posRelativa/TamanioPaginaMemoria+ pcb.PaginasDeCodigo;
+	posReturn.Offset = posRelativa%TamanioPaginaMemoria;
+	return posReturn;
+}
 //primitivas basicas
-t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
-	//Obtengo el ultimo contexto de ejecucion, donde guardara la/s variable/s a definir
-	regIndiceStack* is=malloc(sizeof(regIndiceStack));
-	void* res = list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
-	if(res!=NULL){
-		is=list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
-	}
-	else {
-		//No hay ningun registro de stack hasta el momento
-		is = malloc(sizeof(regIndiceStack));
-		CrearRegistroStack(is);
-		list_add(pcb.IndiceDelStack, is);
-	}
-	ultimoOffSetVariablesStack = obtenerUltimoOffset(is);
-	ultimoOffSetVariablesStack += sizeof(int);
-	Variable* varNueva = malloc(sizeof(Variable));
-	PosicionDeMemoria* pos = malloc(sizeof(PosicionDeMemoria));
-	pos->NumeroDePagina=ultimoOffSetVariablesStack/TamanioPaginaMemoria;
-	pos->Tamanio = sizeof(int);
-	//Como se que cada variable son enteros bytes, el offset siempre se incrementa en 4
-	pos->Offset = ultimoOffSetVariablesStack % TamanioPaginaMemoria;
-	varNueva->Posicion=pos;
-	varNueva->ID=identificador_variable;
-	if(isdigit(identificador_variable)){//si es un numero
-		list_add(is->Argumentos,varNueva);
-	} else {
-		list_add(is->Variables,varNueva);
-	}
-	/*int k;
-	for (k = 0; k < list_size(is->Variables); k++) {
-			Variable* var = (Variable*)list_get(is->Variables,k);
-			printf("Id: %c\n",var->ID);
-	}*/
 
+t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
+
+	if(hayLugarEnStack()){
+		Variable* varNueva = malloc(sizeof(Variable));
+		varNueva->Posicion = obtenerPosicionNueva();
+		varNueva->ID=identificador_variable;
+		//Obtengo el ultimo contexto de ejecucion, donde guardara la/s variable/s a definir
+			regIndiceStack* is = list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+			if(is==NULL){
+				//No hay ningun registro de stack hasta el momento
+				is = malloc(sizeof(regIndiceStack));
+				CrearRegistroStack(is);
+				list_add(pcb.IndiceDelStack, is);
+			}
+			if(isdigit(identificador_variable)){//si es un numero
+				list_add(is->Argumentos,varNueva);
+			} else {
+				list_add(is->Variables,varNueva);
+			}
+		pcb.cantTotalVariables++;
+	}
+	else{
+		//Stack overFlow
+		huboError = true;
+		pcb.ExitCode = -10;
+	}
 	//pcb.ProgramCounter++;
 	return ultimoOffSetVariablesStack;
 }
@@ -135,11 +139,6 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	int j=0;
 	while(j< list_size(pcb.IndiceDelStack) && result==NULL){
 		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,j);
-		/*int k;
-		for (k = 0; k < list_size(is->Variables); k++) {
-			Variable* var = (Variable*)list_get(is->Variables,k);
-			printf("Id: %c\n",var->ID);
-		}*/
 		result = (Variable*)list_find(is->Variables,LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
 		j++;
 	}

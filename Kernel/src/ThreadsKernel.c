@@ -283,9 +283,18 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 				pthread_mutex_lock(&mutexCPUsConectadas);
 				list_add(CPUsConectadas, disp);
 				pthread_mutex_unlock(&mutexCPUsConectadas);
+
+				Paquete paquete;
+				paquete.header.tipoMensaje = ESHANDSHAKE;
+				paquete.header.tamPayload = sizeof(uint32_t);
+				strcpy(paquete.header.emisor, KERNEL);
+				paquete.Payload=&STACK_SIZE;
+				EnviarPaquete(socketFD, &paquete);
+			}
+			else{
+				EnviarHandshake(socketFD, receptor); // paquete->header.emisor
 			}
 
-			EnviarHandshake(socketFD, receptor); // paquete->header.emisor
 		}
 		else
 		{ //recibimos un payload y lo procesamos (por ej, puede mostrarlo)

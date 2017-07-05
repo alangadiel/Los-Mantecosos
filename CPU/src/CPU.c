@@ -6,6 +6,7 @@ DatosCPU datosCpu;
 uint32_t cantRafagasAEjecutar;
 uint32_t cantRafagasEjecutadas=0;
 bool primitivaBloqueante = false;
+bool huboError = false;
 
 bool ejecutando;
 bool DesconectarCPU = false;
@@ -151,7 +152,7 @@ int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 
-	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake);
+	socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake_DeKernel);
 	socketMemoria = ConectarAServidor(PUERTO_MEMORIA, IP_MEMORIA, MEMORIA, CPU, RecibirHandshake_DeMemoria);
 
 	pthread_t consola;
@@ -177,7 +178,7 @@ int main(void) {
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = true;
 				int i=0;
-				while(i< pcb.cantidadDeRafagasAEjecutar && !primitivaBloqueante) {
+				while(i< pcb.cantidadDeRafagasAEjecutar && !primitivaBloqueante && !huboError) {
 					RegIndiceCodigo* registro = (RegIndiceCodigo*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 					char instruccion[registro->offset];
 					obtenerLineaAEjecutar(instruccion, registro);
