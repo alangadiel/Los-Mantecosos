@@ -5,9 +5,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 	case ESSTRING:
 		if(strcmp(paquete->header.emisor, CONSOLA) == 0)
 		{
-			double tamaniCodigoEnPaginas = paquete->header.tamPayload / (double)TamanioPagina;
-			double tamanioCodigoYStackEnPaginas = ceil(tamaniCodigoEnPaginas) + STACK_SIZE;
+			int tamaniCodigoEnPaginas = paquete->header.tamPayload / TamanioPagina + 1;
+			int tamanioCodigoYStackEnPaginas = tamaniCodigoEnPaginas + STACK_SIZE;
 			BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
+
 
 			CrearNuevoProceso(pcb,&ultimoPID,Nuevos);
 

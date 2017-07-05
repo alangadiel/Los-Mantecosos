@@ -47,7 +47,7 @@ typedef struct {
 	t_list* Argumentos; //lista de Variable
 	t_list* Variables; //Desplazamiento, lista de Variable
 	uint32_t DireccionDeRetorno;
-	PosicionDeMemoria* PosVariableDeRetorno;
+	PosicionDeMemoria PosVariableDeRetorno;
 }__attribute__((packed)) regIndiceStack;
 typedef struct {
 	t_puntero_instruccion start;

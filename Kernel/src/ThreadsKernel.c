@@ -1,6 +1,6 @@
 #include "ThreadsKernel.h"
 
-BloqueControlProceso* removerPidDeListas(int pid, int* index)
+BloqueControlProceso* removerPidDeListas(int pid, int* indice)
 {
 
 	//Nuevos
@@ -9,7 +9,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 
 	if (pcb != NULL)
 	{
-		*index = INDEX_NUEVOS;
+		*indice = INDEX_NUEVOS;
 		pthread_mutex_unlock(&mutexQueueNuevos);
 		return pcb;
 	}
@@ -25,7 +25,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 		pcb = (BloqueControlProceso*)list_remove_by_condition(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
 		if (pcb != NULL)
 		{
-			*index = INDEX_EJECUTANDO;
+			*indice = INDEX_EJECUTANDO;
 			pthread_mutex_unlock(&mutexQueueEjecutando);
 			return pcb;
 		}
@@ -38,7 +38,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 
 	if (pcb != NULL)
 	{
-		*index = INDEX_BLOQUEADOS;
+		*indice = INDEX_BLOQUEADOS;
 		pthread_mutex_unlock(&mutexQueueBloqueados);
 		return pcb;
 	}
@@ -49,7 +49,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 
 	if (pcb != NULL)
 	{
-		*index = INDEX_LISTOS;
+		*indice = INDEX_LISTOS;
 		pthread_mutex_unlock(&mutexQueueListos);
 		//Evento_ListosRemove();
 		return pcb;
@@ -57,7 +57,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* index)
 	pthread_mutex_unlock(&mutexQueueListos);
 
 
-	*index=-1;
+	*indice=-1;
 	return NULL;
 }
 
@@ -131,14 +131,14 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 {
 	BloqueControlProceso* pcbRemovido = NULL;
 	bool hayEstructurasNoLiberadas = false;
-	int index;
+	int indice;
 	pthread_mutex_lock(&mutexFinalizarPrograma);
 
 	finalizarProgramaCapaFS(PID);
 
 	//Aca hace la liberacion de memoria uri, fijate si podes hacer una funcion finalizarProgramaCapaMemoria, sino hace aca normal
 
-	pcbRemovido = removerPidDeListas(PID, &index);
+	pcbRemovido = removerPidDeListas(PID, &indice);
 
 	if(pcbRemovido != NULL)
 	{
@@ -184,13 +184,12 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 			}
 		}
 
-		if(index == INDEX_LISTOS)
+
+		if(IM_FinalizarPrograma(socketConMemoria, KERNEL, PID) == false)
 		{
-			if(IM_FinalizarPrograma(socketConMemoria, KERNEL, PID) == false)
-			{
-				pcbRemovido->ExitCode = EXCEPCIONDEMEMORIA;
-			}
+			pcbRemovido->ExitCode = EXCEPCIONDEMEMORIA;
 		}
+
 		free(pagesProcess);
 	}
 	/*else{

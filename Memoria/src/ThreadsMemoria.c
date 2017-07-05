@@ -17,7 +17,7 @@ uint32_t cuantasPagTiene(uint32_t pid){
 	uint32_t c = 0;
 	uint32_t i;
 	pthread_mutex_lock( &mutexTablaPagina);
-	for(i=0; i < cantPagAsignadas; i++){
+	for(i=0; i < MARCOS; i++){
 		if(TablaDePagina[i].PID == pid)
 			c++;
 	}
@@ -122,7 +122,7 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 		//escribir en pagina
 		memcpy(pagina + DATOS[3],paquete.Payload+(sizeof(uint32_t)*5), DATOS[4]);
 		pthread_mutex_unlock( &mutexContenidoMemoria );
-		printf("Datos Almacenados del proceso N°: %u\n", DATOS[1]);
+		printf("Datos Almacenados del PID: %u, Pag: %u, Offset: %u\n", DATOS[1], DATOS[2], DATOS[3]);
 		//actualizar cache
 		if (!estaEnCache(DATOS[1], DATOS[2])) {
 			agregarACache(DATOS[1], DATOS[2]);
@@ -175,6 +175,7 @@ void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
 }
 
 void FinalizarPrograma(uint32_t pid, int socketFD) {
+	printf("\nFinalizando programa %u\n", pid);
 	uint32_t result=0;
 	uint32_t cantPag = cuantasPagTiene(pid);
 	if(cantPag > 0) {

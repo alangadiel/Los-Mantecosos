@@ -82,9 +82,9 @@ int32_t obtenerUltimoOffset(regIndiceStack* regIS){
 	Variable* ultimoArg = (Variable*)list_get(regIS->Argumentos,list_size(regIS->Argumentos)-1);
 	Variable* ultimoVar = (Variable*)list_get(regIS->Variables,list_size(regIS->Variables)-1);
 	if(ultimoVar!=NULL)
-		r = ultimoVar->Posicion->NumeroDePagina*ultimoVar->Posicion->Tamanio + ultimoVar->Posicion->Offset;
+		r = ultimoVar->Posicion.NumeroDePagina*ultimoVar->Posicion.Tamanio + ultimoVar->Posicion.Offset;
 	if(ultimoArg!=NULL){
-		uint32_t ultimaDirVirtualArg = ultimoArg->Posicion->NumeroDePagina*ultimoArg->Posicion->Tamanio + ultimoArg->Posicion->Offset;
+		uint32_t ultimaDirVirtualArg = ultimoArg->Posicion.NumeroDePagina*ultimoArg->Posicion.Tamanio + ultimoArg->Posicion.Offset;
 		if(ultimaDirVirtualArg>r)
 			r = ultimaDirVirtualArg;
 	}
@@ -148,7 +148,7 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	else
 	{
 		Variable* var = (Variable*)result;
-		return var->Posicion->NumeroDePagina*TamanioPaginaMemoria+ var->Posicion->Offset;
+		return var->Posicion.NumeroDePagina*TamanioPaginaMemoria+ var->Posicion.Offset;
 	}
 
 }
@@ -208,18 +208,18 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 	//Entrada del indice de codigo a donde se debe regresar
 	nuevoIs->DireccionDeRetorno = pcb.ProgramCounter;
 	//La posicion donde se almacenara es aquella que empieza en el puntero donde_retornar
-	void *result = NULL;
+	Variable* result = NULL;
 	int i=0;
 	while(i< list_size(pcb.IndiceDelStack) && result == NULL){
 		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,i);
 		result = list_find(is->Variables,
 				LAMBDA(bool _(void*item){
-			return TamanioPaginaMemoria* ((Variable*)item)->Posicion->NumeroDePagina +((Variable*)item)->Posicion->Offset==donde_retornar;
+			return TamanioPaginaMemoria* ((Variable*)item)->Posicion.NumeroDePagina +((Variable*)item)->Posicion.Offset==donde_retornar;
 		}));
 		i++;
 	}
 
-	nuevoIs->PosVariableDeRetorno = ((Variable*)result)->Posicion;
+	nuevoIs->PosVariableDeRetorno = result->Posicion;
 	//La proxima instruccion a ejecutar es la de la funcion en cuestion
 	primitiva_irAlLabel(etiqueta);
 	//agregar al indiceDeStack
@@ -244,7 +244,7 @@ void primitiva_retornar(t_valor_variable retorno){
 	regIndiceStack* is = list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
 	pcb.ProgramCounter = is->DireccionDeRetorno;
 	//Guardo el valor de retorno en la variable correspondiente
-	primitiva_asignar(is->PosVariableDeRetorno->Offset,retorno);
+	primitiva_asignar(is->PosVariableDeRetorno.Offset,retorno);
 
 }
 
