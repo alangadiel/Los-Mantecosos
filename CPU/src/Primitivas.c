@@ -34,19 +34,6 @@ t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valo
 	free(datos);
 	return result;
 }
-/*Al ejecutar la última sentencia, el CPU deberá notificar al Kernel que el proceso finalizó para que este
-se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
-void FinDeEjecucionPrograma(){
-	/*
-	int tamDatos = sizeof(uint32_t)*2;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = FINEJECUCIONPROGRAMA;
-	((uint32_t*) datos)[1] = pcb.PID;
-	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	*/
-	progTerminado = true;
-}
-
 
 
 t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
@@ -141,13 +128,11 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 
 t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	void* result = NULL;
-	int j=0;
-	while(j< list_size(pcb.IndiceDelStack) && result==NULL){
-		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,j);
-		result = (Variable*)list_find(is->Variables,LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
-		j++;
-	}
-	//pcb.ProgramCounter++;
+
+	regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack, list_size(pcb.IndiceDelStack)-1);
+	result = (Variable*)list_find(is->Variables,LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
+
+		//pcb.ProgramCounter++;
 	if(result==NULL)
 		return -1;
 	else
@@ -227,7 +212,7 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 	Variable* result = NULL;
 	int i=0;
 	while(i< list_size(pcb.IndiceDelStack) && result == NULL){
-		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,i);
+		regIndiceStack* is = list_get(pcb.IndiceDelStack,i);
 		result = list_find(is->Variables,
 				LAMBDA(bool _(void*item){
 			return TamanioPaginaMemoria* ((Variable*)item)->Posicion.NumeroDePagina +((Variable*)item)->Posicion.Offset==donde_retornar;
@@ -243,12 +228,14 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 }
 
 //TODAS LAS FUNCIONES RETORNAR UN VALOR, NO EXISTE EL CONCEPTO DE PROCEDIMIENTO: LO DICE EL TP
+/*Al ejecutar la última sentencia, el CPU deberá notificar al Kernel que el proceso finalizó para que este
+se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
 void primitiva_finalizar(void){
 	//Si hay un solo registro de stack y se llama esta funcion, hay que finalizar el programa
-	if(list_size(pcb.IndiceDelStack)>1){
-		list_remove(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
-	} else if(list_size(pcb.IndiceDelStack)==1){
-		FinDeEjecucionPrograma();
+	list_remove_and_destroy_element(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1, free);
+
+	if(list_size(pcb.IndiceDelStack)==0){
+		progTerminado = true;
 	}
 
 }

@@ -271,7 +271,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
 						//Si el FD es 1, hay que mostrarlo por pantalla
 						if(FD==1){
-							printf("Escribiendo en el FD N°1 la informacion siguiente: %s",((char*)paquete->Payload+sizeof(uint32_t) * 4))
+							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
 						else{
 							escribirArchivo(FD, PID, tamanioArchivo, ((char*)paquete->Payload+sizeof(uint32_t) * 4));
