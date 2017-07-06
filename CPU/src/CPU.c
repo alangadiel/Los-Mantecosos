@@ -186,7 +186,7 @@ int main(void) {
 					RegIndiceCodigo* registro = list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 					char instruccion[registro->offset];
 					obtenerLineaAEjecutar(instruccion, registro);
-					printf("Ejecutando rafaga N°: %u de PID: %u\n", pcb.cantidadDeRafagasEjecutadasHistorica, pcb.PID);
+					printf("Ejecutando rafaga N°: %u de PID: %u\n", pcb.cantidadDeRafagasEjecutadas, pcb.PID);
 					analizadorLinea(instruccion,&functions,&kernel_functions);
 					pcb.ProgramCounter++;
 					pcb.cantidadDeRafagasEjecutadasHistorica++;

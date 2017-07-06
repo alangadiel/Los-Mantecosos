@@ -126,6 +126,8 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 				list_add(is->Variables,varNueva);
 			}
 		pcb.cantTotalVariables++;
+		printf("Cant variables: %u\n",pcb.cantTotalVariables);
+
 	}
 	else{
 		//Stack overFlow
