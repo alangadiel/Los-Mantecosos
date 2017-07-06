@@ -15,7 +15,7 @@ int32_t ultimoOffSetVariablesStack;
 	void primitiva_asignar(t_puntero puntero, t_valor_variable variable);
 	t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable);
 	t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor);
-	void primitiva_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta);
+	void primitiva_irAlLabel(t_nombre_etiqueta etiqueta);
 	void primitiva_llamarSinRetorno(t_nombre_etiqueta etiqueta);
 	void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar);
 	void primitiva_finalizar(void);

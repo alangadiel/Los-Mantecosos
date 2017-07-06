@@ -111,7 +111,12 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 
 	// Leer metadataprogram.c a ver como desarrollaron esto
 	if(metaProgram->etiquetas_size>0){
-		char **etiquetasEncontradas = string_n_split(metaProgram->etiquetas,metaProgram->cantidad_de_etiquetas+metaProgram->cantidad_de_funciones-1,(char*)metaProgram->instrucciones_size);
+		char* separador = alloca(sizeof(t_size) + sizeof(char));
+		memcpy(separador, &metaProgram->instrucciones_size, sizeof(t_size));
+		separador[sizeof(t_size)] = '\0';
+		char **etiquetasEncontradas = string_n_split(metaProgram->etiquetas,
+				metaProgram->cantidad_de_etiquetas + metaProgram->cantidad_de_funciones, separador);
+
 		void llenarIndiceEtiquetas(void* item){
 			t_puntero_instruccion *pointer= malloc(sizeof(t_puntero_instruccion));
 			*pointer = metadata_buscar_etiqueta((char*)item,metaProgram->etiquetas, metaProgram->etiquetas_size);
@@ -123,7 +128,8 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 		pcb->cantidad_de_etiquetas = metaProgram->cantidad_de_etiquetas;
 		pcb->cantidad_de_funciones = metaProgram->cantidad_de_funciones;
 		pcb->etiquetas_size= metaProgram->etiquetas_size;
-		strcpy(pcb->etiquetas,metaProgram->etiquetas);
+		memcpy(pcb->etiquetas,metaProgram->etiquetas, metaProgram->etiquetas_size);
+		free(etiquetasEncontradas);
 	}
 
 }

@@ -187,10 +187,18 @@ t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, 
 	//pcb.ProgramCounter++;
 	return val;
 }
+void limpiar_string(char** string){
+	int i ;
+	for(i=0;i<string_length(*string); i++){
+		if((*string)[i]=='\n')
+			(*string)[i]='\0';
+	}
+}
 
-void primitiva_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
+void primitiva_irAlLabel(t_nombre_etiqueta etiqueta){
 	//La proxima instruccion a ejecutar es la de la linea donde esta la etiqueta
-	t_puntero_instruccion* pc = dictionary_get(pcb.IndiceDeEtiquetas,(char*)t_nombre_etiqueta);
+	limpiar_string(&etiqueta);
+	t_puntero_instruccion* pc = dictionary_get(pcb.IndiceDeEtiquetas,(char*)etiqueta);
 	pcb.ProgramCounter = *pc;
 
 }
