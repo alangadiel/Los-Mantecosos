@@ -25,6 +25,7 @@ int socketMemoria;
 extern BloqueControlProceso pcb;
 extern bool primitivaBloqueante;
 extern bool huboError;
+extern bool progTerminado;
 
 void obtenerValoresArchivoConfiguracion();
 void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos);

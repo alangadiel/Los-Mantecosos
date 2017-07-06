@@ -7,6 +7,7 @@ uint32_t cantRafagasAEjecutar;
 uint32_t cantRafagasEjecutadas=0;
 bool primitivaBloqueante = false;
 bool huboError = false;
+bool progTerminado = false;
 
 bool ejecutando;
 bool DesconectarCPU = false;
@@ -145,6 +146,7 @@ void userInterfaceHandler(){
 		}
 	}
 }
+
 int main(void) {
 	indiceDeCodigo = list_create();
 	pcb_Create(&pcb, 0); //TODO: sacar el 0 despues de mergear de newMaster
@@ -178,11 +180,13 @@ int main(void) {
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = true;
 				int i=0;
-				while(i< pcb.cantidadDeRafagasAEjecutar && !primitivaBloqueante && !huboError) { //TODO sacar i< pcb.cantidadDeRafagasAEjecutar y hacer q finalize en una primitiva
-					RegIndiceCodigo* registro = (RegIndiceCodigo*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
+				while(!primitivaBloqueante && !huboError && !progTerminado) { //TODO sacar i< pcb.cantidadDeRafagasAEjecutar y hacer q finalize en una primitiva
+					if(pcb.cantidadDeRafagasAEjecutar > 0 && i >= pcb.cantidadDeRafagasAEjecutar) break;
+
+					RegIndiceCodigo* registro = list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 					char instruccion[registro->offset];
 					obtenerLineaAEjecutar(instruccion, registro);
-					printf("Ejecutando rafaga de PID: %u\n", pcb.PID);
+					printf("Ejecutando rafaga N°: %u de PID: %u\n", pcb.cantidadDeRafagasEjecutadasHistorica, pcb.PID);
 					analizadorLinea(instruccion,&functions,&kernel_functions);
 					pcb.ProgramCounter++;
 					pcb.cantidadDeRafagasEjecutadasHistorica++;

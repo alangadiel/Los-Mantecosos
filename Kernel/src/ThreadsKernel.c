@@ -189,6 +189,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 			FinalizarPrograma(PID,tipoFinalizacion);
 	}*/
 	pthread_mutex_unlock(&mutexFinalizarPrograma);
+	printf("PID %u finalizado por exitcode %i", pcbRemovido->PID, pcbRemovido->ExitCode);
 	return pcbRemovido;
 }
 
@@ -323,6 +324,7 @@ void dispatcher()
 				if(PCBAMandar!=NULL){
 
 					DatosCPU* cpuAUsar = (DatosCPU*)list_get(listCPUsLibres, 0);
+					/*
 					uint32_t cantidadDeRafagas;
 					uint32_t cantidadDeRafagasRestantes = PCBAMandar->IndiceDeCodigo->elements_count - PCBAMandar->cantidadDeRafagasEjecutadasHistorica;
 
@@ -342,6 +344,17 @@ void dispatcher()
 						}
 					}
 					PCBAMandar->cantidadDeRafagasAEjecutar = cantidadDeRafagas;
+					*/
+
+					if (strcmp(ALGORITMO, "FIFO") == 0)
+					{
+						PCBAMandar->cantidadDeRafagasAEjecutar = 0;//sin limite
+					}
+					else if (strcmp(ALGORITMO, "RR") == 0)
+					{
+						PCBAMandar->cantidadDeRafagasAEjecutar = QUANTUM;
+					}
+
 					PCBAMandar->cantidadDeRafagasEjecutadas = 0;
 
 					EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar);

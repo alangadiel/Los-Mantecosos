@@ -37,11 +37,14 @@ t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valo
 /*Al ejecutar la última sentencia, el CPU deberá notificar al Kernel que el proceso finalizó para que este
 se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
 void FinDeEjecucionPrograma(){
+	/*
 	int tamDatos = sizeof(uint32_t)*2;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = FINEJECUCIONPROGRAMA;
 	((uint32_t*) datos)[1] = pcb.PID;
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	*/
+	progTerminado = true;
 }
 
 
@@ -199,10 +202,12 @@ void primitiva_irAlLabel(t_nombre_etiqueta etiqueta){
 	//La proxima instruccion a ejecutar es la de la linea donde esta la etiqueta
 	limpiar_string(&etiqueta);
 	pcb.ProgramCounter = metadata_buscar_etiqueta(etiqueta, pcb.IndiceDeEtiquetas, pcb.etiquetas_size);
+	pcb.ProgramCounter--;
 
 }
 void primitiva_llamarSinRetorno(t_nombre_etiqueta etiqueta){
 		regIndiceStack* nuevoIs=malloc(sizeof(regIndiceStack));
+		CrearRegistroStack(nuevoIs);
 		//Entrada del indice de codigo a donde se debe regresar
 		nuevoIs->DireccionDeRetorno = pcb.ProgramCounter;
 		//La proxima instruccion a ejecutar es la de la funcion en cuestion
@@ -213,6 +218,7 @@ void primitiva_llamarSinRetorno(t_nombre_etiqueta etiqueta){
 
 void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 	regIndiceStack* nuevoIs=malloc(sizeof(regIndiceStack));
+	CrearRegistroStack(nuevoIs);
 	//Entrada del indice de codigo a donde se debe regresar
 	nuevoIs->DireccionDeRetorno = pcb.ProgramCounter;
 	//La posicion donde se almacenara es aquella que empieza en el puntero donde_retornar
@@ -237,13 +243,11 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 //TODAS LAS FUNCIONES RETORNAR UN VALOR, NO EXISTE EL CONCEPTO DE PROCEDIMIENTO: LO DICE EL TP
 void primitiva_finalizar(void){
 	//Si hay un solo registro de stack y se llama esta funcion, hay que finalizar el programa
-
-	//if(list_size(pcb.IndiceDelStack)>1){
-	list_remove(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
-
-	/*} else if(list_size(pcb.IndiceDelStack)==1){
+	if(list_size(pcb.IndiceDelStack)>1){
+		list_remove(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+	} else if(list_size(pcb.IndiceDelStack)==1){
 		FinDeEjecucionPrograma();
-	}*/
+	}
 
 }
 
