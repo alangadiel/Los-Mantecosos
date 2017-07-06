@@ -95,7 +95,7 @@ void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp, Paquete* paq
 
 void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* paquete){
 	t_metadata_program* metaProgram = metadata_desde_literal((char*)paquete->Payload);
-	int i = 0;
+	int i;
 
 	for(i=0;i<metaProgram->instrucciones_size; i++)
 	{
@@ -106,31 +106,14 @@ void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* pa
 
 		list_add(pcb->IndiceDeCodigo,registroIndice);
 	}
-	//Inicializar indice de etiquetas
-	i = 0;
 
-	// Leer metadataprogram.c a ver como desarrollaron esto
-	if(metaProgram->etiquetas_size>0){
-		char* separador = alloca(sizeof(t_size) + sizeof(char));
-		memcpy(separador, &metaProgram->instrucciones_size, sizeof(t_size));
-		separador[sizeof(t_size)] = '\0';
-		char **etiquetasEncontradas = string_n_split(metaProgram->etiquetas,
-				metaProgram->cantidad_de_etiquetas + metaProgram->cantidad_de_funciones, separador);
+	//if(metaProgram->etiquetas_size>0){
+	pcb->cantidad_de_etiquetas = metaProgram->cantidad_de_etiquetas;
+	pcb->cantidad_de_funciones = metaProgram->cantidad_de_funciones;
+	pcb->etiquetas_size= metaProgram->etiquetas_size;
+	pcb->IndiceDeEtiquetas = malloc(metaProgram->etiquetas_size);
+	memcpy(pcb->IndiceDeEtiquetas,metaProgram->etiquetas, metaProgram->etiquetas_size);
 
-		void llenarIndiceEtiquetas(void* item){
-			t_puntero_instruccion *pointer= malloc(sizeof(t_puntero_instruccion));
-			*pointer = metadata_buscar_etiqueta((char*)item,metaProgram->etiquetas, metaProgram->etiquetas_size);
-			//printf("Cargando Etiqueta: %s , Program Counter: %u\n",(char*)item,*pointer);
-			dictionary_put(pcb->IndiceDeEtiquetas, (char*)item, pointer);
-		}
-		string_iterate_lines(etiquetasEncontradas,(void*)llenarIndiceEtiquetas);
-
-		pcb->cantidad_de_etiquetas = metaProgram->cantidad_de_etiquetas;
-		pcb->cantidad_de_funciones = metaProgram->cantidad_de_funciones;
-		pcb->etiquetas_size= metaProgram->etiquetas_size;
-		memcpy(pcb->etiquetas,metaProgram->etiquetas, metaProgram->etiquetas_size);
-		free(etiquetasEncontradas);
-	}
 
 }
 

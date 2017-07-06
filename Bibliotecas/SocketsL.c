@@ -537,7 +537,7 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	ints.cantBytesLiberados = pecebe->cantBytesLiberados;
 	serializar(&pcbSerializado,&ints, sizeof(IntsDelPCB), &tamTotal);
 	//Copia las etiquetas que ya estan serializadas
-	serializar(&pcbSerializado,pecebe->etiquetas, pecebe->etiquetas_size, &tamTotal);
+	serializar(&pcbSerializado,pecebe->IndiceDeEtiquetas, pecebe->etiquetas_size, &tamTotal);
 	//Serialización IndiceDeCodigo
 	serializar(&pcbSerializado,&sizeIndCod, sizeof(uint32_t), &tamTotal);
 	for (i = 0; i < sizeIndCod; i++){
@@ -568,24 +568,6 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 			serializar(&pcbSerializado,elem, sizeof(Variable), &tamTotal);
 		}
 	}
-
-	//Serialización Índice De Etiquetas
-	if(pecebe->etiquetas_size > 0){
-		char* separador = alloca(sizeof(t_size) + sizeof(char));
-		memcpy(separador, &sizeIndCod, sizeof(t_size));
-		separador[sizeof(t_size)] = '\0';
-		char** etiquetas = string_n_split(pecebe->etiquetas,
-				pecebe->cantidad_de_etiquetas + pecebe->cantidad_de_funciones ,separador);
-		void serializarIndiceEtiquetas(void *etiqueta){
-			t_puntero_instruccion* instruccion = dictionary_get(pecebe->IndiceDeEtiquetas, (char*)etiqueta);
-			printf("cant et:%u, cant fun:%u",pecebe->cantidad_de_etiquetas, pecebe->cantidad_de_funciones);
-			printf("Serializando Etiqueta: %s , Program Counter: %u\n",(char*)etiqueta,*instruccion);
-			serializar(&pcbSerializado,instruccion, sizeof(t_puntero_instruccion), &tamTotal);
-		}
-		string_iterate_lines(etiquetas,(void*)serializarIndiceEtiquetas);
-		free(etiquetas);
-	}
-
 	//Lo envio
 	EnviarDatosTipo(socketCliente,emisor,pcbSerializado,tamTotal,ESPCB);
 	free(pcbSerializado);
@@ -628,8 +610,8 @@ void RecibirPCB(BloqueControlProceso* pecebe, void* payload, uint32_t tamPayload
 	pecebe->cantBytesLiberados = ints.cantBytesLiberados;
 
 	//Copia las etiquetas que ya estan serializadas
-	pecebe->etiquetas = malloc(pecebe->etiquetas_size);
-	deserializar(&pcbSerializado,pecebe->etiquetas, pecebe->etiquetas_size, &tamTotal);
+	pecebe->IndiceDeEtiquetas = malloc(pecebe->etiquetas_size);
+	deserializar(&pcbSerializado,pecebe->IndiceDeEtiquetas, pecebe->etiquetas_size, &tamTotal);
 
 	//deserialización IndiceDeCodigo
 	deserializar(&pcbSerializado,&sizeIndCod, sizeof(uint32_t), &tamTotal);
@@ -668,25 +650,5 @@ void RecibirPCB(BloqueControlProceso* pecebe, void* payload, uint32_t tamPayload
 			list_add(indice->Argumentos, elem);
 		}
 	}
-
-	//deserialización Índice De Etiquetas
-	if(pecebe->etiquetas_size > 0){
-		char* separador = alloca(sizeof(t_size) + sizeof(char));
-		memcpy(separador, &sizeIndCod, sizeof(t_size));
-		separador[sizeof(t_size)] = '\0';
-		char **etiquetas = string_n_split(pecebe->etiquetas,
-				pecebe->cantidad_de_etiquetas + pecebe->cantidad_de_funciones ,separador);
-		void desserealizarIndiceEtiquetas(void* etiqueta){
-			t_puntero_instruccion* inst = malloc(sizeof(t_puntero_instruccion));
-			deserializar(&pcbSerializado,inst, sizeof(t_puntero_instruccion), &tamTotal);
-			printf("Etiqueta: %s , Program Counter: %u\n",(char*)etiqueta,*inst);
-			dictionary_put(pecebe->IndiceDeEtiquetas, (char*)etiqueta, inst);
-			t_puntero_instruccion pc = *(t_puntero_instruccion*)dictionary_get(pecebe->IndiceDeEtiquetas,(char*)etiqueta);
-			printf("PC: %u\n",pc);
-		}
-
-		string_iterate_lines(etiquetas, (void*)desserealizarIndiceEtiquetas);
-	}
-	//free(pcbSerializado);
 }
 

@@ -24,7 +24,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 				{
 					//Ejecuto el metadata program
 					CargarInformacionDelCodigoDelPrograma(pcb, paquete);
-					pcb->PaginasDeCodigo = (uint32_t)ceil(tamaniCodigoEnPaginas);
+					pcb->PaginasDeCodigo = tamaniCodigoEnPaginas;
 					//Solicito a la memoria que me guarde el codigo del programa(dependiendo cuantas paginas se requiere para el codigo
 					GuardarCodigoDelProgramaEnLaMemoria(pcb, paquete);
 					PonerElProgramaComoListo(pcb,paquete, socketConectado, tamaniCodigoEnPaginas);

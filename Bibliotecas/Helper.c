@@ -52,7 +52,6 @@ void pcb_Create(BloqueControlProceso* pecebe, uint32_t pid_actual){
 	pecebe->PaginasDeCodigo=0;
 	pecebe->ExitCode = 0;
 	pecebe->etiquetas_size = 0;
-	pecebe->etiquetas = string_new();
 	pecebe->cantidad_de_etiquetas = 0;
 	pecebe->cantidad_de_funciones = 0;
 	pecebe->cantidadDeRafagasAEjecutar = 0;
@@ -65,15 +64,13 @@ void pcb_Create(BloqueControlProceso* pecebe, uint32_t pid_actual){
 	pecebe->cantidadSyscallEjecutadas = 0;
 	pecebe->cantTotalVariables=0;
 	pecebe->IndiceDeCodigo = list_create();
-	pecebe->IndiceDeEtiquetas = dictionary_create();
 	pecebe->IndiceDelStack = list_create();
 }
 
 void pcb_Destroy(BloqueControlProceso* pecebe){
-	free(pecebe->etiquetas);
+	free(pecebe->IndiceDeEtiquetas);
 	list_destroy_and_destroy_elements(pecebe->IndiceDeCodigo,free);
 	list_destroy_and_destroy_elements(pecebe->IndiceDelStack,free);
-	dictionary_destroy_and_destroy_elements(pecebe->IndiceDeEtiquetas,free);
 	free(pecebe);
 }
 

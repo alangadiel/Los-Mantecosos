@@ -178,7 +178,7 @@ int main(void) {
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = true;
 				int i=0;
-				while(i< pcb.cantidadDeRafagasAEjecutar && !primitivaBloqueante && !huboError) {
+				while(i< pcb.cantidadDeRafagasAEjecutar && !primitivaBloqueante && !huboError) { //TODO sacar i< pcb.cantidadDeRafagasAEjecutar y hacer q finalize en una primitiva
 					RegIndiceCodigo* registro = (RegIndiceCodigo*)list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 					char instruccion[registro->offset];
 					obtenerLineaAEjecutar(instruccion, registro);

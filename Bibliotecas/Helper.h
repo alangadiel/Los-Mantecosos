@@ -55,13 +55,12 @@ typedef struct {
 } __attribute__((packed)) RegIndiceCodigo;
 typedef struct {
 	t_list* IndiceDeCodigo;    //Cada elemento seria un array de 2 ints
-	t_dictionary* IndiceDeEtiquetas;
 	t_list* IndiceDelStack; //lista de IndiceStack
-	char* etiquetas;
+	char* IndiceDeEtiquetas;
 	t_size etiquetas_size;
 	int32_t ExitCode;
 	uint32_t PID;
-	uint32_t ProgramCounter;
+	t_puntero_instruccion ProgramCounter;
 	uint32_t PaginasDeCodigo;
 	uint32_t cantTotalVariables;
 	uint32_t cantidad_de_etiquetas;

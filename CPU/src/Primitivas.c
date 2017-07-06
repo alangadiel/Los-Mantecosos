@@ -76,7 +76,7 @@ void CrearRegistroStack(regIndiceStack* is){
 	is->Argumentos = list_create();
 	is->Variables = list_create();
 }
-
+/*
 int32_t obtenerUltimoOffset(regIndiceStack* regIS){
 	int32_t r = -sizeof(uint32_t);
 	Variable* ultimoArg = (Variable*)list_get(regIS->Argumentos,list_size(regIS->Argumentos)-1);
@@ -89,7 +89,7 @@ int32_t obtenerUltimoOffset(regIndiceStack* regIS){
 			r = ultimaDirVirtualArg;
 	}
 	return r;
-}
+}*/
 bool hayLugarEnStack(){
 	return StackSizeEnPaginas * TamanioPaginaMemoria > pcb.cantTotalVariables*sizeof(int);
 }
@@ -198,8 +198,7 @@ void limpiar_string(char** string){
 void primitiva_irAlLabel(t_nombre_etiqueta etiqueta){
 	//La proxima instruccion a ejecutar es la de la linea donde esta la etiqueta
 	limpiar_string(&etiqueta);
-	t_puntero_instruccion* pc = dictionary_get(pcb.IndiceDeEtiquetas,(char*)etiqueta);
-	pcb.ProgramCounter = *pc;
+	pcb.ProgramCounter = metadata_buscar_etiqueta(etiqueta, pcb.IndiceDeEtiquetas, pcb.etiquetas_size);
 
 }
 void primitiva_llamarSinRetorno(t_nombre_etiqueta etiqueta){
