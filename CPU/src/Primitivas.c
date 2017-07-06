@@ -190,7 +190,8 @@ t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, 
 
 void primitiva_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
 	//La proxima instruccion a ejecutar es la de la linea donde esta la etiqueta
-	pcb.ProgramCounter = *(int*)dictionary_get(pcb.IndiceDeEtiquetas,t_nombre_etiqueta);
+	t_puntero_instruccion* pc = dictionary_get(pcb.IndiceDeEtiquetas,(char*)t_nombre_etiqueta);
+	pcb.ProgramCounter = *pc;
 
 }
 void primitiva_llamarSinRetorno(t_nombre_etiqueta etiqueta){

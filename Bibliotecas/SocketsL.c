@@ -572,11 +572,13 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	//Serialización Índice De Etiquetas
 	if(pecebe->etiquetas_size > 0){
 		char** etiquetas = string_n_split(pecebe->etiquetas,
-				pecebe->cantidad_de_etiquetas + pecebe->cantidad_de_funciones ,(char*)&sizeIndCod);
-		string_iterate_lines(etiquetas, LAMBDA(void _(char* etiqueta) {
-			t_puntero_instruccion* instruccion = dictionary_get(pecebe->IndiceDeEtiquetas, etiqueta);
+				pecebe->cantidad_de_etiquetas + pecebe->cantidad_de_funciones-1 ,(char*)&sizeIndCod);
+		void serializarIndiceEtiquetas(void *etiqueta){
+			t_puntero_instruccion* instruccion = dictionary_get(pecebe->IndiceDeEtiquetas, (char*)etiqueta);
+		//	printf("Serializando Etiqueta: %s , Program Counter: %u\n",(char*)etiqueta,*instruccion);
 			serializar(&pcbSerializado,instruccion, sizeof(t_puntero_instruccion), &tamTotal);
-		}));
+		}
+		string_iterate_lines(etiquetas,serializarIndiceEtiquetas);
 		free(etiquetas);
 	}
 
@@ -596,7 +598,6 @@ void RecibirPCB(BloqueControlProceso* pecebe, void* payload, uint32_t tamPayload
 	pcb_Create(pecebe, 0);
 	//void * pcbSerializado = malloc(tamPayload);
 	void *pcbSerializado = payload;
-	char** etiquetas;
 	//cargar pcb
 	int i = 0;
 	uint32_t sizeIndStack;
@@ -666,22 +667,17 @@ void RecibirPCB(BloqueControlProceso* pecebe, void* payload, uint32_t tamPayload
 
 	//deserialización Índice De Etiquetas
 	if(pecebe->etiquetas_size > 0){
-		//if(pecebe->cantidad_de_etiquetas + pecebe->cantidad_de_funciones > 1) {
-			etiquetas = string_n_split(pecebe->etiquetas,
-				pecebe->cantidad_de_etiquetas + pecebe->cantidad_de_funciones ,(char*)&sizeIndCod);
-		/*} else {
-			char* etiqueta = string_duplicate(pecebe->etiquetas);
-			etiquetas = &etiqueta;
-		}*/
+			char **etiquetas = string_n_split(pecebe->etiquetas,pecebe->cantidad_de_etiquetas + pecebe->cantidad_de_funciones-1 ,(char*)&sizeIndCod);
+			void desserealizarIndiceEtiquetas(void* etiqueta){
+				t_puntero_instruccion* inst = malloc(sizeof(t_puntero_instruccion));
+				deserializar(&pcbSerializado,inst, sizeof(t_puntero_instruccion), &tamTotal);
+				printf("Etiqueta: %s , Program Counter: %u\n",(char*)etiqueta,*inst);
+				dictionary_put(pecebe->IndiceDeEtiquetas, (char*)etiqueta, inst);
+				t_puntero_instruccion pc = *(t_puntero_instruccion*)dictionary_get(pecebe->IndiceDeEtiquetas,(char*)etiqueta);
+				printf("PC: %u\n",pc);
+			}
 
-		string_iterate_lines(etiquetas, LAMBDA(void _(char* etiqueta) {
-			t_puntero_instruccion* inst = malloc(sizeof(t_puntero_instruccion));
-			deserializar(&pcbSerializado,inst, sizeof(t_puntero_instruccion), &tamTotal);
-			dictionary_put(pecebe->IndiceDeEtiquetas, etiqueta, inst);
-		}));
-		free(etiquetas);
-		//char* a = dictionary_get(pecebe->IndiceDeEtiquetas, pecebe->etiquetas);
-		//printf("%c", *a);
+			string_iterate_lines(etiquetas, desserealizarIndiceEtiquetas);
 	}
 	//free(pcbSerializado);
 }
