@@ -342,14 +342,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}));
 						datoscpu->isFree = true;
 						sem_post(&semDispatcherCpus);
-						if (pcb->ExitCode==FINALIZACIONNORMAL)
+						if (pcb->ExitCode<= 0)
 						{
-							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
-						}
-						else if(pcb->ExitCode==STACKOVERFLOW){
-							printf("Stackoverflow en proceso %u\n", pcb->PID);
-
-							FinalizarPrograma(pcb->PID, STACKOVERFLOW);
+							FinalizarPrograma(pcb->PID,pcb->ExitCode);
 						}
 						else
 						{
