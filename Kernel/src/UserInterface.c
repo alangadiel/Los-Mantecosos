@@ -74,7 +74,7 @@ void ConsultarEstado(int pidAConsultar)
 		printf("Proceso N°: %u \n",result->PID);
 		printf("Paginas de codigo: %u \n",result->PaginasDeCodigo);
 		printf("Contador de programa: %u \n",result->ProgramCounter);
-		printf("Rafagas ejecutadas: %u \n",result->cantidadDeRafagasEjecutadas);
+		printf("Rafagas ejecutadas: %u \n",result->cantidadDeRafagasEjecutadasHistorica);
 		printf("Syscall ejecutadas: %u \n",result->cantidadSyscallEjecutadas);
 		if(termino) obtenerError(result->ExitCode);
 	}

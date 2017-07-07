@@ -133,6 +133,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 
 	if(pcbRemovido != NULL)
 	{
+		printf("\nFinalizando proceso %u por ExitCode %i\n", pcbRemovido->PID, pcbRemovido->ExitCode);
 		pcbRemovido->ExitCode = tipoFinalizacion;
 
 		list_add(Finalizados->elements, pcbRemovido);
@@ -356,7 +357,7 @@ void dispatcher()
 					}
 
 					PCBAMandar->cantidadDeRafagasEjecutadas = 0;
-
+					printf("Despachando proceso %u por socket %i\n", PCBAMandar->PID, cpuAUsar->socketCPU);
 					EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar);
 
 					cpuAUsar->isFree = false;

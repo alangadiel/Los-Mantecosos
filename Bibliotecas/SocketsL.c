@@ -329,7 +329,7 @@ bool IM_InicializarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog,
 	free(datos);
 	Paquete paquete;
 	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
-	printf("El programa con PID %u se inicializo en Memoria.\n", ID_Prog);
+	printf("\nEl programa con PID %u se inicializo en Memoria.\n", ID_Prog);
 	bool r = true;
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
 	free(paquete.Payload);
@@ -536,7 +536,7 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 	ints.cantBytesAlocados = pecebe->cantBytesAlocados;
 	ints.cantBytesLiberados = pecebe->cantBytesLiberados;
 	serializar(&pcbSerializado,&ints, sizeof(IntsDelPCB), &tamTotal);
-	//Copia las etiquetas que ya estan serializadas
+	//Serialización IndiceDeEtiquetas
 	serializar(&pcbSerializado,pecebe->IndiceDeEtiquetas, pecebe->etiquetas_size, &tamTotal);
 	//Serialización IndiceDeCodigo
 	serializar(&pcbSerializado,&sizeIndCod, sizeof(uint32_t), &tamTotal);
@@ -609,7 +609,7 @@ void RecibirPCB(BloqueControlProceso* pecebe, void* payload, uint32_t tamPayload
 	pecebe->cantBytesAlocados = ints.cantBytesAlocados;
 	pecebe->cantBytesLiberados = ints.cantBytesLiberados;
 
-	//Copia las etiquetas que ya estan serializadas
+	//deserialización IndiceDeEtiquetas
 	pecebe->IndiceDeEtiquetas = malloc(pecebe->etiquetas_size);
 	deserializar(&pcbSerializado,pecebe->IndiceDeEtiquetas, pecebe->etiquetas_size, &tamTotal);
 

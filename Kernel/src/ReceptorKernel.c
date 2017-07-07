@@ -49,6 +49,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 		case ESDATOS:
 			if(strcmp(paquete->header.emisor, CPU) == 0)
 			{
+				printf("Tipo operacion : %u\n",*(uint32_t*)paquete->Payload);
 				switch ((*(uint32_t*)paquete->Payload))
 				{
 					int32_t valorAAsignar;
@@ -242,13 +243,14 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case ABRIRARCHIVO:
 						PID = ((uint32_t*)paquete->Payload)[1];
-
+						printf("El archivo fue abierto\n");
 						permisosArchivo permisos;
 						permisos.creacion = *((bool*)paquete->Payload+sizeof(uint32_t) * 2);
 						permisos.escritura = *((bool*)paquete->Payload+sizeof(uint32_t) * 3);
 						permisos.lectura = *((bool*)paquete->Payload+sizeof(uint32_t) * 4);
 
 						abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos);
+
 					break;
 
 					case BORRARARCHIVO:
@@ -283,6 +285,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}
 						else{
 							escribirArchivo(FD, PID, tamanioArchivo, ((char*)paquete->Payload+sizeof(uint32_t) * 4));
+							printf("El archivo fue escrito con %s \n", ((char*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
 					break;
 
@@ -332,7 +335,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 				//termino la rafaga normalmente sin bloquearse
 				if(strcmp(paquete->header.emisor, CPU) == 0)
 				{
-					printf("Llego el pcb\n");
 					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
 					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
 					if(pcb!=NULL){
@@ -348,6 +350,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
 						}
 						else if(pcb->ExitCode==STACKOVERFLOW){
+							printf("Stackoverflow en proceso %u\n", pcb->PID);
+
 							FinalizarPrograma(pcb->PID, STACKOVERFLOW);
 						}
 						else
