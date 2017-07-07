@@ -214,11 +214,13 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 		else
 		{
 			FinalizarPrograma(PID, LEERARCHIVOSINPERMISOS);
+			return NULL;
 		}
 	}
 	else
 	{
 		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
+		return NULL;
 	}
 }
 
