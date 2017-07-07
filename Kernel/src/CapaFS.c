@@ -10,13 +10,14 @@
 int ultimoFD = 3;
 
 
-void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
+uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 {
 	void* result = NULL;
 
 	result = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == path; }));
 
 	archivoGlobal* archivoGlob = malloc(sizeof(archivoGlobal)); //El free se hace en limpiar listas
+	archivoProceso* archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
 
 	if(result == NULL) //No hay un archivo global con ese path
 	{
@@ -61,8 +62,6 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 		i++;
 	}
 
-	archivoProceso* archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
-
 	int indice;
 	int j;
 
@@ -106,6 +105,8 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 
 		list_replace(ArchivosProcesos, i-1, listaArchivoProceso);
 	}
+
+	return archivoProc->FD;
 }
 
 
@@ -151,30 +152,31 @@ void finalizarProgramaCapaFS(int PID)
 }
 
 
-uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int socketConectado)
+uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int socketConectado, int32_t* tipoError)
 {
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
 
+	uint32_t FD;
+
 	if(archivoEstaCreado == 1)
 	{
-		cargarEnTablasArchivos(path, PID, permisos);
+		FD = cargarEnTablasArchivos(path, PID, permisos);
 
-		uint32_t FD;
-
-		EnviarDatos(socketConectado, KERNEL, 1, sizeof(uint32_t));
+		EnviarDatos(socketConectado, KERNEL, &FD, sizeof(uint32_t));
 	}
 	else
 	{
 		if(permisos.creacion == true)
 		{
-			FS_CrearPrograma(socketConFS, KERNEL, path);
-			cargarEnTablasArchivos(path, PID, permisos);
+			archivoEstaCreado = FS_CrearPrograma(socketConFS, KERNEL, path);
+			FD = cargarEnTablasArchivos(path, PID, permisos);
+
+			EnviarDatos(socketConectado, KERNEL, &FD, sizeof(uint32_t));
 		}
 		else
 		{
 			//TODO: Avisarle a la CPU que termino
-			FinalizarPrograma(PID, CREARARCHIVOSINPERMISOS);
-			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -10 (El programa intentó crear un archivo sin permisos)
+			*tipoError = ACCEDERAARCHIVOINEXISTENTE;
 		}
 	}
 
@@ -182,7 +184,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 }
 
 
-void leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
+void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 {
 	void* result = NULL;
 	int i = 0;
@@ -199,34 +201,26 @@ void leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 
 	if(result != NULL)
 	{
-		archivoProceso* archivoProc = malloc(sizeof(archivoProceso));
-
-		archivoProc = (archivoProceso*)result;
+		archivoProceso* archivoProc = (archivoProceso*)result;
 
 		if(archivoProc->flags.lectura == true)
 		{
-			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->FD - 3); //El -3 es porque los FD empiezan desde 3
+			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD); //El -3 es porque los FD empiezan desde 3
 
-			FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo);
+			void* dato = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, 0, sizeArchivo);
 
-			archivoProc->offsetArchivo += sizeArchivo;
-
-			list_replace(ArchivosProcesos, FD - 3, archivoProc);
-
-
+			return dato;
 		}
 		else
 		{
-			free(archivoProc);
-
 			FinalizarPrograma(PID, LEERARCHIVOSINPERMISOS);
-			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -3
+			return NULL;
 		}
 	}
 	else
 	{
 		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
+		return NULL;
 	}
 }
 
@@ -268,13 +262,11 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* 
 			free(archivoProc);
 
 			FinalizarPrograma(PID, ESCRIBIRARCHIVOSINPERMISO);
-			//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -4
 		}
 	}
 	else
 	{
 		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
 
@@ -344,9 +336,16 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
 
 		if(archivoGlob->cantAperturas == 0)
 		{
-			FS_BorrarArchivo(FD, KERNEL, archivoGlob->pathArchivo);
+			uint32_t fueBorrado = FS_BorrarArchivo(FD, KERNEL, archivoGlob->pathArchivo);
 
-			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }),free);
+			if(fueBorrado == 1)
+			{
+				list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }),free);
+			}
+			else
+			{
+				printf("No se pudo borrar el archivo global con path %s", archivoGlob->pathArchivo);
+			}
 		}
 	}
 	else
