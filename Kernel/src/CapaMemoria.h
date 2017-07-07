@@ -22,7 +22,7 @@ typedef struct {
 } Semaforo;
 
 uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantAReservar, int socketFD);
-uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket);
+uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket,bool* huboError);
 void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos);
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina);
 
