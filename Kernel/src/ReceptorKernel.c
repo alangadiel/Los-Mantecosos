@@ -132,6 +132,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							semaf->valorSemaforo--;
 
 							BloqueControlProceso* pcb = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
+							RecibirPaqueteServidorKernel(socketConectado, KERNEL, paquete);
 							RecibirPCB(pcb, paquete->Payload, paquete->header.tamPayload,KERNEL);
 
 							if (semaf->valorSemaforo < 0)
@@ -341,7 +342,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}));
 						datoscpu->isFree = true;
 						sem_post(&semDispatcherCpus);
-						if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas && pcb->ExitCode==FINALIZACIONNORMAL)
+						if (pcb->ExitCode==FINALIZACIONNORMAL)
 						{
 							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
 						}
