@@ -193,10 +193,10 @@ void crearArchivo(char* path,int socketFD) {
 		string_append(&nuevoPath, pathArray[i]);
 		ValoresArchivo* nuevosValores = reservarBloques(nuevoPath, 0, NULL);
 		if (nuevosValores != NULL) {
-			EnviarDatos(socketFD, FS, NULL, 0);
+			EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
 		}
 		else {
-			EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
+			EnviarDatos(socketFD, FS, 0, sizeof(uint32_t));
 		}
 		free(nuevosValores);
 		free(nuevoPath);
@@ -214,16 +214,16 @@ void borrarArchivo(char* path, int socketFD) {
 		eliminarBloques(valores->Bloques);
 		int removeFile = remove(pathArchivo);
 		if (removeFile >= 0 && socketFD != 0) {
-			EnviarDatos(socketFD, FS, NULL, 0);
+			EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
 		}
 		else {
-			EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
+			EnviarDatos(socketFD, FS, 0, sizeof(uint32_t));
 		}
 		free(valores);
 	}
 	else
 	{
-		EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
+		EnviarDatos(socketFD, FS, 0, sizeof(uint32_t));
 	}
 	free(pathArchivo);
 }
@@ -310,14 +310,14 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 		fclose(file);
 
 		if (socketFD != 0) {
-			EnviarDatos(socketFD, FS, NULL, 0);
+			EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
 		}
 		free(nuevosValores);
 		free(valores);
 		free(datosActuales);
 	}
 	else {
-		EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
+		EnviarDatos(socketFD, FS, 0, sizeof(uint32_t));
 	}
 	free(pathAEscribir);
 }
