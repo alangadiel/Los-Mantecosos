@@ -7,8 +7,6 @@
 #define CREARARCHIVOSINPERMISOS -10
 
 
-int ultimoFD = 3;
-
 
 uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 {
@@ -225,7 +223,7 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 }
 
 
-uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* datosAGrabar)
+uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* datosAGrabar)
 {
 	void* result = NULL;
 	int i = 0;

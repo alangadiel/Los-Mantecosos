@@ -395,7 +395,7 @@ void primitiva_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_vari
 
 }
 void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
-	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo)+tamanio;
+	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo) + tamanio;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = ESCRIBIRARCHIVO;
 	((uint32_t*) datos)[1] = pcb.PID;
