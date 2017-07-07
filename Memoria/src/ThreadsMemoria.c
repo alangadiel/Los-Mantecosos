@@ -158,7 +158,7 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cuantasPagTieneVivos(pid) > 0) {
 		pthread_mutex_lock( &mutexTablaPagina );
 		int i;
-		for (i = cuantasPagTieneVivos(pid); i < cantPagParaAsignar; i++) {
+		for (i = cuantasPagTieneVivos(pid); i < cantPagParaAsignar+cuantasPagTieneVivos(pid); i++) {
 			//lo agregamos a la tabla
 			uint32_t frame = Hash(pid, i);
 			while(TablaDePagina[frame].disponible==false) frame++;

@@ -128,6 +128,8 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 			nuevaPPP->nroPagina = maximoNroPag+pcb->PaginasDeCodigo+STACK_SIZE;
 			nuevaPPP->espacioDisponible = TamanioPagina;
 			nuevaPPP->pid = PID;
+			printf("pagina nueva: %u\n",nuevaPPP->nroPagina);
+
 			pthread_mutex_lock(&mutexPaginasPorProceso);
 			list_add(PaginasPorProceso,nuevaPPP);
 			pthread_mutex_unlock(&mutexPaginasPorProceso);

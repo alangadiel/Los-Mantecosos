@@ -292,7 +292,7 @@ uint32_t ReservarBloqueMemoriaDinamica(t_valor_variable espacio,int32_t *tipoErr
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	Paquete* paquete = malloc(sizeof(Paquete));
 	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
-	uint32_t r;
+	uint32_t r=0;
 	if(paquete->header.tipoMensaje == ESERROR)
 		*tipoError = ((int32_t*)paquete->Payload)[0];
 	else if(paquete->header.tipoMensaje == ESDATOS)
