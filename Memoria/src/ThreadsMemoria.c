@@ -103,13 +103,19 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
 	}
 }
+SleepMemoria(uint32_t milliseconds){
+	struct timespec ts;
+	ts.tv_sec = milliseconds / 1000;
+	ts.tv_nsec = (milliseconds % 1000) * 1000000;
+	nanosleep(&ts, NULL);
+}
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam, int socketFD) {
 	//valido los parametros
 	if(numPag>=0 && cuantasPagTieneVivos(pid)>=numPag && offset+tam < MARCO_SIZE) {
 		//si no esta en chache, esperar tiempo definido por arch de config
 		if (!estaEnCache(pid, numPag)) {
-			if(RETARDO_MEMORIA>0) sleep(RETARDO_MEMORIA);
+			SleepMemoria(RETARDO_MEMORIA);
 			agregarACache(pid, numPag);
 		}
 		//buscar pagina
@@ -129,7 +135,7 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 	uint32_t result=0;
 	if(DATOS[2]>=0 && cuantasPagTieneVivos(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
 		//esperar tiempo definido por arch de config
-		if(RETARDO_MEMORIA>0) sleep(RETARDO_MEMORIA);
+		SleepMemoria(RETARDO_MEMORIA);
 		//buscar pagina
 		void* pagina = ContenidoMemoria + MARCO_SIZE * FrameLookup(DATOS[1], DATOS[2]);
 		pthread_mutex_lock( &mutexContenidoMemoria );

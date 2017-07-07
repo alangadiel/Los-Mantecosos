@@ -31,7 +31,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 
 		archivoGlob->cantAperturas++;
 
-		int index = 0;
+		int indice = 0;
 		int i;
 
 		for(i = 0; i < list_size(ArchivosGlobales); i++)
@@ -40,11 +40,11 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 
 			if(arch->pathArchivo == path)
 			{
-				index = i;
+				indice = i;
 			}
 		}
 
-		list_replace(ArchivosGlobales, index, archivoGlob);
+		list_replace(ArchivosGlobales, indice, archivoGlob);
 	}
 
 	int i = 0;
@@ -62,7 +62,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 
 	archivoProceso* archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
 
-	int index;
+	int indice;
 	int j;
 
 	for(j = 0; j < list_size(ArchivosGlobales); j++)
@@ -71,7 +71,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 
 		if(arch->pathArchivo == path)
 		{
-			index = j;
+			indice = j;
 		}
 	}
 
@@ -81,7 +81,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 		archivoProc->FD = ultimoFD;
 		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
-		archivoProc->globalFD = index;
+		archivoProc->globalFD = indice;
 
 		ultimoFD++;
 
@@ -97,7 +97,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 		archivoProc->FD = ultimoFD;
 		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
-		archivoProc->globalFD = index;
+		archivoProc->globalFD = indice;
 
 		ultimoFD++;
 
@@ -159,6 +159,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 	if(archivoEstaCreado == 1)
 	{
 		cargarEnTablasArchivos(path, PID, permisos);
+
 
 		EnviarDatos(socketConectado, KERNEL, 1, sizeof(uint32_t));
 	}

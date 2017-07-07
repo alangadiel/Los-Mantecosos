@@ -7,7 +7,7 @@ uint32_t MARCO_SIZE;
 uint32_t ENTRADAS_CACHE;
 uint32_t CACHE_X_PROC;
 char* REEMPLAZO_CACHE;
-int RETARDO_MEMORIA;
+uint32_t RETARDO_MEMORIA;
 char* IP;
 
 void* BloquePrincipal;
