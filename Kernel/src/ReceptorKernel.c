@@ -211,19 +211,21 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						int32_t tipoError=0;
 						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado,&tipoError);
 						if(tipoError==0){
-							tamDatos = sizeof(uint32_t) * 2;
-							datos = malloc(tamDatos);
-							((uint32_t*) datos)[0] = RESERVARHEAP;
-							((uint32_t*) datos)[1] = punteroADevolver;
-							EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+							tamDatos = sizeof(uint32_t);
+							void *data = malloc(tamDatos);
+							((uint32_t*) data)[0] = punteroADevolver;
+							printf("Puntero a devolver a la cpu :%u\n",punteroADevolver);
+							EnviarDatos(socketConectado, KERNEL, data, tamDatos);
+							free(data);
 						}
 						else{
 							tamDatos = sizeof(int32_t) ;
-							datos = malloc(tamDatos);
+							void *data = malloc(tamDatos);
 							((int32_t*) datos)[0] = tipoError;
-							EnviarDatosTipo(socketConectado,KERNEL,datos,tamDatos,ESERROR);
+							EnviarDatosTipo(socketConectado,KERNEL,data,tamDatos,ESERROR);
+							free(data);
+
 						}
-						free(datos);
 					break;
 
 					case LIBERARHEAP:
@@ -332,7 +334,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 				//termino la rafaga normalmente sin bloquearse
 				if(strcmp(paquete->header.emisor, CPU) == 0)
 				{
-					printf("Llego el pcb\n");
 					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
 					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
 					if(pcb!=NULL){
@@ -348,6 +349,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
 						}
 						else if(pcb->ExitCode==STACKOVERFLOW){
+							printf("Stackoverflow en proceso %u\n", pcb->PID);
+
 							FinalizarPrograma(pcb->PID, STACKOVERFLOW);
 						}
 						else

@@ -65,6 +65,7 @@ void pcb_Create(BloqueControlProceso* pecebe, uint32_t pid_actual){
 	pecebe->cantTotalVariables=0;
 	pecebe->IndiceDeCodigo = list_create();
 	pecebe->IndiceDelStack = list_create();
+	pecebe->IndiceDeEtiquetas = NULL;
 }
 
 void pcb_Destroy(BloqueControlProceso* pecebe){

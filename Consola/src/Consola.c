@@ -67,9 +67,7 @@ void programHandler(void *programPath) {
 						sp->pid = pid;
 						sp->socket = socketFD;
 						list_add(listaProcesos,sp);
-						structProceso* result = (structProceso*)list_get(listaProcesos,0);
-						printf("socket: %d\n",result->socket);
-						printf("pid: %d\n",result->pid);
+						structProceso* result = list_get(listaProcesos,0);
 						printf("El pid del nuevo programa es %d \n",pid);
 					}
 
@@ -188,16 +186,15 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 	while (!fin) {
 		char command[100];
 		char parametro[100];
-		printf("\n\nIngrese una orden: \n");
-		scanf("%99s", command);
+		printf("\nIngrese una orden: \n");
+		scanf("%s", command);
 		if (strcmp(command, "start_program") == 0) {
 
-			scanf("%99s", parametro);
+			scanf("%s", parametro);
 			startProgram(parametro);
-		}
-		if (strcmp(command, "end_program") == 0) {
+		} else if (strcmp(command, "end_program") == 0) {
 
-			scanf("%99s", parametro);
+			scanf("%s", parametro);
 			uint32_t pid = atoi(parametro);
 			structProceso* sp = (structProceso*)list_find(listaProcesos,LAMBDA(bool _(void* item) { return ((structProceso*)item)->pid == pid; }));
 			if (sp != NULL) {

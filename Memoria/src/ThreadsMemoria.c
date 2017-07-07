@@ -13,12 +13,23 @@ uint32_t FrameLookup(uint32_t pid, uint32_t pag){
 		frame++;
 	return frame;
 }
-uint32_t cuantasPagTiene(uint32_t pid){
+uint32_t cuantasPagTieneTodos(uint32_t pid){
 	uint32_t c = 0;
 	uint32_t i;
 	pthread_mutex_lock( &mutexTablaPagina);
 	for(i=0; i < MARCOS; i++){
 		if(TablaDePagina[i].PID == pid)
+			c++;
+	}
+	pthread_mutex_unlock( &mutexTablaPagina );
+	return c;
+}
+uint32_t cuantasPagTieneVivos(uint32_t pid){
+	uint32_t c = 0;
+	uint32_t i;
+	pthread_mutex_lock( &mutexTablaPagina);
+	for(i=0; i < MARCOS; i++){
+		if(TablaDePagina[i].PID == pid && TablaDePagina[i].disponible == false)
 			c++;
 	}
 	pthread_mutex_unlock( &mutexTablaPagina );
@@ -53,13 +64,15 @@ void agregarACache(uint32_t pid, uint32_t numPag){
 	int cantPagProc = list_count_satisfying(tablaCache, LAMBDA(bool _(void* elem) {
 		return ((entradaCache*)elem)->PID==pid; }));
 	if(cantPagProc >= CACHE_X_PROC){
-
-		list_remove_and_destroy_by_condition(tablaCache, LAMBDA(bool _(void* elem) {
-			return ((entradaCache*)elem)->PID==pid; }), free);
-
+		entradaCache* eliminado = list_remove_by_condition(tablaCache,
+			LAMBDA(bool _(void* elem) {
+			return ((entradaCache*)elem)->PID==pid; }));
+		list_add(tablaCacheRastro, eliminado);
 	}
-	else if(list_size(tablaCache) >= ENTRADAS_CACHE)
-		list_remove_and_destroy_element(tablaCache, 0, free);
+	else if(list_size(tablaCache) >= ENTRADAS_CACHE) {
+		entradaCache* eliminado = list_remove(tablaCache, 0);
+		list_add(tablaCacheRastro, eliminado);
+	}
 
 	list_add(tablaCache, entrada);
 	pthread_mutex_unlock( &mutexTablaCache );
@@ -67,7 +80,7 @@ void agregarACache(uint32_t pid, uint32_t numPag){
 
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 	uint32_t result;
-	if (pid != 0 && cuantasPagTiene(pid) == 0 && cantPagAsignadas + cantPag < MARCOS) {
+	if (pid != 0 && cuantasPagTieneVivos(pid) == 0 && cantPagAsignadas + cantPag < MARCOS) {
 		pthread_mutex_lock( &mutexTablaPagina );
 		//si no existe el proceso y hay lugar en la memoria
 		int i;
@@ -75,9 +88,10 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 		for (i = 0; i < cantPag; i++) {
 			//lo agregamos a la tabla
 			uint32_t frame = Hash(pid, i);
-			while(TablaDePagina[frame].PID != 0) frame++;
+			while(TablaDePagina[frame].disponible==false) frame++;
 			TablaDePagina[frame].PID = pid;
 			TablaDePagina[frame].Pag = i;
+			TablaDePagina[frame].disponible=false;
 			cantPagAsignadas++;
 		}
 		pthread_mutex_unlock( &mutexTablaPagina );
@@ -92,10 +106,10 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam, int socketFD) {
 	//valido los parametros
-	if(numPag>=0 && cuantasPagTiene(pid)>=numPag && offset+tam < MARCO_SIZE) {
+	if(numPag>=0 && cuantasPagTieneVivos(pid)>=numPag && offset+tam < MARCO_SIZE) {
 		//si no esta en chache, esperar tiempo definido por arch de config
 		if (!estaEnCache(pid, numPag)) {
-			sleep(RETARDO_MEMORIA);
+			if(RETARDO_MEMORIA>0) sleep(RETARDO_MEMORIA);
 			agregarACache(pid, numPag);
 		}
 		//buscar pagina
@@ -113,9 +127,9 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 	//Los datos son parametros
 	//Parámetros: PID, #página, offset, tamaño y buffer.
 	uint32_t result=0;
-	if(DATOS[2]>=0 && cuantasPagTiene(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
+	if(DATOS[2]>=0 && cuantasPagTieneVivos(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
 		//esperar tiempo definido por arch de config
-		sleep(RETARDO_MEMORIA);
+		if(RETARDO_MEMORIA>0) sleep(RETARDO_MEMORIA);
 		//buscar pagina
 		void* pagina = ContenidoMemoria + MARCO_SIZE * FrameLookup(DATOS[1], DATOS[2]);
 		pthread_mutex_lock( &mutexContenidoMemoria );
@@ -135,15 +149,16 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 
 void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 	uint32_t result=0;
-	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cuantasPagTiene(pid) > 0) {
+	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cuantasPagTieneVivos(pid) > 0) {
 		pthread_mutex_lock( &mutexTablaPagina );
 		int i;
-		for (i = cuantasPagTiene(pid); i < cantPagParaAsignar; i++) {
+		for (i = cuantasPagTieneVivos(pid); i < cantPagParaAsignar; i++) {
 			//lo agregamos a la tabla
 			uint32_t frame = Hash(pid, i);
-			while(TablaDePagina[frame].PID != 0) frame++;
+			while(TablaDePagina[frame].disponible==false) frame++;
 			TablaDePagina[frame].PID = pid;
 			TablaDePagina[frame].Pag = i;
+			TablaDePagina[frame].disponible=false;
 			cantPagAsignadas++;
 		}
 		pthread_mutex_unlock( &mutexTablaPagina );
@@ -157,16 +172,17 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
 	uint32_t result=0;
 
-	if(cuantasPagTiene(pid) > 0) {
+	if(cuantasPagTieneVivos(pid) > 0) {
 		pthread_mutex_lock( &mutexTablaPagina );
 		cantPagAsignadas--;
-
-		TablaDePagina[FrameLookup(pid, numPag)].PID=0;
+		TablaDePagina[FrameLookup(pid, numPag)].disponible=true;
 		pthread_mutex_unlock( &mutexTablaPagina );
 		//sacar de cache.
 		pthread_mutex_lock( &mutexTablaCache );
-		list_remove_and_destroy_by_condition(tablaCache, LAMBDA(bool _(void* elem) {
-				return ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==numPag; }), free);
+		entradaCache* eliminado = list_remove_by_condition(tablaCache,
+				LAMBDA(bool _(void* elem) {
+				return ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==numPag; }));
+		list_add(tablaCacheRastro, eliminado);
 		pthread_mutex_unlock( &mutexTablaCache );
 		result =1;
 		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
@@ -177,18 +193,20 @@ void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
 void FinalizarPrograma(uint32_t pid, int socketFD) {
 	printf("\nFinalizando programa %u\n", pid);
 	uint32_t result=0;
-	uint32_t cantPag = cuantasPagTiene(pid);
+	uint32_t cantPag = cuantasPagTieneVivos(pid);
 	if(cantPag > 0) {
 
 		uint32_t i;
 		pthread_mutex_lock( &mutexTablaPagina );
 		pthread_mutex_lock( &mutexTablaCache );
 		for(i=0; i < cantPag; i++){
-			TablaDePagina[FrameLookup(pid, i)].PID=0;
+			TablaDePagina[FrameLookup(pid, i)].disponible=true;
 			cantPagAsignadas--;
 			//sacar de cache.
-			list_remove_and_destroy_by_condition(tablaCache, LAMBDA(bool _(void* elem) { return
-				 ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==i; }), free);
+			entradaCache* eliminado = list_remove_by_condition(tablaCache,
+				LAMBDA(bool _(void* elem) {
+				return ((entradaCache*)elem)->PID==pid && ((entradaCache*)elem)->Pag==i; }));
+			list_add(tablaCacheRastro, eliminado);
 		}
 		pthread_mutex_unlock( &mutexTablaCache );
 		pthread_mutex_unlock( &mutexTablaPagina );
