@@ -146,7 +146,19 @@ t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 	int nroPag = puntero/TamanioPaginaMemoria;
 	int offset = puntero%TamanioPaginaMemoria;
 	void* dato = IM_LeerDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int));
-	t_valor_variable val = *(t_valor_variable*)dato;
+	t_valor_variable val = 0;
+
+	if(dato != NULL)
+	{
+		val = *(t_valor_variable*)dato;
+	}
+	else
+	{
+		//Stack overFlow
+		huboError = true;
+		pcb.ExitCode = -10;
+	}
+
 	//pcb.ProgramCounter++;
 
 	return val;
