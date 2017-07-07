@@ -68,8 +68,8 @@ void programHandler(void *programPath) {
 						sp->socket = socketFD;
 						list_add(listaProcesos,sp);
 						structProceso* result = (structProceso*)list_get(listaProcesos,0);
-						printf("socket: %d\n",result->socket);
-						printf("pid: %d\n",result->pid);
+						//printf("socket: %d\n",result->socket);
+						//printf("pid: %d\n",result->pid);
 						printf("El pid del nuevo programa es %d \n",pid);
 					}
 
@@ -145,8 +145,8 @@ int startProgram(char* programPath) {
 }
 
 void endProgram(structProceso* sp) {
-	printf("socket: %d\n",sp->socket);
-	printf("pid: %d\n",sp->pid);
+	//printf("socket: %d\n",sp->socket);
+	//printf("pid: %d\n",sp->pid);
 	EnviarDatosTipo(sp->socket, CONSOLA, &sp->pid, sizeof(uint32_t), KILLPROGRAM);
 
 	Paquete nuevoPaquete;
@@ -195,7 +195,7 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 			scanf("%99s", parametro);
 			startProgram(parametro);
 		}
-		if (strcmp(command, "end_program") == 0) {
+		else if (strcmp(command, "end_program") == 0){
 
 			scanf("%99s", parametro);
 			uint32_t pid = atoi(parametro);
