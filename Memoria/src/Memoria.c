@@ -7,7 +7,7 @@ uint32_t MARCO_SIZE;
 uint32_t ENTRADAS_CACHE;
 uint32_t CACHE_X_PROC;
 char* REEMPLAZO_CACHE;
-unsigned int RETARDO_MEMORIA;
+int RETARDO_MEMORIA;
 char* IP;
 
 void* BloquePrincipal;
@@ -16,7 +16,7 @@ int tamanioTotalBytesMemoria;
 int tamEstructurasAdm;
 int cantPagAsignadas;
 int socketABuscar;
-
+t_list* tablaCacheRastro;
 t_list* tablaCache;
 t_list* listaHilos;
 bool end;
@@ -43,6 +43,9 @@ void InicializarTablaDePagina() {
 	uint32_t i;
 	for(i=0;i<MARCOS;i++){
 		TablaDePagina[i].Frame = i;
+		TablaDePagina[i].PID = 0;
+		TablaDePagina[i].Pag = 0;
+		TablaDePagina[i].disponible = true;
 	}
 }
 
@@ -50,6 +53,7 @@ int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	tablaCache = list_create();
+	tablaCacheRastro = list_create();
 
 	tamEstructurasAdm = sizeof(RegistroTablaPaginacion) * MARCOS;
 	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE) + tamEstructurasAdm;
@@ -68,6 +72,7 @@ int main(void) {
 
 	//Liberar memoria
 	list_destroy_and_destroy_elements(tablaCache, free);
+	list_destroy_and_destroy_elements(tablaCacheRastro, free);
 	free(BloquePrincipal); free(IP); free(REEMPLAZO_CACHE);
 
 	exit(3); //TODO: ¿Esto va? Se supone que termina todos los hilos del proceso.

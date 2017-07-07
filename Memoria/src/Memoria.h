@@ -15,13 +15,14 @@ extern uint32_t MARCO_SIZE;
 extern uint32_t ENTRADAS_CACHE;
 extern uint32_t CACHE_X_PROC;
 extern char* REEMPLAZO_CACHE;
-extern unsigned int RETARDO_MEMORIA;
+extern int RETARDO_MEMORIA;
 extern char* IP;
 
 typedef struct {
 	uint32_t Frame;
 	uint32_t PID;
 	uint32_t Pag;
+	bool disponible;
 } RegistroTablaPaginacion;
 
 typedef struct {
@@ -30,13 +31,13 @@ typedef struct {
 	uint32_t Contenido; //El frame correspondiente en la memoria principal.
 } entradaCache;
 
-extern t_list* tablaCache;
 extern void* BloquePrincipal;
 extern void* ContenidoMemoria;
 extern int tamanioTotalBytesMemoria;
 extern int tamEstructurasAdm;
 extern int cantPagAsignadas;
 extern int socketABuscar;
+extern t_list* tablaCacheRastro;
 extern t_list* tablaCache;
 extern t_list* listaHilos;
 extern bool end;

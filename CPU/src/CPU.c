@@ -180,6 +180,7 @@ int main(void) {
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = true;
 				int i=0;
+				progTerminado = false;
 				while(!primitivaBloqueante && !huboError && !progTerminado) { //TODO sacar i< pcb.cantidadDeRafagasAEjecutar y hacer q finalize en una primitiva
 					if(pcb.cantidadDeRafagasAEjecutar > 0 && i >= pcb.cantidadDeRafagasAEjecutar) break;
 
@@ -193,7 +194,9 @@ int main(void) {
 					pcb.cantidadDeRafagasEjecutadas++;
 					i++;
 				}
+				i=0;
 				// Avisar al kernel que terminaste de ejecutar la instruccion
+				printf("Fin de ejecucion de rafagas\n");
 				EnviarPCB(socketKernel, CPU, &pcb);
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = false;

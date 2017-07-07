@@ -324,7 +324,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 				//termino la rafaga normalmente sin bloquearse
 				if(strcmp(paquete->header.emisor, CPU) == 0)
 				{
-					printf("Llego el pcb\n");
 					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
 					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
 					if(pcb!=NULL){
@@ -340,7 +339,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
 						}
 						else if(pcb->ExitCode==STACKOVERFLOW){
-							printf("Entro al if de stackoverflow\n");
+							printf("Stackoverflow en proceso %u\n", pcb->PID);
 
 							FinalizarPrograma(pcb->PID, STACKOVERFLOW);
 						}

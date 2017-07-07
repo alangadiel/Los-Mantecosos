@@ -5,7 +5,8 @@
 
 uint32_t Hash(uint32_t pid, uint32_t pag);
 uint32_t FrameLookup(uint32_t pid, uint32_t pag);
-uint32_t cuantasPagTiene(uint32_t pid);
+uint32_t cuantasPagTieneTodos(uint32_t pid);
+uint32_t cuantasPagTieneVivos(uint32_t pid);
 
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD);
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam, int socketFD);
