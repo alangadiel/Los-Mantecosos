@@ -50,7 +50,7 @@ void pcb_Create(BloqueControlProceso* pecebe, uint32_t pid_actual){
 	pecebe->PID = pid_actual;
 	pecebe->ProgramCounter = 0;
 	pecebe->PaginasDeCodigo=0;
-	pecebe->ExitCode = -1;
+	pecebe->ExitCode = 1;
 	pecebe->etiquetas_size = 0;
 	pecebe->cantidad_de_etiquetas = 0;
 	pecebe->cantidad_de_funciones = 0;

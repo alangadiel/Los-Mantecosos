@@ -177,17 +177,19 @@ t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 }
 
 void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
-	t_valor_variable val = variable;
-	int nroPag = puntero/TamanioPaginaMemoria;
-	int offset = puntero%TamanioPaginaMemoria;
-	bool result = IM_GuardarDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int),&val);
-	if(result==false){
-		//Stack overFlow
-		huboError = true;
-		pcb.ExitCode = -10;
+	if(huboError==false)
+	{
+		t_valor_variable val = variable;
+		int nroPag = puntero/TamanioPaginaMemoria;
+		int offset = puntero%TamanioPaginaMemoria;
+		bool result = IM_GuardarDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int),&val);
+		if(result==false){
+			//Stack overFlow
+			huboError = true;
+			pcb.ExitCode = -10;
+		}
 	}
 	//pcb.ProgramCounter++;
-
 }
 
 t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
@@ -308,8 +310,10 @@ uint32_t ReservarBloqueMemoriaDinamica(t_valor_variable espacio,int32_t *tipoErr
 	Paquete* paquete = malloc(sizeof(Paquete));
 	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
 	uint32_t r = 0;
-	if(paquete->header.tipoMensaje == ESERROR)
+	if(paquete->header.tipoMensaje == ESERROR){
+		huboError = true;
 		*tipoError = ((int32_t*)paquete->Payload)[0];
+	}
 	else if(paquete->header.tipoMensaje == ESDATOS)
 		r = *((uint32_t*)paquete->Payload);
 	free(paquete);
