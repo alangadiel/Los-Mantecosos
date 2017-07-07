@@ -38,26 +38,6 @@ t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valo
 se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
 
 
-uint32_t ReservarBloqueMemoriaDinamica(t_valor_variable espacio,int32_t *tipoError){
-	int tamDatos = sizeof(uint32_t)*3;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = RESERVARHEAP;
-	((uint32_t*) datos)[1] = pcb.PID;
-	((uint32_t*) datos)[2] = espacio;
-	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
-	t_puntero r;
-	if(paquete->header.tipoMensaje == ESERROR)
-		*tipoError = ((int32_t*)paquete->Payload)[0];
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = ((uint32_t*)paquete->Payload)[0];
-	free(paquete);
-	free(datos);
-	printf("Puntero donde se aloco: %u\n",r);
-	return r;
-
-}
 
 t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags){
 	//TODO: Programar en kernel para que abra el archivo
@@ -303,7 +283,26 @@ void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 		pcb.cantidadSyscallEjecutadas++;
 		//pcb.ProgramCounter++;
 }
+uint32_t ReservarBloqueMemoriaDinamica(t_valor_variable espacio,int32_t *tipoError){
+	int tamDatos = sizeof(uint32_t)*3;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = RESERVARHEAP;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((uint32_t*) datos)[2] = espacio;
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	uint32_t r;
+	if(paquete->header.tipoMensaje == ESERROR)
+		*tipoError = ((int32_t*)paquete->Payload)[0];
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = *((uint32_t*)paquete->Payload);
+	free(paquete);
+	free(datos);
+	printf("Puntero donde se aloco: %u\n",r);
+	return r;
 
+}
 t_puntero primitiva_reservar(t_valor_variable espacio){
 	int32_t tipoError = 0;
 	t_puntero pointer = ReservarBloqueMemoriaDinamica(espacio,&tipoError);
