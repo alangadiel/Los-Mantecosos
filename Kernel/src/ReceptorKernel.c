@@ -49,7 +49,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 		case ESDATOS:
 			if(strcmp(paquete->header.emisor, CPU) == 0)
 			{
-				printf("Tipo operacion : %u",*(uint32_t*)paquete->Payload);
+				printf("Tipo operacion : %u\n",*(uint32_t*)paquete->Payload);
 				switch ((*(uint32_t*)paquete->Payload))
 				{
 					int32_t valorAAsignar;
@@ -207,7 +207,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					case RESERVARHEAP:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						tamanioAReservar = ((uint32_t*)paquete->Payload)[2];
-						printf("Se solicita reservar en el heap %u bytes para el proceso %u",tamanioAReservar,PID);
+						printf("Se solicita reservar en el heap %u bytes para el proceso %u\n",tamanioAReservar,PID);
 						int32_t tipoError=0;
 						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado,&tipoError);
 						if(tipoError==0){
@@ -240,13 +240,14 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case ABRIRARCHIVO:
 						PID = ((uint32_t*)paquete->Payload)[1];
-
+						printf("El archivo fue abierto\n");
 						permisosArchivo permisos;
 						permisos.creacion = *((bool*)paquete->Payload+sizeof(uint32_t) * 2);
 						permisos.escritura = *((bool*)paquete->Payload+sizeof(uint32_t) * 3);
 						permisos.lectura = *((bool*)paquete->Payload+sizeof(uint32_t) * 4);
 
 						abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos);
+
 					break;
 
 					case BORRARARCHIVO:
@@ -281,6 +282,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}
 						else{
 							escribirArchivo(FD, PID, tamanioArchivo, ((char*)paquete->Payload+sizeof(uint32_t) * 4));
+							printf("El archivo fue escrito con %s \n", ((char*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
 					break;
 

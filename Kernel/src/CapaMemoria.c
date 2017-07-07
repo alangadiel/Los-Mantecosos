@@ -63,7 +63,7 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 
 			IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offsetMetadataLibre, sizeof(HeapMetadata), &metaLibre);
 			uint32_t punteroADevolver = nroPagina*TamanioPagina+( offset + sizeof(HeapMetadata));
-			printf("En el puntero %u se alocaron %u bytes ",punteroADevolver,cantAReservar);
+			printf("En el puntero %u se alocaron %u bytes \n",punteroADevolver,cantAReservar);
 			return punteroADevolver;
 		}
 		else
