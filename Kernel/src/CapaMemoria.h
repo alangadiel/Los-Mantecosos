@@ -21,9 +21,9 @@ typedef struct {
 	t_list* listaDeProcesos;
 } Semaforo;
 
-uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantAReservar, int socketFD);
-uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket);
-void SolicitudLiberacionDeBloque(int socketFD,uint32_t pid,PosicionDeMemoria pos);
+uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantAReservar,int32_t *tipoError);
+uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError);
+void SolicitudLiberacionDeBloque(uint32_t pid,PosicionDeMemoria pos);
 int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina);
 
 #endif /* CAPAMEMORIA_H_ */

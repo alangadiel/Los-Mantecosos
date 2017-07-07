@@ -133,6 +133,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 
 	if(pcbRemovido != NULL)
 	{
+		printf("\nFinalizando proceso %u por ExitCode %i\n", pcbRemovido->PID, pcbRemovido->ExitCode);
 		pcbRemovido->ExitCode = tipoFinalizacion;
 
 		list_add(Finalizados->elements, pcbRemovido);
@@ -147,7 +148,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 
 			while(i < list_size(pagesProcess) && hayEstructurasNoLiberadas == false)
 			{
-				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso, i);
+				PaginaDelProceso* elem = list_get(pagesProcess, i);
 
 				//Me fijo si hay metadatas en estado "used" en cada pagina
 				void* datosPagina = IM_LeerDatos(socketConMemoria, KERNEL, elem->pid, elem->nroPagina, 0, TamanioPagina);
@@ -167,11 +168,11 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 
 			if(hayEstructurasNoLiberadas == true)
 			{
-				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó", PID);
+				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó\n", PID);
 			}
 			else
 			{
-				printf("El proceso %d liberó todas las estructuras de memoria dinamica", PID);
+				printf("El proceso %d liberó todas las estructuras de memoria dinamica\n", PID);
 			}
 		}
 
@@ -181,7 +182,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 			pcbRemovido->ExitCode = EXCEPCIONDEMEMORIA;
 		}
 
-		free(pagesProcess);
+		list_destroy_and_destroy_elements(pagesProcess,free);
 	}
 	/*else{
 		if(index==INDEX_EJECUTANDO)
@@ -189,7 +190,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 			FinalizarPrograma(PID,tipoFinalizacion);
 	}*/
 	pthread_mutex_unlock(&mutexFinalizarPrograma);
-	printf("PID %u finalizado por exitcode %i", pcbRemovido->PID, pcbRemovido->ExitCode);
+
 	return pcbRemovido;
 }
 
@@ -356,7 +357,7 @@ void dispatcher()
 					}
 
 					PCBAMandar->cantidadDeRafagasEjecutadas = 0;
-
+					printf("Despachando proceso %u por socket %i\n", PCBAMandar->PID, cpuAUsar->socketCPU);
 					EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar);
 
 					cpuAUsar->isFree = false;

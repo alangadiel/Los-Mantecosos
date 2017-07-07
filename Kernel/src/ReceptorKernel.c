@@ -49,6 +49,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 		case ESDATOS:
 			if(strcmp(paquete->header.emisor, CPU) == 0)
 			{
+				printf("Tipo operacion : %u\n",*(uint32_t*)paquete->Payload);
 				switch ((*(uint32_t*)paquete->Payload))
 				{
 					int32_t valorAAsignar;
@@ -206,18 +207,26 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					case RESERVARHEAP:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						tamanioAReservar = ((uint32_t*)paquete->Payload)[2];
+						printf("Se solicita reservar en el heap %u bytes para el proceso %u\n",tamanioAReservar,PID);
+						int32_t tipoError=0;
+						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar,&tipoError);
+						if(tipoError==0){
+							tamDatos = sizeof(uint32_t);
+							void *data = malloc(tamDatos);
+							//(uint32_t*) data) = punteroADevolver;
+							memcpy(data,&punteroADevolver,sizeof(tamDatos));
+							printf("Puntero a devolver a la cpu :%u\n",*(uint32_t*)data);
+							EnviarDatos(socketConectado, KERNEL, data, tamDatos);
+							free(data);
+						}
+						else{
+							tamDatos = sizeof(int32_t) ;
+							void *data = malloc(tamDatos);
+							((int32_t*) data)[0] = tipoError;
+							EnviarDatosTipo(socketConectado,KERNEL,data,tamDatos,ESERROR);
+							free(data);
 
-						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
-
-						tamDatos = sizeof(uint32_t) * 2;
-						datos = malloc(tamDatos);
-
-						((uint32_t*) datos)[0] = RESERVARHEAP;
-						((uint32_t*) datos)[1] = punteroADevolver;
-
-						EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-
-						free(datos);
+						}
 					break;
 
 					case LIBERARHEAP:
@@ -229,18 +238,19 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						pos.NumeroDePagina = punteroALiberar / TamanioPagina;
 						pos.Offset = punteroALiberar % TamanioPagina;
 
-						SolicitudLiberacionDeBloque(socketConectado, PID, pos);
+						SolicitudLiberacionDeBloque(PID, pos);
 					break;
 
 					case ABRIRARCHIVO:
 						PID = ((uint32_t*)paquete->Payload)[1];
-
+						printf("El archivo fue abierto\n");
 						permisosArchivo permisos;
 						permisos.creacion = *((bool*)paquete->Payload+sizeof(uint32_t) * 2);
 						permisos.escritura = *((bool*)paquete->Payload+sizeof(uint32_t) * 3);
 						permisos.lectura = *((bool*)paquete->Payload+sizeof(uint32_t) * 4);
 
 						abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos);
+
 					break;
 
 					case BORRARARCHIVO:
@@ -269,14 +279,20 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
-						escribirArchivo(FD, PID, tamanioArchivo, ((char*)paquete->Payload+sizeof(uint32_t) * 4));
+						//Si el FD es 1, hay que mostrarlo por pantalla
+						if(FD==1){
+							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
+						}
+						else{
+							escribirArchivo(FD, PID, tamanioArchivo, ((char*)paquete->Payload+sizeof(uint32_t) * 4));
+							printf("El archivo fue escrito con %s \n", ((char*)paquete->Payload+sizeof(uint32_t) * 4));
+						}
 					break;
 
 					case LEERARCHIVO:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
-
 						leerArchivo(FD, PID, tamanioArchivo);
 					break;
 					/*
@@ -334,6 +350,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
 						}
 						else if(pcb->ExitCode==STACKOVERFLOW){
+							printf("Stackoverflow en proceso %u\n", pcb->PID);
+
 							FinalizarPrograma(pcb->PID, STACKOVERFLOW);
 						}
 						else
