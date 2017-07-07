@@ -23,7 +23,8 @@ int socketConMemoria = -1;
 int socketConFS = -1;
 
 int ultimoPID = 0;
-sem_t semDispacher;
+sem_t semDispacherListos;
+sem_t semDispatcherCpus;
 pthread_mutex_t mutexQueueNuevos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueListos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueEjecutando = PTHREAD_MUTEX_INITIALIZER;
@@ -54,7 +55,7 @@ char** SEM_INIT;
 char** SHARED_VARS;
 int STACK_SIZE;
 
-void CrearListas() {
+void CrearListasYSemaforos() {
 	Nuevos = queue_create();
 	Finalizados= queue_create();
 	Bloqueados= queue_create();
@@ -68,6 +69,9 @@ void CrearListas() {
 	Semaforos = list_create();
 	PIDsPorSocketConsola = list_create();
 	CPUsConectadas = list_create();
+
+	sem_init(&semDispacherListos, 0, 0);
+	sem_init(&semDispatcherCpus, 0, 0);
 }
 void LiberarVariablesYListas() {
 	queue_destroy_and_destroy_elements(Nuevos,free);
@@ -91,7 +95,7 @@ void LiberarVariablesYListas() {
 	free(SEM_INIT);
 	free(SHARED_VARS);
 
-	sem_destroy(&semDispacher);
+	sem_destroy(&semDispacherListos);
 	pthread_mutex_destroy(&mutexQueueNuevos);
 	pthread_mutex_destroy(&mutexQueueListos);
 	pthread_mutex_destroy(&mutexQueueEjecutando);
@@ -115,7 +119,7 @@ void Evento_ListosRemove(){
 void Evento_ListosAdd(){
 	pthread_mutex_lock(&mutexQueueListos);
 	if(list_size(Listos->elements)==0)
-		sem_post(&semDispacher); //como un signal
+		sem_post(&semDispacherListos); //como un signal
 	pthread_mutex_unlock(&mutexQueueListos);
 }
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos){

@@ -152,13 +152,15 @@ void finalizarProgramaCapaFS(int PID)
 }
 
 
-uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos)
+uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int socketConectado)
 {
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
 
 	if(archivoEstaCreado == 1)
 	{
 		cargarEnTablasArchivos(path, PID, permisos);
+
+		EnviarDatos(socketConectado, KERNEL, 1, sizeof(uint32_t));
 	}
 	else
 	{

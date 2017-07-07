@@ -248,7 +248,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						permisos.escritura = *((bool*)paquete->Payload+sizeof(uint32_t) * 3);
 						permisos.lectura = *((bool*)paquete->Payload+sizeof(uint32_t) * 4);
 
-						abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos);
+						abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos, socketConectado);
 
 					break;
 
@@ -343,7 +343,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							return ((DatosCPU*)item)->socketCPU == socketConectado;
 						}));
 						datoscpu->isFree = true;
-
+						sem_post(&semDispatcherCpus);
 						if (pcb->IndiceDeCodigo->elements_count == pcb->cantidadDeRafagasEjecutadas && pcb->ExitCode==FINALIZACIONNORMAL)
 						{
 							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
