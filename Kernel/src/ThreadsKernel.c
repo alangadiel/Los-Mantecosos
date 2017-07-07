@@ -132,6 +132,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 	pcbRemovido = removerPidDeListas(PID, &indice);
 	printf("\nFinalizando proceso %u \n", pcbRemovido->PID);
 
+
 	if(pcbRemovido != NULL)
 	{
 		pcbRemovido->ExitCode = tipoFinalizacion;
