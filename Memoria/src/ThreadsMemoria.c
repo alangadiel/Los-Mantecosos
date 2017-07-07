@@ -112,7 +112,7 @@ SleepMemoria(uint32_t milliseconds){
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam, int socketFD) {
 	//valido los parametros
-	if(numPag>=0 && cuantasPagTieneVivos(pid)>=numPag && offset+tam < MARCO_SIZE) {
+	if(numPag>=0 && cuantasPagTieneVivos(pid)>=numPag && offset+tam <= MARCO_SIZE) {
 		//si no esta en chache, esperar tiempo definido por arch de config
 		if (!estaEnCache(pid, numPag)) {
 			SleepMemoria(RETARDO_MEMORIA);
@@ -155,10 +155,11 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 
 void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 	uint32_t result=0;
-	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cuantasPagTieneVivos(pid) > 0) {
+	int32_t cantPaginasPid = cuantasPagTieneVivos(pid);
+	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cantPaginasPid > 0) {
 		pthread_mutex_lock( &mutexTablaPagina );
 		int i;
-		for (i = cuantasPagTieneVivos(pid); i < cantPagParaAsignar; i++) {
+		for (i = cantPaginasPid; i < cantPagParaAsignar+cantPaginasPid; i++) {
 			//lo agregamos a la tabla
 			uint32_t frame = Hash(pid, i);
 			while(TablaDePagina[frame].disponible==false) frame++;

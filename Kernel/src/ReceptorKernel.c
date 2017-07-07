@@ -222,7 +222,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}
 						else{
 							EnviarDatosTipo(socketConectado,KERNEL,&tipoError,sizeof(int32_t),ESERROR);
-
 						}
 					break;
 
@@ -246,8 +245,14 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						permisos.escritura = *((bool*)paquete->Payload+sizeof(uint32_t) * 3);
 						permisos.lectura = *((bool*)paquete->Payload+sizeof(uint32_t) * 4);
 
-						abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos, socketConectado);
+						tipoError = 0;
 
+						uint32_t archivoAbierto = abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos, socketConectado, &tipoError);
+
+						if(tipoError != 0)
+						{
+							EnviarDatosTipo(socketConectado,KERNEL,&tipoError,sizeof(int32_t),ESERROR);
+						}
 					break;
 
 					case BORRARARCHIVO:
@@ -276,12 +281,16 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
+
 						//Si el FD es 1, hay que mostrarlo por pantalla
-						if(FD==1){
+						if(FD == 1)
+						{
 							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
-						else{
+						else
+						{
 							escribirArchivo(FD, PID, tamanioArchivo, ((char*)paquete->Payload+sizeof(uint32_t) * 4));
+
 							printf("El archivo fue escrito con %s \n", ((char*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
 					break;
@@ -290,7 +299,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
-						leerArchivo(FD, PID, tamanioArchivo);
+
+						void* datosLeidos = leerArchivo(FD, PID, tamanioArchivo);
+
+
 					break;
 					/*
 					case FINEJECUCIONPROGRAMA:
@@ -342,14 +354,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}));
 						datoscpu->isFree = true;
 						sem_post(&semDispatcherCpus);
-						if (pcb->ExitCode==FINALIZACIONNORMAL)
+						if (pcb->ExitCode<= 0)
 						{
-							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
-						}
-						else if(pcb->ExitCode==STACKOVERFLOW){
-							printf("Stackoverflow en proceso %u\n", pcb->PID);
-
-							FinalizarPrograma(pcb->PID, STACKOVERFLOW);
+							FinalizarPrograma(pcb->PID,pcb->ExitCode);
 						}
 						else
 						{
