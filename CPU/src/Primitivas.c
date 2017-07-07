@@ -348,7 +348,9 @@ void primitiva_liberar(t_puntero puntero){
 	//pcb.ProgramCounter++;
 }
 t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
-	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags);
+	int32_t tipoError = 0;
+
+	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags, &tipoError);
 	pcb.cantidadSyscallEjecutadas++;
 	//pcb.ProgramCounter++;
 	return fd;
