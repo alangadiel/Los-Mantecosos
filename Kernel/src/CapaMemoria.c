@@ -1,6 +1,6 @@
 #include "CapaMemoria.h"
 
-uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantAReservar, int socketFD)
+uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantAReservar, int socketFD,int32_t* tipoError)
 {
 	uint32_t cantTotal = cantAReservar + sizeof(HeapMetadata);
 	//Obtengo la pagina en cuestion donde actualizar la metadata
@@ -49,7 +49,7 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 			metaOcupado.size = cantAReservar;
 
 			if(IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offset, sizeof(HeapMetadata), &metaOcupado)==false){
-				FinalizarPrograma(PID,EXCEPCIONDEMEMORIA);
+				*tipoError = EXCEPCIONDEMEMORIA;
 				return -1;
 			}
 
@@ -62,8 +62,9 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 			metaLibre.size = diferencia;
 
 			IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offsetMetadataLibre, sizeof(HeapMetadata), &metaLibre);
-
-			return offset + sizeof(HeapMetadata);
+			uint32_t punteroADevolver = nroPagina*TamanioPagina+( offset + sizeof(HeapMetadata));
+			printf("En el puntero %u se alocaron %u bytes\n ",punteroADevolver,cantAReservar);
+			return punteroADevolver;
 		}
 		else
 		{
@@ -72,16 +73,19 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 		}
 	}
 	else{
-		FinalizarPrograma(PID,EXCEPCIONDEMEMORIA);
+		*tipoError = EXCEPCIONDEMEMORIA;
 		return -1;
 	}
 
 }
 
 
-uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
+uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket,int32_t *tipoError){
+	*tipoError = 0;
 	uint32_t cantTotal = cantAReservar+sizeof(HeapMetadata);
 	uint32_t punteroAlPrimerDisponible=0;
+	BloqueControlProceso* pcb= list_find(Ejecutando->elements,
+					LAMBDA(bool _(void* item) {return ((BloqueControlProceso*)item)->PID == PID;}));
 	//Como maximo, podes solicitar reservar: TamañoPagina -10(correspondiente a los metedatas iniciales)
 	if(cantTotal <= TamanioPagina-sizeof(HeapMetadata)*2){
 		void* result = NULL;
@@ -91,13 +95,14 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 				LAMBDA(bool _(void* item) {
 			return ((PaginaDelProceso*)item)->pid == PID && ((PaginaDelProceso*)item)->espacioDisponible >= cantTotal;
 		}));
+
 		pthread_mutex_unlock(&mutexPaginasPorProceso);
 		if(result!=NULL){ 		//Se encontro la pagina con tamaño disponible
 			//Actualizar el tamaño disponible
 			PaginaDelProceso* paginaObtenida = (PaginaDelProceso*)result;
 			paginaObtenida->espacioDisponible -= cantTotal;
 			//Obtengo la pagina en cuestion y actualizo el metadata
-			punteroAlPrimerDisponible = ActualizarMetadata(PID,paginaObtenida->nroPagina,cantTotal,socket);
+			punteroAlPrimerDisponible = ActualizarMetadata(PID,paginaObtenida->nroPagina,cantAReservar,socket,tipoError);
 
 		}
 		else  		//No hay una pagina del proceso utilizable
@@ -111,12 +116,13 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 			int maximoNroPag=0;
 			pthread_mutex_lock(&mutexPaginasPorProceso);
 			for (i = 0; i < list_size(pagesProcess); i++) {
-				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso,i);
-				if(maximoNroPag< elem->nroPagina)	maximoNroPag = elem->nroPagina;
+				PaginaDelProceso* elem = list_get(pagesProcess,i);
+				if(maximoNroPag< elem->nroPagina)
+					maximoNroPag = elem->nroPagina;
 			}
 			pthread_mutex_unlock(&mutexPaginasPorProceso);
 			PaginaDelProceso* nuevaPPP = malloc(sizeof(PaginaDelProceso));
-			nuevaPPP->nroPagina = maximoNroPag+1;
+			nuevaPPP->nroPagina = maximoNroPag+pcb->PaginasDeCodigo+STACK_SIZE;
 			nuevaPPP->espacioDisponible = TamanioPagina;
 			nuevaPPP->pid = PID;
 			pthread_mutex_lock(&mutexPaginasPorProceso);
@@ -125,19 +131,18 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 			//Le pido al Proceso Memoria que me guarde esta pagina para el proceso en cuestion
 			bool resultado = IM_AsignarPaginas(socket,KERNEL,PID,1);
 			if(resultado==true){
-				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP->nroPagina,cantTotal,socket);
+				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP->nroPagina,cantAReservar,socket,tipoError);
 			}
 			else{
-				FinalizarPrograma(PID,NOSEPUEDENASIGNARMASPAGINAS);
+				*tipoError = NOSEPUEDENASIGNARMASPAGINAS;
+
 			}
 			//Destruyo la lista PagesProcess
 			list_destroy_and_destroy_elements(pagesProcess,free);
 		}
 	}
 	else{ //Debe finalizar el programa pq quiere reservar mas de lo permitido
-		FinalizarPrograma(PID,SOLICITUDMASGRANDEQUETAMANIOPAGINA);
-		//TODO: Avisar a la CPU del programa finalizado
-		// EL TP DICE QUE HAY QUE PEDIR OTRA PAGINA
+		*tipoError = SOLICITUDMASGRANDEQUETAMANIOPAGINA;
 	}
 	return punteroAlPrimerDisponible;
 }
