@@ -209,17 +209,19 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						tamanioAReservar = ((uint32_t*)paquete->Payload)[2];
 						printf("Se solicita reservar en el heap %u bytes para el proceso %u\n",tamanioAReservar,PID);
 						int32_t tipoError=0;
-						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado,&tipoError);
+						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar,&tipoError);
 						if(tipoError==0){
 							tamDatos = sizeof(uint32_t);
 							void *data = malloc(tamDatos);
-							((uint32_t*) data)[0] = punteroADevolver;
-							printf("Puntero a devolver a la cpu :%u\n",punteroADevolver);
+							//(uint32_t*) data) = punteroADevolver;
+							memcpy(data,&punteroADevolver,sizeof(tamDatos));
+							printf("Puntero a devolver a la cpu :%u\n",*(uint32_t*)data);
 							EnviarDatos(socketConectado, KERNEL, data, tamDatos);
 							free(data);
 						}
 						else{
 							EnviarDatosTipo(socketConectado,KERNEL,&tipoError,sizeof(int32_t),ESERROR);
+
 						}
 					break;
 
@@ -232,7 +234,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						pos.NumeroDePagina = punteroALiberar / TamanioPagina;
 						pos.Offset = punteroALiberar % TamanioPagina;
 
-						SolicitudLiberacionDeBloque(socketConectado, PID, pos);
+						SolicitudLiberacionDeBloque(PID, pos);
 					break;
 
 					case ABRIRARCHIVO:
