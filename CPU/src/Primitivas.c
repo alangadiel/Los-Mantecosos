@@ -260,6 +260,7 @@ void primitiva_finalizar(void){
 	list_remove_and_destroy_element(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1,free);
 	if(list_size(pcb.IndiceDelStack)==0)
 		progTerminado=true;
+		pcb.ExitCode=0;
 }
 
 void primitiva_retornar(t_valor_variable retorno){
