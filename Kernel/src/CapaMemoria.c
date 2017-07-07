@@ -63,7 +63,7 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 
 			IM_GuardarDatos(socketFD, KERNEL, PID, nroPagina, offsetMetadataLibre, sizeof(HeapMetadata), &metaLibre);
 			uint32_t punteroADevolver = nroPagina*TamanioPagina+( offset + sizeof(HeapMetadata));
-			printf("En el puntero %u se alocaron %u bytes ",punteroADevolver,cantAReservar);
+			printf("En el puntero %u se alocaron %u bytes\n ",punteroADevolver,cantAReservar);
 			return punteroADevolver;
 		}
 		else
@@ -102,7 +102,7 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket,int32_t *t
 			PaginaDelProceso* paginaObtenida = (PaginaDelProceso*)result;
 			paginaObtenida->espacioDisponible -= cantTotal;
 			//Obtengo la pagina en cuestion y actualizo el metadata
-			punteroAlPrimerDisponible = ActualizarMetadata(PID,paginaObtenida->nroPagina,cantTotal,socket,tipoError);
+			punteroAlPrimerDisponible = ActualizarMetadata(PID,paginaObtenida->nroPagina,cantAReservar,socket,tipoError);
 
 		}
 		else  		//No hay una pagina del proceso utilizable
@@ -116,7 +116,7 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket,int32_t *t
 			int maximoNroPag=0;
 			pthread_mutex_lock(&mutexPaginasPorProceso);
 			for (i = 0; i < list_size(pagesProcess); i++) {
-				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso,i);
+				PaginaDelProceso* elem = list_get(pagesProcess,i);
 				if(maximoNroPag< elem->nroPagina)
 					maximoNroPag = elem->nroPagina;
 			}
@@ -131,7 +131,7 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket,int32_t *t
 			//Le pido al Proceso Memoria que me guarde esta pagina para el proceso en cuestion
 			bool resultado = IM_AsignarPaginas(socket,KERNEL,PID,1);
 			if(resultado==true){
-				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP->nroPagina,cantTotal,socket,tipoError);
+				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP->nroPagina,cantAReservar,socket,tipoError);
 			}
 			else{
 				*tipoError = NOSEPUEDENASIGNARMASPAGINAS;

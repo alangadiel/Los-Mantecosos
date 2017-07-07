@@ -49,7 +49,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 		case ESDATOS:
 			if(strcmp(paquete->header.emisor, CPU) == 0)
 			{
-				printf("Tipo operacion : %u",*(uint32_t*)paquete->Payload);
 				switch ((*(uint32_t*)paquete->Payload))
 				{
 					int32_t valorAAsignar;
@@ -207,23 +206,25 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					case RESERVARHEAP:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						tamanioAReservar = ((uint32_t*)paquete->Payload)[2];
-						printf("Se solicita reservar en el heap %u bytes para el proceso %u",tamanioAReservar,PID);
+						printf("Se solicita reservar en el heap %u bytes para el proceso %u\n",tamanioAReservar,PID);
 						int32_t tipoError=0;
 						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado,&tipoError);
 						if(tipoError==0){
-							tamDatos = sizeof(uint32_t) * 2;
-							datos = malloc(tamDatos);
-							((uint32_t*) datos)[0] = RESERVARHEAP;
-							((uint32_t*) datos)[1] = punteroADevolver;
-							EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+							tamDatos = sizeof(uint32_t);
+							void *data = malloc(tamDatos);
+							((uint32_t*) data)[0] = punteroADevolver;
+							printf("Puntero a devolver a la cpu :%u\n",punteroADevolver);
+							EnviarDatos(socketConectado, KERNEL, data, tamDatos);
+							free(data);
 						}
 						else{
 							tamDatos = sizeof(int32_t) ;
-							datos = malloc(tamDatos);
+							void *data = malloc(tamDatos);
 							((int32_t*) datos)[0] = tipoError;
-							EnviarDatosTipo(socketConectado,KERNEL,datos,tamDatos,ESERROR);
+							EnviarDatosTipo(socketConectado,KERNEL,data,tamDatos,ESERROR);
+							free(data);
+
 						}
-						free(datos);
 					break;
 
 					case LIBERARHEAP:

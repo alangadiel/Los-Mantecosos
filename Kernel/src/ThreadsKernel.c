@@ -147,7 +147,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 
 			while(i < list_size(pagesProcess) && hayEstructurasNoLiberadas == false)
 			{
-				PaginaDelProceso* elem = (PaginaDelProceso*)list_get(PaginasPorProceso, i);
+				PaginaDelProceso* elem = list_get(pagesProcess, i);
 
 				//Me fijo si hay metadatas en estado "used" en cada pagina
 				void* datosPagina = IM_LeerDatos(socketConMemoria, KERNEL, elem->pid, elem->nroPagina, 0, TamanioPagina);
@@ -181,7 +181,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 			pcbRemovido->ExitCode = EXCEPCIONDEMEMORIA;
 		}
 
-		free(pagesProcess);
+		list_destroy_and_destroy_elements(pagesProcess,free);
 	}
 	/*else{
 		if(index==INDEX_EJECUTANDO)
