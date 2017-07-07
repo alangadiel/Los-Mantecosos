@@ -34,7 +34,7 @@ t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valo
 void FinDeEjecucionPrograma();
 void SolicitarWaitSemaforo(t_nombre_semaforo semaforo);
 void SolicitarSignalSemaforo(t_nombre_semaforo semaforo);
-t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio);
+t_puntero* ReservarBloqueMemoriaDinamica(t_valor_variable espacio,int32_t *tipoError);
 void LiberarBloqueMemoriaDinamica(t_puntero puntero);
 t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags);
 void SolicitarBorrarArchivo(t_descriptor_archivo desc);

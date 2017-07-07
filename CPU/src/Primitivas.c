@@ -36,28 +36,26 @@ t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valo
 }
 /*Al ejecutar la última sentencia, el CPU deberá notificar al Kernel que el proceso finalizó para que este
 se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
-void FinDeEjecucionPrograma(){
-	/*
-	int tamDatos = sizeof(uint32_t)*2;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = FINEJECUCIONPROGRAMA;
-	((uint32_t*) datos)[1] = pcb.PID;
-	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	*/
-	progTerminado = true;
-}
 
 
-
-t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
+t_puntero* ReservarBloqueMemoriaDinamica(t_valor_variable espacio,int32_t *tipoError){
 	int tamDatos = sizeof(uint32_t)*3;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = RESERVARHEAP;
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = espacio;
-	t_puntero* result = EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	t_puntero* r;
+	if(paquete->header.tipoMensaje == ESERROR)
+		*tipoError = *(int32_t*)paquete->Payload;
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = (t_puntero*)paquete->Payload;
+	free(paquete);
 	free(datos);
-	return result;
+	return r;
+
 }
 
 t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags){
@@ -142,7 +140,6 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	void* result = NULL;
 	t_puntero punteroADevolver = 0;
-	int j=0;
 	regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
 	result = (Variable*)list_find(is->Variables,LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
 	//pcb.ProgramCounter++;
@@ -157,8 +154,8 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 	t_valor_variable val = -1;
 	/*Como obtenerPosicionVarible y definirVariable devuelven 0(cero) si fallan,
-	 * hay que validar que el puntero a dereferenciar no sea 0, pq la dir logica 0 es de las paginas de
-	 * codigo  */
+	  hay que validar que el puntero a dereferenciar no sea 0, pq la dir logica 0 es de las paginas de
+	  codigo  */
 
 	if(puntero==0){
 		huboError = true;
@@ -265,13 +262,9 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 
 //TODAS LAS FUNCIONES RETORNAR UN VALOR, NO EXISTE EL CONCEPTO DE PROCEDIMIENTO: LO DICE EL TP
 void primitiva_finalizar(void){
-	//Si hay un solo registro de stack y se llama esta funcion, hay que finalizar el programa
-	if(list_size(pcb.IndiceDelStack)>1){
-		list_remove(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
-	} else if(list_size(pcb.IndiceDelStack)==1){
-		FinDeEjecucionPrograma();
-	}
-
+	list_remove_and_destroy_element(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1,free);
+	if(list_size(pcb.IndiceDelStack)==0)
+		progTerminado=true;
 }
 
 void primitiva_retornar(t_valor_variable retorno){
@@ -311,10 +304,18 @@ void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 }
 
 t_puntero primitiva_reservar(t_valor_variable espacio){
-	t_puntero pointer = *(t_puntero*)ReservarBloqueMemoriaDinamica(espacio);
-	pcb.cantBytesAlocados += espacio + sizeof(bool) + sizeof(uint32_t); //Seria el tamanio a reservar + el tamanio del HeapMetadata que tiene un bool y un uint32_t
-	pcb.cantidadAccionesAlocar++;
-	pcb.cantidadSyscallEjecutadas++;
+	int32_t tipoError = 0;
+	t_puntero pointer = *(t_puntero*)ReservarBloqueMemoriaDinamica(espacio,&tipoError);
+	if(tipoError<0){
+		huboError = true;
+		pcb.ExitCode = tipoError;
+		pointer = 0;
+	}
+	else{
+		pcb.cantBytesAlocados += espacio + sizeof(bool) + sizeof(uint32_t); //Seria el tamanio a reservar + el tamanio del HeapMetadata que tiene un bool y un uint32_t
+		pcb.cantidadAccionesAlocar++;
+		pcb.cantidadSyscallEjecutadas++;
+	}
 	//pcb.ProgramCounter++;
 	return pointer;
 }
