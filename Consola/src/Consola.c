@@ -133,6 +133,7 @@ void programHandler(void *programPath) {
 
 int startProgram(char* programPath) {
 	if (existeArchivo(programPath)) {
+
 		pthread_t* program = malloc(sizeof(pthread_t));
 		list_add(listaProcesos, program);
 		pthread_create(program, NULL, (void*)programHandler, programPath);
