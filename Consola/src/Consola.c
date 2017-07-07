@@ -65,7 +65,6 @@ void programHandler(void *programPath) {
 					pid = *((uint32_t*) paquete.Payload);
 					if(pid >= 1){
 						structProceso* sp = malloc(sizeof(structProceso));
-
 						sp->pid = pid;
 						sp->socket = socketFD;
 						list_add(listaProcesos,sp);
@@ -74,7 +73,7 @@ void programHandler(void *programPath) {
 					}
 
 				}
-				break;
+			break;
 			case ESSTRING:
 				printf("%s\n",(char*)paquete.Payload);
 				if(strcmp(paquete.header.emisor,KERNEL)==0){
@@ -131,10 +130,7 @@ void programHandler(void *programPath) {
 		}
 	}*/
 }
-struct parametrosPrograma{
-	char* programPath;
-	pthread_t* hilo;
-};
+
 int startProgram(char* programPath) {
 	if (existeArchivo(programPath)) {
 		pthread_t* program = malloc(sizeof(pthread_t));
