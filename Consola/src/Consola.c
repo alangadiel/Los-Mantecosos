@@ -64,11 +64,10 @@ void programHandler(void *programPath) {
 				if(strcmp(paquete.header.emisor,KERNEL)==0){
 					pid = *((uint32_t*) paquete.Payload);
 					if(pid >= 1){
-						structProceso* sp = malloc(sizeof(structProceso));
+						structProceso* sp = list_find(listaProcesos, LAMBDA(bool _(void* elemento){
+							return ((structProceso*) elemento)->socket == socketFD;
+						}));
 						sp->pid = pid;
-						sp->socket = socketFD;
-						list_add(listaProcesos,sp);
-
 						printf("El pid del nuevo programa es %d \n",pid);
 					}
 
@@ -130,12 +129,18 @@ void programHandler(void *programPath) {
 		}
 	}*/
 }
-
+struct parametrosPrograma{
+	char* programPath;
+	pthread_t* hilo;
+};
 int startProgram(char* programPath) {
 	if (existeArchivo(programPath)) {
-		pthread_t* program = malloc(sizeof(pthread_t));
-		list_add(listaProcesos, program);
-		pthread_create(program, NULL, (void*)programHandler, programPath);
+		structProceso* sp = malloc(sizeof(structProceso));
+		list_add(listaProcesos, sp);
+		struct parametrosPrograma param;
+		param.hilo=&(sp->hilo);
+		param.programPath=programPath;
+		pthread_create(param.hilo, NULL, (void*)programHandler, &param);
 	}
 	else {
 		printf("No existe el archivo\n");
