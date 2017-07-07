@@ -1,0 +1,24 @@
+MIDIR =../Memoria/src
+CC=gcc
+CFLAGS=-I$(IDIR)
+
+MODIR=obj
+LDIR =../Bibliotecas
+
+_MDEPS = Memoria.h Interface.h ThreadsMemoria.h
+MDEPS = $(patsubst %,$(MIDIR)/%,$(_MDEPS))
+
+_MOBJ = Memoria.o Interface.o ThreadsMemoria.o
+MOBJ = $(patsubst %,$(MODIR)/%,$(_MOBJ))
+
+
+$(MODIR)/%.o: %.c $(MDEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+Memoria: $(MOBJ)
+	gcc -o $@ $^ $(CFLAGS)
+
+.PHONY: clean
+
+clean:
+	rm -f $(MODIR)/*.o *~ core $(INCDIR)/*~ 
