@@ -206,16 +206,18 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					case RESERVARHEAP:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						tamanioAReservar = ((uint32_t*)paquete->Payload)[2];
-
-						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado);
+						bool huboError;
+						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar, socketConectado,&huboError);
 
 						tamDatos = sizeof(uint32_t) * 2;
 						datos = malloc(tamDatos);
 
 						((uint32_t*) datos)[0] = RESERVARHEAP;
 						((uint32_t*) datos)[1] = punteroADevolver;
-
-						EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+						if(huboError==false)
+							EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+						else
+							EnviarDatosTipo(socketConectado,KERNEL,datos,tamDatos,ESERROR);
 
 						free(datos);
 					break;

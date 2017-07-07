@@ -34,6 +34,19 @@ t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valo
 	free(datos);
 	return result;
 }
+/*Al ejecutar la última sentencia, el CPU deberá notificar al Kernel que el proceso finalizó para que este
+se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
+void FinDeEjecucionPrograma(){
+	/*
+	int tamDatos = sizeof(uint32_t)*2;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = FINEJECUCIONPROGRAMA;
+	((uint32_t*) datos)[1] = pcb.PID;
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	*/
+	progTerminado = true;
+}
+
 
 
 t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
@@ -42,7 +55,7 @@ t_puntero ReservarBloqueMemoriaDinamica(t_valor_variable espacio){
 	((uint32_t*) datos)[0] = RESERVARHEAP;
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = espacio;
-	t_puntero result = *(t_puntero*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	t_puntero* result = EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	free(datos);
 	return result;
 }
@@ -94,7 +107,7 @@ PosicionDeMemoria obtenerPosicionNueva(){
 //primitivas basicas
 
 t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
-
+	uint32_t punteroADevolver = 0;
 	if(hayLugarEnStack()){
 		Variable* varNueva = malloc(sizeof(Variable));
 		varNueva->Posicion = obtenerPosicionNueva();
@@ -114,7 +127,7 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 			}
 		pcb.cantTotalVariables++;
 		printf("Cant variables: %u\n",pcb.cantTotalVariables);
-
+		punteroADevolver = varNueva->Posicion.NumeroDePagina*TamanioPaginaMemoria+ varNueva->Posicion.Offset;
 	}
 	else{
 		//Stack overFlow
@@ -122,43 +135,57 @@ t_puntero primitiva_definirVariable(t_nombre_variable identificador_variable){
 		pcb.ExitCode = -10;
 	}
 	//pcb.ProgramCounter++;
-	return ultimoOffSetVariablesStack;
+	return punteroADevolver;
 }
 
 
 t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	void* result = NULL;
-
-	regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack, list_size(pcb.IndiceDelStack)-1);
-	result = (Variable*)list_find(is->Variables,LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
-
-		//pcb.ProgramCounter++;
-	if(result==NULL)
-		return -1;
-	else
+	t_puntero punteroADevolver = 0;
+	int j=0;
+	while(j< list_size(pcb.IndiceDelStack) && result==NULL){
+		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,j);
+		result = (Variable*)list_find(is->Variables,LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
+		j++;
+	}
+	//pcb.ProgramCounter++;
+	if(result!=NULL)
 	{
 		Variable* var = (Variable*)result;
-		return var->Posicion.NumeroDePagina*TamanioPaginaMemoria+ var->Posicion.Offset;
+		punteroADevolver = var->Posicion.NumeroDePagina*TamanioPaginaMemoria+ var->Posicion.Offset;
 	}
+	return punteroADevolver;
 
 }
 t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
-	int nroPag = puntero/TamanioPaginaMemoria;
-	int offset = puntero%TamanioPaginaMemoria;
-	void* dato = IM_LeerDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int));
-	t_valor_variable val = *(t_valor_variable*)dato;
-	//pcb.ProgramCounter++;
-
+	t_valor_variable val = -1;
+	if(puntero == 0){
+		//Stack overFlow
+		huboError = true;
+		pcb.ExitCode = -10;
+	}
+	else{
+		int nroPag = puntero/TamanioPaginaMemoria;
+		int offset = puntero%TamanioPaginaMemoria;
+		void* dato = IM_LeerDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int));
+		val = *(t_valor_variable*)dato;
+		//pcb.ProgramCounter++;
+	}
 	return val;
+
 }
 
 void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
 	t_valor_variable val = variable;
 	int nroPag = puntero/TamanioPaginaMemoria;
 	int offset = puntero%TamanioPaginaMemoria;
-	IM_GuardarDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int),&val);
+	bool result = IM_GuardarDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int),&val);
+	if(result==false){
+		//Stack overFlow
+		huboError = true;
+		pcb.ExitCode = -10;
+	}
 	//pcb.ProgramCounter++;
-
 
 }
 
@@ -212,7 +239,7 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 	Variable* result = NULL;
 	int i=0;
 	while(i< list_size(pcb.IndiceDelStack) && result == NULL){
-		regIndiceStack* is = list_get(pcb.IndiceDelStack,i);
+		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,i);
 		result = list_find(is->Variables,
 				LAMBDA(bool _(void*item){
 			return TamanioPaginaMemoria* ((Variable*)item)->Posicion.NumeroDePagina +((Variable*)item)->Posicion.Offset==donde_retornar;
@@ -228,14 +255,12 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 }
 
 //TODAS LAS FUNCIONES RETORNAR UN VALOR, NO EXISTE EL CONCEPTO DE PROCEDIMIENTO: LO DICE EL TP
-/*Al ejecutar la última sentencia, el CPU deberá notificar al Kernel que el proceso finalizó para que este
-se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
 void primitiva_finalizar(void){
 	//Si hay un solo registro de stack y se llama esta funcion, hay que finalizar el programa
-	list_remove_and_destroy_element(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1, free);
-
-	if(list_size(pcb.IndiceDelStack)==0){
-		progTerminado = true;
+	if(list_size(pcb.IndiceDelStack)>1){
+		list_remove(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+	} else if(list_size(pcb.IndiceDelStack)==1){
+		FinDeEjecucionPrograma();
 	}
 
 }

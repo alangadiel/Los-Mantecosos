@@ -79,7 +79,8 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 }
 
 
-uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
+uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket,bool *huboerror){
+	*huboerror = false;
 	uint32_t cantTotal = cantAReservar+sizeof(HeapMetadata);
 	uint32_t punteroAlPrimerDisponible=0;
 	//Como maximo, podes solicitar reservar: TamañoPagina -10(correspondiente a los metedatas iniciales)
@@ -135,9 +136,9 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int socket){
 		}
 	}
 	else{ //Debe finalizar el programa pq quiere reservar mas de lo permitido
-		FinalizarPrograma(PID,SOLICITUDMASGRANDEQUETAMANIOPAGINA);
+		//FinalizarPrograma(PID,SOLICITUDMASGRANDEQUETAMANIOPAGINA);
 		//TODO: Avisar a la CPU del programa finalizado
-		// EL TP DICE QUE HAY QUE PEDIR OTRA PAGINA
+		*huboerror = true;
 	}
 	return punteroAlPrimerDisponible;
 }
