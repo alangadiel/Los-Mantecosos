@@ -15,7 +15,7 @@ extern uint32_t MARCO_SIZE;
 extern uint32_t ENTRADAS_CACHE;
 extern uint32_t CACHE_X_PROC;
 extern char* REEMPLAZO_CACHE;
-extern int RETARDO_MEMORIA;
+extern uint32_t RETARDO_MEMORIA;
 extern char* IP;
 
 typedef struct {

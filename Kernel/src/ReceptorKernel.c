@@ -219,12 +219,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							free(data);
 						}
 						else{
-							tamDatos = sizeof(int32_t) ;
-							void *data = malloc(tamDatos);
-							((int32_t*) datos)[0] = tipoError;
-							EnviarDatosTipo(socketConectado,KERNEL,data,tamDatos,ESERROR);
-							free(data);
-
+							EnviarDatosTipo(socketConectado,KERNEL,&tipoError,sizeof(int32_t),ESERROR);
 						}
 					break;
 
