@@ -143,11 +143,8 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 	void* result = NULL;
 	t_puntero punteroADevolver = 0;
 	int j=0;
-	while(j< list_size(pcb.IndiceDelStack) && result==NULL){
-		regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,j);
-		result = (Variable*)list_find(is->Variables,LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
-		j++;
-	}
+	regIndiceStack* is = (regIndiceStack*)list_get(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1);
+	result = (Variable*)list_find(is->Variables,LAMBDA(bool _(void*item){return ((Variable*)item)->ID==variable;}));
 	//pcb.ProgramCounter++;
 	if(result!=NULL)
 	{
@@ -159,8 +156,11 @@ t_puntero primitiva_obtenerPosicionVariable(t_nombre_variable variable) {
 }
 t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 	t_valor_variable val = -1;
-	if(puntero == 0){
-		//Stack overFlow
+	/*Como obtenerPosicionVarible y definirVariable devuelven 0(cero) si fallan,
+	 * hay que validar que el puntero a dereferenciar no sea 0, pq la dir logica 0 es de las paginas de
+	 * codigo  */
+
+	if(puntero==0){
 		huboError = true;
 		pcb.ExitCode = -10;
 	}
@@ -168,9 +168,18 @@ t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 		int nroPag = puntero/TamanioPaginaMemoria;
 		int offset = puntero%TamanioPaginaMemoria;
 		void* dato = IM_LeerDatos(socketMemoria,CPU,pcb.PID,nroPag,offset,sizeof(int));
-		val = *(t_valor_variable*)dato;
-		//pcb.ProgramCounter++;
+		if(dato != NULL)
+		{
+			val = *(t_valor_variable*)dato;
+		}
+		else
+		{
+			//Stack overFlow
+			huboError = true;
+			pcb.ExitCode = -10;
+		}
 	}
+
 	return val;
 
 }

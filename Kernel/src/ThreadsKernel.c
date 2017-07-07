@@ -167,11 +167,11 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 
 			if(hayEstructurasNoLiberadas == true)
 			{
-				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó", PID);
+				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó\n", PID);
 			}
 			else
 			{
-				printf("El proceso %d liberó todas las estructuras de memoria dinamica", PID);
+				printf("El proceso %d liberó todas las estructuras de memoria dinamica\n", PID);
 			}
 		}
 
@@ -189,7 +189,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 			FinalizarPrograma(PID,tipoFinalizacion);
 	}*/
 	pthread_mutex_unlock(&mutexFinalizarPrograma);
-	printf("PID %u finalizado por exitcode %i", pcbRemovido->PID, pcbRemovido->ExitCode);
+
 	return pcbRemovido;
 }
 
