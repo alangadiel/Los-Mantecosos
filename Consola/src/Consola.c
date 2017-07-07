@@ -65,6 +65,7 @@ void programHandler(void *programPath) {
 					pid = *((uint32_t*) paquete.Payload);
 					if(pid >= 1){
 						structProceso* sp = malloc(sizeof(structProceso));
+
 						sp->pid = pid;
 						sp->socket = socketFD;
 						list_add(listaProcesos,sp);
