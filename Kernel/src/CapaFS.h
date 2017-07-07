@@ -25,9 +25,9 @@ typedef struct {
 
 uint32_t cerrarArchivo(uint32_t FD, uint32_t PID);
 uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* datosAGrabar);
-void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos);
-uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int socketConectado);
-void leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo);
+uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos);
+uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int socketConectado, int32_t* tipoError);
+void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo);
 uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion);
 uint32_t borrarArchivo(uint32_t FD, uint32_t PID);
 void finalizarProgramaCapaFS(int PID);
