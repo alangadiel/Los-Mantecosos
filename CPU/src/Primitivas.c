@@ -177,9 +177,8 @@ t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 }
 
 void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
-	if(puntero==0){
-		huboError = true;
-	}else{
+	if(huboError==false)
+	{
 		t_valor_variable val = variable;
 		int nroPag = puntero/TamanioPaginaMemoria;
 		int offset = puntero%TamanioPaginaMemoria;
