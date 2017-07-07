@@ -189,15 +189,10 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 		printf("\nIngrese una orden: \n");
 		scanf("%s", command);
 		if (strcmp(command, "start_program") == 0) {
-
 			scanf("%s", parametro);
 			startProgram(parametro);
-<<<<<<< HEAD
-		}
-		else if (strcmp(command, "end_program") == 0){
-=======
 		} else if (strcmp(command, "end_program") == 0) {
->>>>>>> f1f19b1c3fa4fc47a7a35dafd1f5fa9a562a09c5
+
 
 			scanf("%s", parametro);
 			uint32_t pid = atoi(parametro);
