@@ -10,6 +10,7 @@
 
 char* IP_KERNEL;
 int PUERTO_KERNEL;
+bool fin = false;
 
 typedef struct {
 	int socket;
@@ -181,8 +182,14 @@ void liberarMemoria() {
 	free(IP_KERNEL);
 }
 
+void killConsole() {
+	fin = true;
+	killAllPrograms();
+	liberarMemoria();
+}
+
 void userInterfaceHandler(uint32_t* socketGeneral) {
-	bool fin = false;
+
 	while (!fin) {
 		char command[100];
 		char parametro[100];
@@ -205,9 +212,7 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 				printf("No se reconoce algun programa con ese PID");
 			}
 		} else if (strcmp(command, "disconnect") == 0) {
-			fin = true;
-			killAllPrograms();
-			liberarMemoria();
+			killConsole();
 		} else if (strcmp(command, "clean") == 0) {
 			clean();
 		} else {
@@ -216,12 +221,19 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 	}
 }
 
+void sigintHandler(int sig_num)
+{
+	killConsole();
+	signal(SIGINT, sigintHandler);
+	exit(0);
+}
+
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
 	listaProcesos = list_create();
-
+	signal(SIGINT, sigintHandler);
 	pthread_t userInterface;
 	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,&socketFD);
 	pthread_join(userInterface, NULL);

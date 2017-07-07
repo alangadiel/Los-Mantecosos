@@ -31,7 +31,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 
 		archivoGlob->cantAperturas++;
 
-		int index = 0;
+		int indice = 0;
 		int i;
 
 		for(i = 0; i < list_size(ArchivosGlobales); i++)
@@ -40,20 +40,21 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 
 			if(arch->pathArchivo == path)
 			{
-				index = i;
+				indice = i;
 			}
 		}
 
-		list_replace(ArchivosGlobales, index, archivoGlob);
+		list_replace(ArchivosGlobales, indice, archivoGlob);
 	}
 
 	int i = 0;
 
 	result = NULL;
+	t_list* lista;
 
 	while(i < list_size(ArchivosProcesos) && result == NULL)
 	{
-		t_list* lista = (t_list*)list_get(ArchivosProcesos, i);
+		lista = (t_list*)list_get(ArchivosProcesos, i);
 
 		result = (archivoProceso*)list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
 
@@ -62,7 +63,7 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 
 	archivoProceso* archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
 
-	int index;
+	int indice;
 	int j;
 
 	for(j = 0; j < list_size(ArchivosGlobales); j++)
@@ -71,19 +72,17 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 
 		if(arch->pathArchivo == path)
 		{
-			index = j;
+			indice = j;
 		}
 	}
 
 	if(result == NULL) //No hay ninguna lista de archivos para ese proceso porque no habia abierto ningun archivo todavia
 	{
 		archivoProc->PID = PID;
-		archivoProc->FD = ultimoFD;
+		archivoProc->FD = 3;
 		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
-		archivoProc->globalFD = index;
-
-		ultimoFD++;
+		archivoProc->globalFD = indice;
 
 		t_list* listaArchivoProceso = list_create();
 
@@ -93,13 +92,13 @@ void cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 	}
 	else //Hay una lista para ese proceso, entonces solo agrego un archivo
 	{
+		archivoProceso* arch = list_get(lista, sizeof(lista)-1);
+
 		archivoProc->PID = PID;
-		archivoProc->FD = ultimoFD;
+		archivoProc->FD = arch->FD+1;
 		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
-		archivoProc->globalFD = index;
-
-		ultimoFD++;
+		archivoProc->globalFD = indice;
 
 		t_list* listaArchivoProceso = (t_list*)list_get(ArchivosProcesos, i-1);
 
@@ -152,13 +151,17 @@ void finalizarProgramaCapaFS(int PID)
 }
 
 
-uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos)
+uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int socketConectado)
 {
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
 
 	if(archivoEstaCreado == 1)
 	{
 		cargarEnTablasArchivos(path, PID, permisos);
+
+		uint32_t FD;
+
+		EnviarDatos(socketConectado, KERNEL, 1, sizeof(uint32_t));
 	}
 	else
 	{
@@ -295,9 +298,7 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 	{
 		archivoProceso* procesoACerrar = (archivoProceso*)result;
 
-		archivoGlobal* archivoGlob = malloc(sizeof(archivoGlobal));
-
-		archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, procesoACerrar->globalFD);
+		archivoGlobal* archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, procesoACerrar->globalFD);
 
 		list_remove_and_destroy_by_condition(listaProcesoACerrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
@@ -306,10 +307,6 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 		if(archivoGlob->cantAperturas == 0)
 		{
 			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }), free);
-		}
-		else
-		{
-			list_replace(ArchivosGlobales, FD - 3, archivoGlob);
 		}
 	}
 	else
@@ -339,9 +336,7 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
 	{
 		archivoProceso* procesoABorrar = (archivoProceso*)result;
 
-		archivoGlobal* archivoGlob = malloc(sizeof(archivoGlobal));
-
-		archivoGlob = list_get(ArchivosGlobales, procesoABorrar->globalFD);
+		archivoGlobal* archivoGlob = list_get(ArchivosGlobales, procesoABorrar->globalFD);
 
 		list_remove_and_destroy_by_condition(listaProcesoABorrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
@@ -350,11 +345,8 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
 		if(archivoGlob->cantAperturas == 0)
 		{
 			FS_BorrarArchivo(FD, KERNEL, archivoGlob->pathArchivo);
+
 			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }),free);
-		}
-		else
-		{
-			list_replace(ArchivosGlobales, FD - 3, archivoGlob);
 		}
 	}
 	else

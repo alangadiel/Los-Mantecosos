@@ -76,7 +76,7 @@ void RecibirHandshake_KernelDeMemoria(int socketFD, char emisor[11]) {
 int main(void)
 {
 	bool cantNombresSemaforosEsIgualAValores = true;
-	CrearListas();
+	CrearListasYSemaforos();
 	obtenerValoresArchivoConfiguracion(&cantNombresSemaforosEsIgualAValores);
 	LlenarListas();
 	if(cantNombresSemaforosEsIgualAValores)

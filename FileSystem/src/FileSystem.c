@@ -71,11 +71,11 @@ void obtenerValoresArchivoConfiguracion() {
 
 int validarArchivo(char* path, int socketFD) {
 	if(existeArchivo(path)) {
-		EnviarDatos(socketFD, FS, NULL, 0);
+		EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
 		return 1;
 	}
 	else {
-		EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
+		EnviarDatos(socketFD, FS, 0, sizeof(uint32_t));
 		return 0;
 	}
 }

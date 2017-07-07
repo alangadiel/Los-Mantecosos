@@ -39,7 +39,7 @@ se ocupe de solicitar la eliminación de las estructuras utilizadas por el siste
 
 
 
-t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags){
+t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags, int32_t *tipoError){
 	//TODO: Programar en kernel para que abra el archivo
 	int tamDatos = sizeof(uint32_t)*2+sizeof(t_banderas)+string_length(direccion)+1;
 	void* datos = malloc(tamDatos);
@@ -49,9 +49,23 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	((bool*) datos)[3] =flags.escritura;
 	((bool*) datos)[4] =flags.lectura;
 	memcpy(datos+sizeof(uint32_t)*2+sizeof(t_banderas), direccion, string_length(direccion)+1);
-	t_descriptor_archivo result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+
+	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+
+	t_descriptor_archivo r;
+
+	if(paquete->header.tipoMensaje == ESERROR)
+		*tipoError = ((int32_t*)paquete->Payload)[0];
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = *((t_descriptor_archivo*)paquete->Payload);
+
+	free(paquete);
 	free(datos);
-	return result;
+
+	return r;
 }
 
 void CrearRegistroStack(regIndiceStack* is){
@@ -292,7 +306,7 @@ uint32_t ReservarBloqueMemoriaDinamica(t_valor_variable espacio,int32_t *tipoErr
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	Paquete* paquete = malloc(sizeof(Paquete));
 	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
-	uint32_t r=0;
+	uint32_t r = 0;
 	if(paquete->header.tipoMensaje == ESERROR)
 		*tipoError = ((int32_t*)paquete->Payload)[0];
 	else if(paquete->header.tipoMensaje == ESDATOS)
@@ -334,7 +348,9 @@ void primitiva_liberar(t_puntero puntero){
 	//pcb.ProgramCounter++;
 }
 t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
-	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags);
+	int32_t tipoError = 0;
+
+	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags, &tipoError);
 	pcb.cantidadSyscallEjecutadas++;
 	//pcb.ProgramCounter++;
 	return fd;

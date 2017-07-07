@@ -36,7 +36,7 @@ void SolicitarWaitSemaforo(t_nombre_semaforo semaforo);
 void SolicitarSignalSemaforo(t_nombre_semaforo semaforo);
 uint32_t ReservarBloqueMemoriaDinamica(t_valor_variable espacio,int32_t *tipoError);
 void LiberarBloqueMemoriaDinamica(t_puntero puntero);
-t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags);
+t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags, int32_t *tipoError);
 void SolicitarBorrarArchivo(t_descriptor_archivo desc);
 void SolicitarCerrarArchivo(t_descriptor_archivo desc);
 void SolicitarMoverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion);

@@ -93,7 +93,8 @@ extern char** SHARED_VARS;
 extern int STACK_SIZE;
 extern bool planificacion_detenida;
 
-extern sem_t semDispacher;
+extern sem_t semDispacherListos;
+extern sem_t semDispatcherCpus;
 extern pthread_mutex_t mutexQueueNuevos;
 extern pthread_mutex_t mutexQueueListos;
 extern pthread_mutex_t mutexQueueEjecutando;
@@ -109,7 +110,7 @@ extern pthread_mutex_t mutexPaginasPorProceso;
 void CrearListasEstados();
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos);
 void LiberarVariablesYListas();
-void CrearListas();
+void CrearListasYSemaforos();
 void obtenerError(int exitCode);
 //void Evento_ListosRemove();
 void Evento_ListosAdd();//para el dispacher
