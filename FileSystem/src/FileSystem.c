@@ -73,18 +73,31 @@ void obtenerValoresArchivoConfiguracion() {
 bool archivoEsValido(char* pathForValidation) {
 	return string_ends_with(pathForValidation, ".bin");
 }
+void armarPath(char** path){
+	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
+	char* subsrt = string_substring(*path, 1, string_length(*path)-2);
+	string_append(&pathForValidation,subsrt);
+	free(*path);
+	*path = string_duplicate(pathForValidation);
+	free(pathForValidation);
+	free(subsrt);
+}
 
 int validarArchivo(char* path, int socketFD) {
-	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
-	string_append(&pathForValidation, path);
-	if(archivoEsValido(pathForValidation) && existeArchivo(pathForValidation)) {
-		EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
-		return 1;
+	uint32_t r;
+	bool esValido = archivoEsValido(path);
+	bool existe = existeArchivo(path);
+	if(esValido && existe) {
+		r=1;
+		if(socketFD>0)
+			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 	}
 	else {
-		EnviarDatos(socketFD, FS, 0, sizeof(uint32_t));
-		return 0;
+		r=0;
+		if(socketFD>0)
+			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 	}
+	return r;
 }
 
 void cambiarValorBitmap(int posicion, int valor) {
@@ -182,11 +195,8 @@ ValoresArchivo* reservarBloques(char* path, int tamanioNecesitado, ValoresArchiv
 	return valoresNuevos;
 }
 
-void crearArchivo(void* puntero,int socketFD) {
-	char* path = puntero+sizeof(uint32_t);
-	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
-	string_append(&pathForValidation, path);
-	if (!validarArchivo(pathForValidation, 0)) {
+void crearArchivo(char* path,int socketFD) {
+	if (!validarArchivo(path, 0)) {
 		char** pathArray = string_split(path, "/");
 		int i = 0;
 		char* nuevoPath = string_duplicate(ARCHIVOSPATH);
@@ -201,40 +211,38 @@ void crearArchivo(void* puntero,int socketFD) {
 		string_append(&nuevoPath, pathArray[i]);
 		ValoresArchivo* nuevosValores = reservarBloques(nuevoPath, 0, NULL);
 		if (nuevosValores != NULL) {
-			EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
+			uint32_t r = 1;
+			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
 		else {
-			EnviarDatos(socketFD, FS, 0, sizeof(uint32_t));
+			uint32_t r = 0;
+			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
 		free(nuevosValores);
 		free(nuevoPath);
 		free(pathArray);
-		free(pathForValidation);
 	}
 }
 
-void borrarArchivo(void* puntero, int socketFD) {
-	char* path = puntero+sizeof(uint32_t);
-	char* pathArchivo = string_new();
-	pathArchivo = string_duplicate(ARCHIVOSPATH);
-	string_append(&pathArchivo, path);
+void borrarArchivo(char* pathArchivo , int socketFD) {
+	uint32_t r = 0;
 	if (validarArchivo(pathArchivo, 0)) {
 		ValoresArchivo* valores = obtenerValoresDeArchivo(pathArchivo);
 		eliminarBloques(valores->Bloques);
 		int removeFile = remove(pathArchivo);
 		if (removeFile >= 0 && socketFD != 0) {
-			EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
+			r= 1;
+			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
 		else {
-			EnviarDatos(socketFD, FS, 0, sizeof(uint32_t));
+			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
 		free(valores);
 	}
 	else
 	{
-		EnviarDatos(socketFD, FS, 0, sizeof(uint32_t));
+		EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 	}
-	free(pathArchivo);
 }
 
 char* leerTodoElArchivo(char* fileToScan) {
@@ -259,9 +267,7 @@ char* obtenerTodosLosDatosDeBloques(ValoresArchivo* valores) {
 	return datos;
 }
 
-void obtenerDatos(char* path, uint32_t offset, uint32_t size, int socketFD) {
-	char* pathAObtener = string_duplicate(ARCHIVOSPATH);
-	string_append(&pathAObtener, path);
+void obtenerDatos(char* pathAObtener, uint32_t offset, uint32_t size, int socketFD) {
 	if (validarArchivo(pathAObtener, 0)) {
 		ValoresArchivo* valores = obtenerValoresDeArchivo(pathAObtener);
 		char* datosAEnviar = string_substring(obtenerTodosLosDatosDeBloques(valores), offset, size);
@@ -270,9 +276,9 @@ void obtenerDatos(char* path, uint32_t offset, uint32_t size, int socketFD) {
 		free(valores);
 	}
 	else {
-		EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
+		uint32_t r = 0;
+		EnviarDatosTipo(socketFD, FS, &r, sizeof(uint32_t) , ESERROR);
 	}
-	free(pathAObtener);
 }
 
 int obtenerTamanioDeArchivo(char* path) {
@@ -283,7 +289,7 @@ int obtenerTamanioDeArchivo(char* path) {
 	return tamanio;
 }
 
-void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int socketFD){
+void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int socketFD){
 	char* pathAEscribir = string_new();
 	string_append(&pathAEscribir, ARCHIVOSPATH);
 	string_append(&pathAEscribir, path);
@@ -299,15 +305,13 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 
 		ValoresArchivo* nuevosValores = reservarBloques(pathAEscribir, nuevoTamanioDeArchivo, valores);
 		char* datosActuales = obtenerTodosLosDatosDeBloques(nuevosValores);
-		int i;
-		for (i = offset; i < nuevoTamanioDeArchivo; i++) {
-			datosActuales[i] = buffer[i];
-			i++;
-		}
+		memcpy(datosActuales, buffer+offset, nuevoTamanioDeArchivo); //puede ser que deba avanzar x2
 
 		int j = 0;
 		int posicion;
-		FILE* file = fopen(obtenerPathABloque(i), "w+");
+		char* nombreF = obtenerPathABloque(nuevoTamanioDeArchivo-offset);
+		FILE* file = fopen(nombreF, "w+");
+		free(nombreF);
 		//lleno todos los bloques hasta el anteultimo
 		while (j < list_size(nuevosValores->Bloques) - 1) {
 			posicion = TAMANIO_BLOQUES*(j+1);
@@ -319,78 +323,60 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 		fclose(file);
 
 		if (socketFD != 0) {
-			EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
+			uint32_t r = 1;
+			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
 		free(nuevosValores);
 		free(valores);
 		free(datosActuales);
 	}
 	else {
-		EnviarDatos(socketFD, FS, 0, sizeof(uint32_t));
+		uint32_t r = 0;
+		EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 	}
 	free(pathAEscribir);
 }
 
 
 void accion(Paquete* paquete, int socketFD){
-	uint32_t* datos = paquete->Payload;
 
 	if(paquete->header.tipoMensaje == ESDATOS)
 	{
-		switch (*(uint32_t*)paquete->Payload){
 
+		uint32_t* datos = paquete->Payload;
+		char* path = paquete->Payload+sizeof(uint32_t);
+		switch (*datos){
 			case VALIDAR_ARCHIVO:
-				printf("El path es %s", paquete->Payload);
-				validarArchivo((char*)paquete->Payload+sizeof(uint32_t), socketFD);
+				path = string_duplicate(path);
+				armarPath(&path);
+				validarArchivo(path, socketFD);
 			break;
 			case CREAR_ARCHIVO:
-				printf("crear");
-				crearArchivo(paquete->Payload, socketFD);
+				path = string_duplicate(path);
+				armarPath(&path);
+				crearArchivo(path, socketFD);
 			break;
 			case BORRAR_ARCHIVO:
-				borrarArchivo(paquete->Payload, socketFD);
+				path = string_duplicate(path);
+				armarPath(&path);
+				borrarArchivo(path, socketFD);
 			break;
 			case OBTENER_DATOS:
-				obtenerDatos(&(datos[3]), datos[1], datos[2], socketFD);
+				path = paquete->Payload+sizeof(uint32_t)*3;
+				path = string_duplicate(path);
+				armarPath(&path);
+				obtenerDatos(path, datos[1], datos[2], socketFD);
 			break;
 			case GUARDAR_DATOS:
-				guardarDatos(&(datos[3]), datos[1], datos[2],&(datos[4]), socketFD);
+				path = paquete->Payload+sizeof(uint32_t)*3;
+				path = string_duplicate(path);
+				armarPath(&path);
+				guardarDatos(path, datos[1], datos[2],&(datos[4]), socketFD);
 			break;
 		}
+		free(path);
 	}
-
 }
-
-/*void accion(void* socket){
-	int socketFD = *(int*)socket;
-	Paquete paquete;
-	while (RecibirPaqueteMemoria(socketFD, MEMORIA, &paquete) > 0) {
-		if (paquete.header.tipoMensaje == ESDATOS){
-			switch ((*(uint32_t*)paquete.Payload)){
-			case INIC_PROG:
-				IniciarPrograma(DATOS[1],DATOS[2],socketFD);
-			break;
-			case SOL_BYTES:
-				SolicitarBytes(DATOS[1],DATOS[2],DATOS[3],DATOS[4],socketFD);
-			break;
-			case ALM_BYTES:
-				AlmacenarBytes(paquete,socketFD);
-			break;
-			case ASIG_PAG:
-				AsignarPaginas(DATOS[1],DATOS[2],socketFD);
-			break;
-			case LIBE_PAG:
-				LiberarPaginas(DATOS[1],DATOS[2],socketFD);
-			break;
-			case FIN_PROG:
-				FinalizarPrograma(DATOS[1],socketFD);
-			break;
-			}
-		}
-		free(paquete.Payload);
-	}
-	close(socketFD);
-}*/
 
 bool esCorrectoArchivoMetadata() {
 	t_config* conf = config_create(METADATAFILE);
@@ -470,28 +456,28 @@ void crearEstructurasDeCarpetas() {
 	}
 
 	METADATAPATH = string_duplicate(PUNTO_MONTAJE);
-	string_append(&METADATAPATH, "Metadata/");
+	string_append(&METADATAPATH, "/Metadata");
 	if (!existeDirectorio(METADATAPATH)) {
 		crearDirectorio(METADATAPATH);
 	}
 
 	ARCHIVOSPATH = string_duplicate(PUNTO_MONTAJE);
-	string_append(&ARCHIVOSPATH, "Archivos/");
+	string_append(&ARCHIVOSPATH, "/Archivos");
 	if (!existeDirectorio(ARCHIVOSPATH)) {
 		crearDirectorio(ARCHIVOSPATH);
 	}
 
 	BLOQUESPATH = string_duplicate(PUNTO_MONTAJE);
-	string_append(&BLOQUESPATH, "Bloques/");
+	string_append(&BLOQUESPATH, "/Bloques");
 	if (!existeDirectorio(BLOQUESPATH)) {
 		crearDirectorio(BLOQUESPATH);
 	}
 
 	METADATAFILE = string_duplicate(METADATAPATH);
-	string_append(&METADATAFILE, "Metadata.bin");
+	string_append(&METADATAFILE, "/Metadata.bin");
 
 	BITMAPFILE = string_duplicate(METADATAPATH);
-	string_append(&BITMAPFILE, "Bitmap.bin");
+	string_append(&BITMAPFILE, "/Bitmap.bin");
 }
 
 void LiberarVariables() {
@@ -515,11 +501,16 @@ int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete)
 				printf("Se establecio conexion con %s\n", paquete->header.emisor);
 				EnviarHandshake(socketFD, FS);
 			}
-			else
-				EnviarDatosTipo(socketFD, FS, NULL, 0, ESERROR);
+			else{
+				uint32_t r = 1;
+				EnviarDatosTipo(socketFD, FS, &r,sizeof(uint32_t) , ESERROR);
+			}
 		} else {
 			if (strcmp(paquete->header.emisor, KERNEL) == 0) {
-				accion(paquete, socketFD);
+				paquete->Payload = realloc(paquete->Payload,
+						paquete->header.tamPayload);
+				resul = RecibirDatos(paquete->Payload, socketFD,
+						paquete->header.tamPayload);
 			}
 		}
 	}
