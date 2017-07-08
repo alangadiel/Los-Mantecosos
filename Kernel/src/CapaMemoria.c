@@ -32,7 +32,7 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 			}
 
 		}
-
+		free(datosPagina);
 		if(encontroLibre == true)
 		{
 			// Se encontro un bloque libre
@@ -198,21 +198,28 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 	printf("Puntero a liberar %u\n",punteroALiberar);
 	uint32_t nropag = punteroALiberar / TamanioPagina;
 	printf("Nro pag: %u\n",nropag);
+	bool buscarPag(void* elem){
+			PaginaDelProceso* pag = elem;
+			return pag->nroPagina==nropag && pag->pid==pid;
+	}
+	PaginaDelProceso* pagEncontrada = list_find(PaginasPorProceso, buscarPag);
+
 	uint32_t desplazamiento = punteroALiberar % TamanioPagina;
 	printf("desplazamiento: %u\n",desplazamiento);
 
 	void* datosPagina = IM_LeerDatos(socketConMemoria,KERNEL,pid,nropag,0,TamanioPagina);
 	uint32_t offSetMetadataAActualizar = desplazamiento- sizeof(HeapMetadata);
 	//uint32_t sizeBloqueALiberar = *(uint32_t*)(datosPagina+offSetMetadataAActualizar);
-	HeapMetadata *heapMetaAActualizar=datosPagina+desplazamiento;
+	HeapMetadata* heapMetaAActualizar = datosPagina + offSetMetadataAActualizar;
 	printf("size bloque a liberar: %u\n",heapMetaAActualizar->size);
 
 	/*heapMetaAActualizar->isFree = true;
 	heapMetaAActualizar->size = sizeBloqueALiberar;*/
 	//Pongo el bloque como liberado
 	//Me fijo el estado del siguiente Metadata(si esta Free o Used)
-	uint32_t offsetMetadataSiguiente = desplazamiento+heapMetaAActualizar->size;
+	uint32_t offsetMetadataSiguiente = desplazamiento + heapMetaAActualizar->size;
 	HeapMetadata* heapMetedataSiguiente =datosPagina+offsetMetadataSiguiente;
+	//HeapMetadata* heapMetedataSiguiente = ObtenerMetadataAnterior(datosPagina, offSetMetadataAActualizar);
 	if(heapMetedataSiguiente!=NULL)
 		printf("Size bloque siguiente %u\n",heapMetedataSiguiente->size);
 	bool resultado;
@@ -221,7 +228,12 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
 		//Si esta libre: puedo compactarlos como un metadata solo
 		heapMetaAActualizar->size += heapMetedataSiguiente->size;
-	}
+	} /* TODO
+	if(heapMetedataSiguiente->isFree==true) {
+		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
+		//Si esta libre: puedo compactarlos como un metadata solo
+		heapMetaAActualizar->size += heapMetedataSiguiente->size;
+	} */
 	resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
 	printf("Metadata a actualizar:\n");
 	printf("Size libre: %u\n",heapMetaAActualizar->size);
@@ -242,6 +254,7 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 				}
 			}
 		}
+		pagEncontrada->espacioDisponible += heapMetaAActualizar->size;
 	}
 	else{
 		*tipoError = EXCEPCIONDEMEMORIA;
