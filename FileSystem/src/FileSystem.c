@@ -327,10 +327,12 @@ void accion(Paquete* paquete, int socketFD){
 	switch ((*(uint32_t*)paquete->Payload)){
 		(uint32_t*)paquete->Payload++;
 		uint32_t* datos = paquete->Payload;
+		printf("Los datos son %u", *datos);
 		case VALIDAR_ARCHIVO:
 			validarArchivo(paquete->Payload, socketFD);
 		break;
 		case CREAR_ARCHIVO:
+			printf("crear");
 			crearArchivo(paquete->Payload, socketFD);
 		break;
 		case BORRAR_ARCHIVO:

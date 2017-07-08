@@ -152,7 +152,9 @@ void finalizarProgramaCapaFS(int PID)
 
 uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int socketConectado, int32_t* tipoError)
 {
+	printf("El path es %s", path);
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
+	printf("Archivo esta creado? %d", archivoEstaCreado);
 
 	uint32_t FD;
 
@@ -168,7 +170,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 		{
 			archivoEstaCreado = FS_CrearPrograma(socketConFS, KERNEL, path);
 			FD = cargarEnTablasArchivos(path, PID, permisos);
-
+			printf("Se creo el archivo? %d", archivoEstaCreado);
 			EnviarDatos(socketConectado, KERNEL, &FD, sizeof(uint32_t));
 		}
 		else
@@ -177,7 +179,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 			*tipoError = ACCEDERAARCHIVOINEXISTENTE;
 		}
 	}
-	printf("el fd es %d", FD);
+
 	return archivoEstaCreado;
 }
 
