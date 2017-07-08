@@ -126,47 +126,33 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 	pthread_mutex_lock(&mutexFinalizarPrograma);
 	finalizarProgramaCapaFS(PID);
 	obtenerError(tipoFinalizacion);
-
-	//Aca hace la liberacion de memoria uri, fijate si podes hacer una funcion finalizarProgramaCapaMemoria, sino hace aca normal
-
 	pcbRemovido = removerPidDeListas(PID, &indice);
-	printf("\nFinalizando proceso %u \n", pcbRemovido->PID);
-
-
 	if(pcbRemovido != NULL)
 	{
+		printf("\nFinalizando proceso %u \n", pcbRemovido->PID);
 		pcbRemovido->ExitCode = tipoFinalizacion;
-
 		list_add(Finalizados->elements, pcbRemovido);
-
 		//Analizo si el proceso tiene Memory Leaks o no
 		t_list* pagesProcess = list_filter(PaginasPorProceso,
-							LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}));
-
+				LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}));
 		if(list_size(pagesProcess) > 0)
 		{
 			int i = 0;
-
 			while(i < list_size(pagesProcess) && hayEstructurasNoLiberadas == false)
 			{
 				PaginaDelProceso* elem = list_get(pagesProcess, i);
-
 				//Me fijo si hay metadatas en estado "used" en cada pagina
 				void* datosPagina = IM_LeerDatos(socketConMemoria, KERNEL, elem->pid, elem->nroPagina, 0, TamanioPagina);
-
 				if(datosPagina != NULL)
 				{
 					int result = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-
 					if(result >= 0)
 					{
 						//Hay algun metadata que no se libero
 						hayEstructurasNoLiberadas = true;
 					}
 				}
-
 			}
-
 			if(hayEstructurasNoLiberadas == true)
 			{
 				printf("MEMORY LEAKS: El proceso %d no liberó todas las estructuras de memoria dinámica que solicitó\n", PID);
@@ -176,13 +162,10 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 				printf("El proceso %d liberó todas las estructuras de memoria dinamica\n", PID);
 			}
 		}
-
-
 		if(IM_FinalizarPrograma(socketConMemoria, KERNEL, PID) == false)
 		{
 			pcbRemovido->ExitCode = EXCEPCIONDEMEMORIA;
 		}
-
 		list_destroy_and_destroy_elements(pagesProcess,free);
 	}
 	/*else{
@@ -191,10 +174,8 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 			FinalizarPrograma(PID,tipoFinalizacion);
 	}*/
 	pthread_mutex_unlock(&mutexFinalizarPrograma);
-
 	return pcbRemovido;
 }
-
 
 bool ProcesoEstaEjecutandoseActualmente(int pidAFinalizar)
 {
