@@ -67,9 +67,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case PEDIRSHAREDVAR:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						//TODO
-						strcpy(variableCompartida, (char*)(paquete->Payload + sizeof(uint32_t) * 2));
-
+						variableCompartida =paquete->Payload + sizeof(uint32_t) * 2;
 						//Busco la variable compartida
 						result = NULL;
 						pthread_mutex_lock(&mutexVariablesCompartidas);
@@ -95,9 +93,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					case ASIGNARSHAREDVAR:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						valorAAsignar = ((int32_t*)paquete->Payload)[2];
-						//TODO
-						strcpy(variableCompartida, (char*)(paquete->Payload + sizeof(uint32_t) * 3));
-
+						variableCompartida =paquete->Payload + sizeof(uint32_t) * 3;
 						//Busco la variable compartida
 						result = NULL;
 						pthread_mutex_lock(&mutexVariablesCompartidas);
@@ -122,8 +118,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case WAITSEM:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						//TODO
-						nombreSem =& (((uint32_t*)paquete->Payload)[2]);
+						nombreSem = paquete->Payload + sizeof(uint32_t)*2;
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
 						result = list_find(Semaforos,
@@ -177,8 +172,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case SIGNALSEM:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						//TODO
-						nombreSem=& (((uint32_t*)paquete->Payload)[2]);
+						nombreSem = paquete->Payload + sizeof(uint32_t)*2;
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
 						result = list_find(Semaforos,
