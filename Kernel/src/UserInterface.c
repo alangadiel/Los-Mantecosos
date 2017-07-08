@@ -83,14 +83,13 @@ void ConsultarEstado(int pidAConsultar)
 void userInterfaceHandler(uint32_t* socketFD) {
 	int end = 1;
 	while (end) {
-		char orden[100];
+		char* command = malloc(50);
 		int pidConsulta=0;
 		int nuevoGradoMP=0;
 
 		char lista[100];
-		printf("\n\nIngrese una orden: \n");
-		scanf("%s", orden);
-		char* command = getWord(orden, 0);
+		printf("\nIngrese una orden: \n");
+		scanf("%s", command);
 		if(strcmp(command,"exit")==0)
 				exit(1);
 		else if (strcmp(command, "disconnect") == 0) {
@@ -98,9 +97,14 @@ void userInterfaceHandler(uint32_t* socketFD) {
 		}
 		//Para cambiar el grado de multiprogramacion
 		else if(strcmp(command,"cambiar_gradomp")==0){
-			scanf("%d", &nuevoGradoMP);
-			GRADO_MULTIPROG = nuevoGradoMP;
-			printf("El nuevo grado de multiprogramacion es: %d\n",GRADO_MULTIPROG);
+			command[0] = '\0'; //lo vacio
+			scanf("%s", command);
+			nuevoGradoMP = strtol(command, NULL, 10);
+			if (nuevoGradoMP != 0 && nuevoGradoMP <= (2^32)){
+				GRADO_MULTIPROG = nuevoGradoMP;
+				printf("El nuevo grado de multiprogramacion es: %d\n",GRADO_MULTIPROG);
+			} else
+				printf("Numero invalido\n");
 		}
 		else if (strcmp(command, "mostrar_procesos") == 0) {
 			scanf("%s", lista);
@@ -122,22 +126,32 @@ void userInterfaceHandler(uint32_t* socketFD) {
 			}
 
 		else if (strcmp(command, "consultar_programa") == 0) {
-			scanf("%d", &pidConsulta);
-			ConsultarEstado(pidConsulta);
+			command[0] = '\0'; //lo vacio
+			scanf("%s", command);
+			pidConsulta = strtol(command, NULL, 10);
+			if (pidConsulta != 0 && pidConsulta <= (2^32)){
+				ConsultarEstado(pidConsulta);
+			} else
+				printf("Numero invalido\n");
 		}
 		else if (strcmp(command, "kill_program") == 0){
-			scanf("%d", &pidConsulta);
-			bool finalizadoOK = KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA);
-			if(finalizadoOK == true)
-			{
-				printf("El programa %d fue finalizado\n", pidAFinalizar);
-				EnviarMensaje(*socketFD,"KILLEADO",KERNEL);
-			}
-			else
-			{
-				printf("Error al finalizar programa %d\n", pidAFinalizar);
-				EnviarMensaje(*socketFD, "Error al finalizar programa", KERNEL);
-			}
+			command[0] = '\0'; //lo vacio
+			scanf("%s", command);
+			pidConsulta = strtol(command, NULL, 10);
+			if (pidConsulta != 0 && pidConsulta <= (2^32)){
+				bool finalizadoOK = KillProgram(pidConsulta, DESCONECTADODESDECOMANDOCONSOLA);
+				if(finalizadoOK == true)
+				{
+					printf("El programa %d fue finalizado\n", pidAFinalizar);
+					EnviarMensaje(*socketFD,"KILLEADO",KERNEL);
+				}
+				else
+				{
+					printf("Error al finalizar programa %d\n", pidAFinalizar);
+					EnviarMensaje(*socketFD, "Error al finalizar programa", KERNEL);
+				}
+			} else
+				printf("Numero invalido\n");
 		}
 		else if (strcmp(command, "detener_planificacion") == 0){
 			planificacion_detenida = true;
@@ -146,37 +160,35 @@ void userInterfaceHandler(uint32_t* socketFD) {
 			planificacion_detenida = false;
 		}
 		else if (strcmp(command, "mostrar_tabla_de_archivos_de_proceso") == 0) {
-			scanf("%d", &pidConsulta);
-			t_list* tablaProceso = list_create();
-
-			tablaProceso = obtenerTablaArchivosDeUnProceso(pidConsulta);
-
-			if(tablaProceso != NULL)
-			{
-				printf("\nProceso %d:\n", pidConsulta);
-				int i;
-				for(i = 0; i < list_size(tablaProceso); i++)
+			command[0] = '\0'; //lo vacio
+			scanf("%s", command);
+			pidConsulta = strtol(command, NULL, 10);
+			if (pidConsulta != 0 && pidConsulta <= (2^32)){
+				t_list* tablaProceso = list_create();
+				tablaProceso = obtenerTablaArchivosDeUnProceso(pidConsulta);
+				if(tablaProceso != NULL)
 				{
-					archivoProceso* archProceso = malloc(sizeof(archivoProceso));
-
-					archProceso = list_get(tablaProceso, i);
-
-					printf("FD %d:\n", archProceso->FD);
-					printf("Flag Creacion %d:\n", archProceso->flags.creacion);
-					printf("Flag Escritura %d:\n", archProceso->flags.escritura);
-					printf("Flag Lectura %d:\n", archProceso->flags.lectura);
-					printf("FD Global %d:\n", archProceso->globalFD);
-					printf("Offset del archivo %d:\n", archProceso->offsetArchivo);
-
-					free(archProceso);
+					printf("\nProceso %d:\n", pidConsulta);
+					int i;
+					for(i = 0; i < list_size(tablaProceso); i++)
+					{
+						archivoProceso* archProceso = malloc(sizeof(archivoProceso));
+						archProceso = list_get(tablaProceso, i);
+						printf("FD %d:\n", archProceso->FD);
+						printf("Flag Creacion %d:\n", archProceso->flags.creacion);
+						printf("Flag Escritura %d:\n", archProceso->flags.escritura);
+						printf("Flag Lectura %d:\n", archProceso->flags.lectura);
+						printf("FD Global %d:\n", archProceso->globalFD);
+						printf("Offset del archivo %d:\n", archProceso->offsetArchivo);
+						free(archProceso);
+					}
 				}
-			}
-			else
-			{
-				printf("El proceso %d no tiene archivos abiertos\n", pidConsulta);
-			}
+				else
+					printf("El proceso %d no tiene archivos abiertos\n", pidConsulta);
 
-			list_destroy(tablaProceso);
+				list_destroy(tablaProceso);
+			} else
+				printf("Numero invalido\n");
 		}
 		else if (strcmp(command, "mostrar_tabla_de_archivos_global") == 0) {
 			t_list* tablaGlobal = list_create();
@@ -204,7 +216,7 @@ void userInterfaceHandler(uint32_t* socketFD) {
 			}
 		}
 		else {
-			printf("No se conoce el mensaje %s\n", orden);
+			printf("No se conoce el mensaje %s\n", command);
 		}
 	}
 }

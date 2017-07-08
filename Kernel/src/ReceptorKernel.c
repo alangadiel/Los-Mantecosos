@@ -243,8 +243,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						permisos.creacion = *((bool*)paquete->Payload+sizeof(uint32_t) * 2);
 						permisos.escritura = *((bool*)paquete->Payload+sizeof(uint32_t) * 3);
 						permisos.lectura = *((bool*)paquete->Payload+sizeof(uint32_t) * 4);
-						abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos, socketConectado,&tipoError);
+
 						printf("La ruta de archivo es %s ", ((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3));
+
+						abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos, socketConectado,&tipoError);
 					break;
 
 					case BORRARARCHIVO:
@@ -332,8 +334,12 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 				//termino la rafaga normalmente sin bloquearse
 				if(strcmp(paquete->header.emisor, CPU) == 0)
 				{
+					pthread_mutex_lock(&mutexCPUsConectadas);
 					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
+					pthread_mutex_unlock(&mutexCPUsConectadas);
+					pthread_mutex_lock(&mutexQueueEjecutando);
 					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
+					pthread_mutex_unlock(&mutexQueueEjecutando);
 					if(pcb!=NULL){
 						RecibirPCB(pcb, paquete->Payload, paquete->header.tamPayload,KERNEL);
 
