@@ -14,6 +14,7 @@ int CANTIDAD_BLOQUES;
 char* MAGIC_NUMBER;
 int *bitmapArray;
 
+
 struct stat st = {0};
 
 typedef struct {
@@ -70,7 +71,9 @@ void obtenerValoresArchivoConfiguracion() {
 }
 
 int validarArchivo(char* path, int socketFD) {
-	if(existeArchivo(path)) {
+	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
+	string_append(&pathForValidation, path);
+	if(existeArchivo(pathForValidation)) {
 		EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
 		return 1;
 	}
@@ -346,6 +349,37 @@ void accion(Paquete* paquete, int socketFD){
 		break;
 	}
 }
+
+/*void accion(void* socket){
+	int socketFD = *(int*)socket;
+	Paquete paquete;
+	while (RecibirPaqueteMemoria(socketFD, MEMORIA, &paquete) > 0) {
+		if (paquete.header.tipoMensaje == ESDATOS){
+			switch ((*(uint32_t*)paquete.Payload)){
+			case INIC_PROG:
+				IniciarPrograma(DATOS[1],DATOS[2],socketFD);
+			break;
+			case SOL_BYTES:
+				SolicitarBytes(DATOS[1],DATOS[2],DATOS[3],DATOS[4],socketFD);
+			break;
+			case ALM_BYTES:
+				AlmacenarBytes(paquete,socketFD);
+			break;
+			case ASIG_PAG:
+				AsignarPaginas(DATOS[1],DATOS[2],socketFD);
+			break;
+			case LIBE_PAG:
+				LiberarPaginas(DATOS[1],DATOS[2],socketFD);
+			break;
+			case FIN_PROG:
+				FinalizarPrograma(DATOS[1],socketFD);
+			break;
+			}
+		}
+		free(paquete.Payload);
+	}
+	close(socketFD);
+}*/
 
 bool esCorrectoArchivoMetadata() {
 	t_config* conf = config_create(METADATAFILE);
