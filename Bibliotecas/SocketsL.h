@@ -182,7 +182,7 @@ uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path);
 uint32_t FS_CrearPrograma(int socketFD, char emisor[11], char* path);
 uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path);
 void* FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset, uint32_t size);
-uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, char* buffer);
+uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, void* buffer);
 
 
 #endif //SOCKETS_H_
