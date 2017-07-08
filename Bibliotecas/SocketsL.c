@@ -432,8 +432,10 @@ uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path) {
 	strcpy(destinoPath, path);
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	Paquete* paquete = malloc(sizeof(Paquete));
+	printf("Antes de mandar a FS");
 	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
+	printf("Recibi de FS %d", r);
 	free(paquete->Payload);
 	free(paquete);
 	free(((uint32_t*) datos)[1]);
