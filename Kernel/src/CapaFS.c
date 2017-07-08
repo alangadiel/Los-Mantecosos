@@ -152,6 +152,7 @@ void finalizarProgramaCapaFS(int PID)
 
 uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int socketConectado, int32_t* tipoError)
 {
+	printf("path a abrir %s", path);
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
 
 	uint32_t FD;

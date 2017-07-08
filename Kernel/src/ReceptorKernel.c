@@ -241,7 +241,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						permisos.creacion = *((bool*)paquete->Payload+sizeof(uint32_t) * 2);
 						permisos.escritura = *((bool*)paquete->Payload+sizeof(uint32_t) * 3);
 						permisos.lectura = *((bool*)paquete->Payload+sizeof(uint32_t) * 4);
-
 						abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos, socketConectado,&tipoError);
 						printf("La ruta de archivo es %s ", ((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3));
 					break;
@@ -348,15 +347,16 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						else
 						{
 							pthread_mutex_lock(&mutexQueueEjecutando);
-							list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
+							BloqueControlProceso* pcbEjecutado = list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
 								return ((BloqueControlProceso*)item)->PID == pcb->PID;
 							}));
+							if(pcbEjecutado!=NULL){
+								Evento_ListosAdd();
+								pthread_mutex_lock(&mutexQueueListos);
+								queue_push(Listos, pcb);
+								pthread_mutex_unlock(&mutexQueueListos);
+							}
 							pthread_mutex_unlock(&mutexQueueEjecutando);
-
-							Evento_ListosAdd();
-							pthread_mutex_lock(&mutexQueueListos);
-							queue_push(Listos, pcb);
-							pthread_mutex_unlock(&mutexQueueListos);
 						}
 					} else
 						printf("Error al finalizar ejecucion");
