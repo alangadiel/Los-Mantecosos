@@ -118,14 +118,16 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						pthread_mutex_lock(&mutexSemaforos);
 						result = list_find(Semaforos,
 							LAMBDA(bool _(void* item) {
-							char* nombreActual = ((Semaforo*) item)->nombreSemaforo;
-							return strcmp(nombreActual, nombreSem) == 0;
+							return strcmp(((Semaforo*) item)->nombreSemaforo, nombreSem) == 0;
 							}));
 						pthread_mutex_unlock(&mutexSemaforos);
+						printf("Semaforo: %s\n",nombreSem);
+
 						if(result != NULL)
 						{
-							printf("nombre semaforo %s", ((Semaforo*)result)->nombreSemaforo);
+							printf("entro al if");
 							Semaforo* semaf = (Semaforo*)result;
+							printf("Semaforo: %s\n",semaf->nombreSemaforo);
 							semaf->valorSemaforo--;
 
 							BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
