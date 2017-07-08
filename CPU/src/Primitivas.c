@@ -19,9 +19,18 @@ t_valor_variable PedirValorVariableCompartida(t_nombre_variable* nombre){
 	((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
 	((uint32_t*) datos)[1] = pcb.PID;
 	memcpy(datos+sizeof(uint32_t)*2, nombre, string_length(nombre)+1);
-	t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	//t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	int32_t r;
+	if(paquete->header.tipoMensaje == ESERROR)
+		r = NULL;
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = *(int32_t*)paquete->Payload;
+	free(paquete);
 	free(datos);
-	return result;
+	return r;
 }
 t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valor_variable valor ){
 	int tamDatos = sizeof(uint32_t)*3+ string_length(nombre)+1;
@@ -30,9 +39,17 @@ t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valo
 	((uint32_t*) datos)[1] = pcb.PID;
 	((int32_t*) datos)[2] = valor;
 	memcpy(datos+sizeof(uint32_t)*3, nombre, string_length(nombre)+1);
-	t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	int32_t r;
+	if(paquete->header.tipoMensaje == ESERROR)
+		r = NULL;
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = *(int32_t*)paquete->Payload;
+	free(paquete);
 	free(datos);
-	return result;
+	return r;
 }
 /*Al ejecutar la última sentencia, el CPU deberá notificar al Kernel que el proceso finalizó para que este
 se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/

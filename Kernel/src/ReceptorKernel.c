@@ -77,13 +77,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}));
 						pthread_mutex_unlock(&mutexVariablesCompartidas);
 						 var = *(VariableCompartida*)result;
-
 						//Devuelvo a la cpu el valor de la variable compartida
-						tamDatos = sizeof(uint32_t) * 2;
+						tamDatos = sizeof(int32_t);
 						datos = malloc(tamDatos);
-
-						((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
-						((int32_t*) datos)[1] = var.valorVariableGlobal;
+						((int32_t*) datos)[0] = var.valorVariableGlobal;
 
 						EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
@@ -105,11 +102,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						var.valorVariableGlobal = valorAAsignar;
 
 						//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
-						tamDatos = sizeof(uint32_t) * 2;
+						tamDatos = sizeof(int32_t);
 						datos = malloc(tamDatos);
-
-						((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
-						((uint32_t*) datos)[1] = var.valorVariableGlobal;
+						((int32_t*) datos)[0] = var.valorVariableGlobal;
 
 						EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
@@ -123,14 +118,16 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						pthread_mutex_lock(&mutexSemaforos);
 						result = list_find(Semaforos,
 							LAMBDA(bool _(void* item) {
-							char* nombreActual = ((Semaforo*) item)->nombreSemaforo;
-							return strcmp(nombreActual, nombreSem) == 0;
+							return strcmp(((Semaforo*) item)->nombreSemaforo, nombreSem) == 0;
 							}));
 						pthread_mutex_unlock(&mutexSemaforos);
+						printf("Semaforo: %s\n",nombreSem);
+
 						if(result != NULL)
 						{
-							printf("nombre semaforo %s", ((Semaforo*)result)->nombreSemaforo);
+							printf("entro al if");
 							Semaforo* semaf = (Semaforo*)result;
+							printf("Semaforo: %s\n",semaf->nombreSemaforo);
 							semaf->valorSemaforo--;
 
 							BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
