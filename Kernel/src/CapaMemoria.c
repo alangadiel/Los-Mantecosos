@@ -191,7 +191,24 @@ BloqueControlProceso* buscarProcesoEnColas(uint32_t pid)
 
 	return NULL;
 }
+uint32_t ObtenerOffSetMetadataAnterior(void *datosPagina,uint32_t punteroALiberar){
+	uint32_t offsetMetadataAnerior=0;
+	uint32_t ultimoSize = 0;
+	HeapMetadata* hp=NULL;
 
+	do{
+		hp= datosPagina+offsetMetadataAnerior;
+		ultimoSize = hp->size;
+		offsetMetadataAnerior+=sizeof(HeapMetadata)+ultimoSize;
+	} while(offsetMetadataAnerior+sizeof(HeapMetadata)<punteroALiberar);
+
+	printf("puntero a liberar: %u\n",punteroALiberar);
+	printf("offset anterior afuera del while: %u\n",offsetMetadataAnerior);
+	if(offsetMetadataAnerior+sizeof(HeapMetadata)==punteroALiberar)
+		return offsetMetadataAnerior;
+	else
+		return TamanioPagina;
+}
 
 void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* tipoError)
 {
@@ -212,28 +229,38 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 	//uint32_t sizeBloqueALiberar = *(uint32_t*)(datosPagina+offSetMetadataAActualizar);
 	HeapMetadata* heapMetaAActualizar = datosPagina + offSetMetadataAActualizar;
 	printf("size bloque a liberar: %u\n",heapMetaAActualizar->size);
+	HeapMetadata* heapMetedataAnterior = NULL;
+	uint32_t obtenerOffsetMetadataAnerior = ObtenerOffSetMetadataAnterior(datosPagina, punteroALiberar);
+	if(obtenerOffsetMetadataAnerior<TamanioPagina){
+		printf("offset anterior %u",obtenerOffsetMetadataAnerior);
+		heapMetedataAnterior = datosPagina + obtenerOffsetMetadataAnerior;
+	}
 
-	/*heapMetaAActualizar->isFree = true;
-	heapMetaAActualizar->size = sizeBloqueALiberar;*/
-	//Pongo el bloque como liberado
+
 	//Me fijo el estado del siguiente Metadata(si esta Free o Used)
 	uint32_t offsetMetadataSiguiente = desplazamiento + heapMetaAActualizar->size;
 	HeapMetadata* heapMetedataSiguiente =datosPagina+offsetMetadataSiguiente;
-	//HeapMetadata* heapMetedataSiguiente = ObtenerMetadataAnterior(datosPagina, offSetMetadataAActualizar);
-	if(heapMetedataSiguiente!=NULL)
-		printf("Size bloque siguiente %u\n",heapMetedataSiguiente->size);
+
+
+	/*if(heapMetedataSiguiente!=NULL)
+		printf("Size bloque siguiente %u\n",heapMetedataSiguiente->size);*/
 	bool resultado;
 
-	if(heapMetedataSiguiente->isFree==true) {
+	if(heapMetedataAnterior != NULL && heapMetedataAnterior->isFree==true) {
+		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
+		//Si esta libre: puedo compactarlos como un metadata solo
+		heapMetedataAnterior->size += heapMetaAActualizar->size;
+		resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,obtenerOffsetMetadataAnerior,sizeof(HeapMetadata),&heapMetaAActualizar);
+
+	}
+	else if(heapMetedataSiguiente->isFree==true) {
 		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
 		//Si esta libre: puedo compactarlos como un metadata solo
 		heapMetaAActualizar->size += heapMetedataSiguiente->size;
-	} /* TODO
-	if(heapMetedataSiguiente->isFree==true) {
-		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
-		//Si esta libre: puedo compactarlos como un metadata solo
-		heapMetaAActualizar->size += heapMetedataSiguiente->size;
-	} */
+		resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
+
+	}
+	else
 	resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
 	printf("Metadata a actualizar:\n");
 	printf("Size libre: %u\n",heapMetaAActualizar->size);
