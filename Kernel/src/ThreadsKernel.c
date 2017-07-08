@@ -124,16 +124,17 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 	bool hayEstructurasNoLiberadas = false;
 	int indice;
 	pthread_mutex_lock(&mutexFinalizarPrograma);
-
 	finalizarProgramaCapaFS(PID);
+	obtenerError(tipoFinalizacion);
 
 	//Aca hace la liberacion de memoria uri, fijate si podes hacer una funcion finalizarProgramaCapaMemoria, sino hace aca normal
 
 	pcbRemovido = removerPidDeListas(PID, &indice);
+	printf("\nFinalizando proceso %u \n", pcbRemovido->PID);
+
 
 	if(pcbRemovido != NULL)
 	{
-		printf("\nFinalizando proceso %u por ExitCode %i\n", pcbRemovido->PID, pcbRemovido->ExitCode);
 		pcbRemovido->ExitCode = tipoFinalizacion;
 
 		list_add(Finalizados->elements, pcbRemovido);

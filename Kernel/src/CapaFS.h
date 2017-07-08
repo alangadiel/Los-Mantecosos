@@ -24,7 +24,7 @@ typedef struct {
 } archivoGlobal;
 
 uint32_t cerrarArchivo(uint32_t FD, uint32_t PID);
-uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, char* datosAGrabar);
+uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* datosAGrabar);
 uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos);
 uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int socketConectado, int32_t* tipoError);
 void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo);

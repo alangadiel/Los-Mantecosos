@@ -3,7 +3,6 @@
 uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantAReservar,int32_t* tipoError)
 {
 	uint32_t cantTotal = cantAReservar + sizeof(HeapMetadata);
-	printf("Cant total: %u\n",cantTotal);
 	//Obtengo la pagina en cuestion donde actualizar la metadata
 	void* datosPagina = IM_LeerDatos(socketConMemoria, KERNEL, PID, nroPagina, 0, TamanioPagina);
 	if(datosPagina!=NULL){
@@ -33,7 +32,7 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 			}
 
 		}
-
+		free(datosPagina);
 		if(encontroLibre == true)
 		{
 			// Se encontro un bloque libre
@@ -49,14 +48,9 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 			}
 			//Creo el metadata para lo que queda libre del espacio que use
 			uint32_t offsetMetadataLibre = offset + sizeof(HeapMetadata) + cantAReservar;
-			printf("Offset metadata libre: %u\n",offsetMetadataLibre);
 			HeapMetadata metaLibre;
 			metaLibre.isFree = true;
 			metaLibre.size = diferencia;
-			printf("Offset bloque libre: %u\n",offsetMetadataLibre+sizeof(HeapMetadata));
-
-			printf("Cant que quedo libre del bloque: %u\n",metaLibre.size);
-
 			if(IM_GuardarDatos(socketConMemoria, KERNEL, PID, nroPagina, offsetMetadataLibre, sizeof(HeapMetadata), &metaLibre)==false){
 				printf("hubo error\n");
 				*tipoError = EXCEPCIONDEMEMORIA;
@@ -102,10 +96,13 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 		if(result!=NULL){ 		//Se encontro la pagina con tamaño disponible
 			//Actualizar el tamaño disponible
 			PaginaDelProceso* paginaObtenida = (PaginaDelProceso*)result;
-			paginaObtenida->espacioDisponible -= cantTotal;
 			printf("pagina obtenida: %u\n",paginaObtenida->nroPagina);
+
 			//Obtengo la pagina en cuestion y actualizo el metadata
 			punteroAlPrimerDisponible = ActualizarMetadata(PID,paginaObtenida->nroPagina,cantAReservar,tipoError);
+			paginaObtenida->espacioDisponible -= cantTotal;
+			printf("espacio que quedo disponible: %i\n",paginaObtenida->espacioDisponible);
+
 
 		}
 		else  		//No hay una pagina del proceso utilizable
@@ -115,18 +112,15 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 			t_list* pagesProcess= list_filter(PaginasPorProceso,
 					LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}));
 			pthread_mutex_unlock(&mutexPaginasPorProceso);
-			int i=0;
-			int maximoNroPag=0;
+			int maximoNroPag = 0;
 			pthread_mutex_lock(&mutexPaginasPorProceso);
-			for (i = 0; i < list_size(pagesProcess); i++) {
-				PaginaDelProceso* elem = list_get(pagesProcess,i);
-				if(maximoNroPag< elem->nroPagina)
-					maximoNroPag = elem->nroPagina;
-			}
+			 maximoNroPag = list_size(pagesProcess);
 			pthread_mutex_unlock(&mutexPaginasPorProceso);
 			PaginaDelProceso* nuevaPPP = malloc(sizeof(PaginaDelProceso));
 			nuevaPPP->nroPagina = maximoNroPag+pcb->PaginasDeCodigo+STACK_SIZE;
 			nuevaPPP->pid = PID;
+			nuevaPPP->espacioDisponible=TamanioPagina;
+
 			printf("pagina nueva: %u\n",nuevaPPP->nroPagina);
 			pthread_mutex_lock(&mutexPaginasPorProceso);
 			list_add(PaginasPorProceso,nuevaPPP);
@@ -137,13 +131,18 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 				HeapMetadata metaInicial;
 				metaInicial.isFree = true;
 				metaInicial.size = TamanioPagina-sizeof(HeapMetadata);
-				nuevaPPP->espacioDisponible = TamanioPagina-sizeof(HeapMetadata);
+				nuevaPPP->espacioDisponible -= sizeof(HeapMetadata);
+				printf("espacio que quedo disponible: %i\n",nuevaPPP->espacioDisponible);
 
 				if(IM_GuardarDatos(socketConMemoria, KERNEL, PID, nuevaPPP->nroPagina, 0, sizeof(HeapMetadata), &metaInicial)==false){
 					*tipoError = EXCEPCIONDEMEMORIA;
 					return -1;
 				}
-				printf("se guardo el meta inicial");
+				printf("cant a reservar %u\n",cantAReservar);
+				printf("cant total %u\n",cantTotal);
+				nuevaPPP->espacioDisponible -= cantTotal;
+				printf("espacio que quedo disponible: %i\n",nuevaPPP->espacioDisponible);
+
 				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP->nroPagina,cantAReservar,tipoError);
 			}
 			else{
@@ -194,46 +193,71 @@ BloqueControlProceso* buscarProcesoEnColas(uint32_t pid)
 }
 
 
-void SolicitudLiberacionDeBloque(uint32_t pid,PosicionDeMemoria pos)
+void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* tipoError)
 {
-	void* datosPagina = IM_LeerDatos(socketConMemoria,KERNEL,pid,pos.NumeroDePagina,0,TamanioPagina);
-	uint32_t offSetMetadataAActualizar = pos.Offset- sizeof(HeapMetadata);
-	uint32_t sizeBloqueALiberar = *(uint32_t*)(datosPagina+offSetMetadataAActualizar);
-	HeapMetadata heapMetaAActualizar;
-	heapMetaAActualizar.isFree = true;
-	heapMetaAActualizar.size = sizeBloqueALiberar;
+	printf("Puntero a liberar %u\n",punteroALiberar);
+	uint32_t nropag = punteroALiberar / TamanioPagina;
+	printf("Nro pag: %u\n",nropag);
+	bool buscarPag(void* elem){
+			PaginaDelProceso* pag = elem;
+			return pag->nroPagina==nropag && pag->pid==pid;
+	}
+	PaginaDelProceso* pagEncontrada = list_find(PaginasPorProceso, buscarPag);
+
+	uint32_t desplazamiento = punteroALiberar % TamanioPagina;
+	printf("desplazamiento: %u\n",desplazamiento);
+
+	void* datosPagina = IM_LeerDatos(socketConMemoria,KERNEL,pid,nropag,0,TamanioPagina);
+	uint32_t offSetMetadataAActualizar = desplazamiento- sizeof(HeapMetadata);
+	//uint32_t sizeBloqueALiberar = *(uint32_t*)(datosPagina+offSetMetadataAActualizar);
+	HeapMetadata* heapMetaAActualizar = datosPagina + offSetMetadataAActualizar;
+	printf("size bloque a liberar: %u\n",heapMetaAActualizar->size);
+
+	/*heapMetaAActualizar->isFree = true;
+	heapMetaAActualizar->size = sizeBloqueALiberar;*/
 	//Pongo el bloque como liberado
 	//Me fijo el estado del siguiente Metadata(si esta Free o Used)
-	uint32_t offsetMetadataSiguiente = pos.Offset+sizeBloqueALiberar;
-	HeapMetadata heapMetedataSiguiente =*(HeapMetadata*)(datosPagina+offsetMetadataSiguiente);
+	uint32_t offsetMetadataSiguiente = desplazamiento + heapMetaAActualizar->size;
+	HeapMetadata* heapMetedataSiguiente =datosPagina+offsetMetadataSiguiente;
+	//HeapMetadata* heapMetedataSiguiente = ObtenerMetadataAnterior(datosPagina, offSetMetadataAActualizar);
+	if(heapMetedataSiguiente!=NULL)
+		printf("Size bloque siguiente %u\n",heapMetedataSiguiente->size);
 	bool resultado;
 
-	if(heapMetedataSiguiente.isFree==true) {
+	if(heapMetedataSiguiente->isFree==true) {
 		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
 		//Si esta libre: puedo compactarlos como un metadata solo
-		heapMetaAActualizar.size += heapMetedataSiguiente.size;
-	}
-	resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,pos.NumeroDePagina,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
+		heapMetaAActualizar->size += heapMetedataSiguiente->size;
+	} /* TODO
+	if(heapMetedataSiguiente->isFree==true) {
+		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
+		//Si esta libre: puedo compactarlos como un metadata solo
+		heapMetaAActualizar->size += heapMetedataSiguiente->size;
+	} */
+	resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
+	printf("Metadata a actualizar:\n");
+	printf("Size libre: %u\n",heapMetaAActualizar->size);
 	if(resultado==true){
 		//Si estan todos los bloques de la pagina libres, hay que liberar la pagina entera
 		bool hayAlgunBloqueUsado= RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
 		if(hayAlgunBloqueUsado==false){
 			//No se encontro algun bloque ocupado: Hay que liberar la pagina
-			if(IM_LiberarPagina(socketConMemoria,KERNEL,pid,pos.NumeroDePagina)==false){
-				FinalizarPrograma(pid,EXCEPCIONDEMEMORIA);
+			if(IM_LiberarPagina(socketConMemoria,KERNEL,pid,nropag)==false){
+				*tipoError = EXCEPCIONDEMEMORIA;
 			}
 			else {
 				BloqueControlProceso* PCB = buscarProcesoEnColas(pid);
 
 				if(PCB != NULL)
 				{
-					PCB->cantBytesLiberados += sizeBloqueALiberar;
+					PCB->cantBytesLiberados += heapMetaAActualizar->size;
 				}
 			}
 		}
+		pagEncontrada->espacioDisponible += heapMetaAActualizar->size;
 	}
 	else{
-		FinalizarPrograma(pid,EXCEPCIONDEMEMORIA);
+		*tipoError = EXCEPCIONDEMEMORIA;
 	}
 
 }

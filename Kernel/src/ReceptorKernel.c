@@ -67,8 +67,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case PEDIRSHAREDVAR:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						strcpy(variableCompartida, (char*)(paquete->Payload + sizeof(uint32_t) * 2));
-
+						variableCompartida =paquete->Payload + sizeof(uint32_t) * 2;
 						//Busco la variable compartida
 						result = NULL;
 						pthread_mutex_lock(&mutexVariablesCompartidas);
@@ -94,8 +93,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					case ASIGNARSHAREDVAR:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						valorAAsignar = ((int32_t*)paquete->Payload)[2];
-						strcpy(variableCompartida, (char*)(paquete->Payload + sizeof(uint32_t) * 3));
-
+						variableCompartida =paquete->Payload + sizeof(uint32_t) * 3;
 						//Busco la variable compartida
 						result = NULL;
 						pthread_mutex_lock(&mutexVariablesCompartidas);
@@ -120,12 +118,16 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case WAITSEM:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						strcpy(nombreSem, (char*)(paquete->Payload+sizeof(uint32_t) * 2));
-
+						nombreSem = paquete->Payload + sizeof(uint32_t)*2;
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
-						result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
+						result = list_find(Semaforos,
+							LAMBDA(bool _(void* item) {
+							char* nombreActual = ((Semaforo*) item)->nombreSemaforo;
+							return strcmp(nombreActual, nombreSem) == 0;
+							}));
 						pthread_mutex_unlock(&mutexSemaforos);
+
 						if(result != NULL)
 						{
 							Semaforo* semaf = (Semaforo*)result;
@@ -170,10 +172,14 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case SIGNALSEM:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						strcpy(nombreSem, (char*)(paquete->Payload+sizeof(uint32_t)*2));
+						nombreSem = paquete->Payload + sizeof(uint32_t)*2;
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
-						result = (Semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
+						result = list_find(Semaforos,
+							LAMBDA(bool _(void* item) {
+							char* nombreActual = ((Semaforo*) item)->nombreSemaforo;
+							return strcmp(nombreActual, nombreSem) == 0;
+							}));
 						pthread_mutex_unlock(&mutexSemaforos);
 						if(result != NULL)
 						{
@@ -222,6 +228,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}
 						else{
 							EnviarDatosTipo(socketConectado,KERNEL,&tipoError,sizeof(int32_t),ESERROR);
+
 						}
 					break;
 
@@ -229,12 +236,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						uint32_t punteroALiberar = ((uint32_t*)paquete->Payload)[2];
 
-						PosicionDeMemoria pos;
-
-						pos.NumeroDePagina = punteroALiberar / TamanioPagina;
-						pos.Offset = punteroALiberar % TamanioPagina;
-
-						SolicitudLiberacionDeBloque(PID, pos);
+						SolicitudLiberacionDeBloque(PID, punteroALiberar,&tipoError);
 					break;
 
 					case ABRIRARCHIVO:
@@ -245,14 +247,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						permisos.escritura = *((bool*)paquete->Payload+sizeof(uint32_t) * 3);
 						permisos.lectura = *((bool*)paquete->Payload+sizeof(uint32_t) * 4);
 
-						tipoError = 0;
-
-						uint32_t archivoAbierto = abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos, socketConectado, &tipoError);
-
-						if(tipoError != 0)
-						{
-							EnviarDatosTipo(socketConectado,KERNEL,&tipoError,sizeof(int32_t),ESERROR);
-						}
+						abrirArchivo(((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3), PID, permisos, socketConectado,&tipoError);
+						printf("La ruta de archivo es %s ", ((char*)paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3));
 					break;
 
 					case BORRARARCHIVO:
@@ -281,16 +277,12 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
-
 						//Si el FD es 1, hay que mostrarlo por pantalla
-						if(FD == 1)
-						{
+						if(FD==1){
 							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
-						else
-						{
+						else{
 							escribirArchivo(FD, PID, tamanioArchivo, ((char*)paquete->Payload+sizeof(uint32_t) * 4));
-
 							printf("El archivo fue escrito con %s \n", ((char*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
 					break;
@@ -354,14 +346,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}));
 						datoscpu->isFree = true;
 						sem_post(&semDispatcherCpus);
-						if (pcb->ExitCode==FINALIZACIONNORMAL)
+						if (pcb->ExitCode<= 0)
 						{
-							FinalizarPrograma(pcb->PID, FINALIZACIONNORMAL);
-						}
-						else if(pcb->ExitCode==STACKOVERFLOW){
-							printf("Stackoverflow en proceso %u\n", pcb->PID);
-
-							FinalizarPrograma(pcb->PID, STACKOVERFLOW);
+							FinalizarPrograma(pcb->PID,pcb->ExitCode);
 						}
 						else
 						{

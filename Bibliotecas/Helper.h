@@ -33,6 +33,11 @@
 #include <signal.h>
 
 typedef struct {
+ uint32_t size;
+ bool isFree;
+}__attribute__((packed)) HeapMetadata;
+
+typedef struct {
 	uint32_t NumeroDePagina;
 	uint32_t Offset; //Desplazamiento
 	uint32_t Tamanio;

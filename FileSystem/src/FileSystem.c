@@ -326,20 +326,21 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 void accion(Paquete* paquete, int socketFD){
 	switch ((*(uint32_t*)paquete->Payload)){
 		(uint32_t*)paquete->Payload++;
+		uint32_t* datos = paquete->Payload;
 		case VALIDAR_ARCHIVO:
-			validarArchivo(((char**)paquete->Payload)[0], socketFD);
+			validarArchivo(paquete->Payload, socketFD);
 		break;
 		case CREAR_ARCHIVO:
-			crearArchivo(((char**)paquete->Payload)[0], socketFD);
+			crearArchivo(paquete->Payload, socketFD);
 		break;
 		case BORRAR_ARCHIVO:
-			borrarArchivo(((char**)paquete->Payload)[0], socketFD);
+			borrarArchivo(paquete->Payload, socketFD);
 		break;
 		case OBTENER_DATOS:
-			obtenerDatos(((char**)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], socketFD);
+			obtenerDatos(&(datos[2]), datos[0], datos[1], socketFD);
 		break;
 		case GUARDAR_DATOS:
-			guardarDatos(((char**)paquete->Payload)[0], ((uint32_t*)paquete->Payload)[1], ((uint32_t*)paquete->Payload)[2], ((char**)paquete->Payload)[3], socketFD);
+			guardarDatos(&(datos[2]), datos[0], datos[1],&(datos[3]), socketFD);
 		break;
 	}
 }
