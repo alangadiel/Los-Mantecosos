@@ -67,6 +67,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case PEDIRSHAREDVAR:
 						PID = ((uint32_t*)paquete->Payload)[1];
+						//TODO
 						strcpy(variableCompartida, (char*)(paquete->Payload + sizeof(uint32_t) * 2));
 
 						//Busco la variable compartida
@@ -94,6 +95,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					case ASIGNARSHAREDVAR:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						valorAAsignar = ((int32_t*)paquete->Payload)[2];
+						//TODO
 						strcpy(variableCompartida, (char*)(paquete->Payload + sizeof(uint32_t) * 3));
 
 						//Busco la variable compartida
@@ -120,12 +122,17 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case WAITSEM:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						strcpy(nombreSem, (char*)(paquete->Payload+sizeof(uint32_t) * 2));
-
+						//TODO
+						nombreSem =& (((uint32_t*)paquete->Payload)[2]);
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
-						result = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
+						result = list_find(Semaforos,
+							LAMBDA(bool _(void* item) {
+							char* nombreActual = ((Semaforo*) item)->nombreSemaforo;
+							return strcmp(nombreActual, nombreSem) == 0;
+							}));
 						pthread_mutex_unlock(&mutexSemaforos);
+
 						if(result != NULL)
 						{
 							Semaforo* semaf = (Semaforo*)result;
@@ -170,10 +177,15 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case SIGNALSEM:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						strcpy(nombreSem, (char*)(paquete->Payload+sizeof(uint32_t)*2));
+						//TODO
+						nombreSem=& (((uint32_t*)paquete->Payload)[2]);
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
-						result = (Semaforo*) list_find(Semaforos, LAMBDA(bool _(void* item) { return ((Semaforo*) item)->nombreSemaforo == nombreSem; }));
+						result = list_find(Semaforos,
+							LAMBDA(bool _(void* item) {
+							char* nombreActual = ((Semaforo*) item)->nombreSemaforo;
+							return strcmp(nombreActual, nombreSem) == 0;
+							}));
 						pthread_mutex_unlock(&mutexSemaforos);
 						if(result != NULL)
 						{
