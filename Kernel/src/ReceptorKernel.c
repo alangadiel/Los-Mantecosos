@@ -77,13 +77,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}));
 						pthread_mutex_unlock(&mutexVariablesCompartidas);
 						 var = *(VariableCompartida*)result;
-
 						//Devuelvo a la cpu el valor de la variable compartida
-						tamDatos = sizeof(uint32_t) * 2;
+						tamDatos = sizeof(int32_t);
 						datos = malloc(tamDatos);
-
-						((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
-						((int32_t*) datos)[1] = var.valorVariableGlobal;
+						((int32_t*) datos)[0] = var.valorVariableGlobal;
 
 						EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
@@ -105,11 +102,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						var.valorVariableGlobal = valorAAsignar;
 
 						//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
-						tamDatos = sizeof(uint32_t) * 2;
+						tamDatos = sizeof(int32_t);
 						datos = malloc(tamDatos);
-
-						((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
-						((uint32_t*) datos)[1] = var.valorVariableGlobal;
+						((int32_t*) datos)[0] = var.valorVariableGlobal;
 
 						EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
 
