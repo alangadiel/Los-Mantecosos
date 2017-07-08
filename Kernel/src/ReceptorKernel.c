@@ -299,10 +299,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
-
+						printf("Se va a leer el PID %d y FD %d", PID, FD);
 						void* datosLeidos = leerArchivo(FD, PID, tamanioArchivo);
 
-
+						printf("Se leyo %s", datosLeidos);
 					break;
 					/*
 					case FINEJECUCIONPROGRAMA:
