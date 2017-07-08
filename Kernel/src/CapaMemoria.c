@@ -43,6 +43,7 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 			metaOcupado.size = cantAReservar;
 			printf("Cant que quiero alocar: %u\n",metaOcupado.size);
 			if(IM_GuardarDatos(socketConMemoria, KERNEL, PID, nroPagina, offset, sizeof(HeapMetadata), &metaOcupado)==false){
+				perror("hubo error\n");
 				*tipoError = EXCEPCIONDEMEMORIA;
 				return -1;
 			}
@@ -51,8 +52,9 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 			HeapMetadata metaLibre;
 			metaLibre.isFree = true;
 			metaLibre.size = diferencia;
+			printf("metalibre: %u\n", diferencia);
 			if(IM_GuardarDatos(socketConMemoria, KERNEL, PID, nroPagina, offsetMetadataLibre, sizeof(HeapMetadata), &metaLibre)==false){
-				printf("hubo error\n");
+				perror("hubo error\n");
 				*tipoError = EXCEPCIONDEMEMORIA;
 				return -1;
 			}
@@ -191,28 +193,29 @@ BloqueControlProceso* buscarProcesoEnColas(uint32_t pid)
 
 	return NULL;
 }
-uint32_t ObtenerOffSetMetadataAnterior(void *datosPagina,uint32_t punteroALiberar){
-	uint32_t offsetMetadataAnerior=0;
-	uint32_t ultimoSize = 0;
-	HeapMetadata* hp=NULL;
-
-	do{
-		hp= datosPagina+offsetMetadataAnerior;
-		ultimoSize = hp->size;
-		offsetMetadataAnerior+=sizeof(HeapMetadata)+ultimoSize;
-	} while(offsetMetadataAnerior+sizeof(HeapMetadata)<punteroALiberar);
-
-	printf("puntero a liberar: %u\n",punteroALiberar);
-	printf("offset anterior afuera del while: %u\n",offsetMetadataAnerior);
-	if(offsetMetadataAnerior+sizeof(HeapMetadata)==punteroALiberar)
-		return offsetMetadataAnerior;
-	else
-		return TamanioPagina;
+uint32_t ObtenerOffSetMetadataAnterior(void* datosPagina,uint32_t desplazamiento){
+	HeapMetadata* heapALiberar = datosPagina + desplazamiento - sizeof(HeapMetadata);
+	uint32_t offsetAnterior = 0;
+	//if (heapALiberar->size!=TamanioPagina- sizeof(HeapMetadata)) //si no es el unico heap
+	//HeapMetadata* heapAnterior = heapALiberar;
+	HeapMetadata* PrimerHeap = datosPagina;
+	uint32_t offset = PrimerHeap->size + sizeof(HeapMetadata);
+	while(offset<TamanioPagina-sizeof(HeapMetadata)){
+		//Recorro el HeapMetadata obtenido
+		HeapMetadata* heapAnterior = datosPagina + offsetAnterior;
+		HeapMetadata* heap = datosPagina + offset;
+		//Lo leo
+		if(heap==heapALiberar) break;
+		//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
+		offset+=(sizeof(HeapMetadata)+ heap->size);
+		offsetAnterior+=(sizeof(HeapMetadata)+ heapAnterior->size);
+	}
+	return offsetAnterior;
 }
 
 void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* tipoError)
 {
-	printf("Puntero a liberar %u\n",punteroALiberar);
+	printf("\nPuntero a liberar %u\n",punteroALiberar);
 	uint32_t nropag = punteroALiberar / TamanioPagina;
 	printf("Nro pag: %u\n",nropag);
 	bool buscarPag(void* elem){
@@ -230,9 +233,9 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 	HeapMetadata* heapMetaAActualizar = datosPagina + offSetMetadataAActualizar;
 	printf("size bloque a liberar: %u\n",heapMetaAActualizar->size);
 	HeapMetadata* heapMetedataAnterior = NULL;
-	uint32_t obtenerOffsetMetadataAnerior = ObtenerOffSetMetadataAnterior(datosPagina, punteroALiberar);
+	uint32_t obtenerOffsetMetadataAnerior = ObtenerOffSetMetadataAnterior(datosPagina, desplazamiento);
 	if(obtenerOffsetMetadataAnerior<TamanioPagina){
-		printf("offset anterior %u",obtenerOffsetMetadataAnerior);
+		printf("offset anterior %u\n",obtenerOffsetMetadataAnerior);
 		heapMetedataAnterior = datosPagina + obtenerOffsetMetadataAnerior;
 	}
 
@@ -240,30 +243,36 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 	//Me fijo el estado del siguiente Metadata(si esta Free o Used)
 	uint32_t offsetMetadataSiguiente = desplazamiento + heapMetaAActualizar->size;
 	HeapMetadata* heapMetedataSiguiente =datosPagina+offsetMetadataSiguiente;
-
+	printf("offsetMetadataSiguiente: %u\n", offsetMetadataSiguiente);
 
 	/*if(heapMetedataSiguiente!=NULL)
 		printf("Size bloque siguiente %u\n",heapMetedataSiguiente->size);*/
 	bool resultado;
-
+	printf("heapMetaAActualizar->size: %u\n", heapMetaAActualizar->size);
+	printf("heapMetedataAnterior->size: %u\n", heapMetedataAnterior->size);
 	if(heapMetedataAnterior != NULL && heapMetedataAnterior->isFree==true) {
 		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
 		//Si esta libre: puedo compactarlos como un metadata solo
-		heapMetedataAnterior->size += heapMetaAActualizar->size;
-		resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,obtenerOffsetMetadataAnerior,sizeof(HeapMetadata),&heapMetaAActualizar);
+		heapMetedataAnterior->size += heapMetaAActualizar->size + sizeof(HeapMetadata);
+		heapMetedataAnterior->isFree=true;
+		resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,obtenerOffsetMetadataAnerior,sizeof(HeapMetadata),heapMetedataAnterior);
 
 	}
-	else if(heapMetedataSiguiente->isFree==true) {
+	else if(heapMetedataSiguiente->isFree==true)
+	{
 		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
 		//Si esta libre: puedo compactarlos como un metadata solo
-		heapMetaAActualizar->size += heapMetedataSiguiente->size;
-		resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
+		heapMetaAActualizar->size += heapMetedataSiguiente->size + sizeof(HeapMetadata);
+		heapMetaAActualizar->isFree=true;
+		resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,offSetMetadataAActualizar,sizeof(HeapMetadata),heapMetaAActualizar);
 
 	}
 	else
-	resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,offSetMetadataAActualizar,sizeof(HeapMetadata),&heapMetaAActualizar);
-	printf("Metadata a actualizar:\n");
-	printf("Size libre: %u\n",heapMetaAActualizar->size);
+	{
+		heapMetaAActualizar->isFree=true;
+		resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,offSetMetadataAActualizar,sizeof(HeapMetadata),heapMetaAActualizar);
+	}
+
 	if(resultado==true){
 		//Si estan todos los bloques de la pagina libres, hay que liberar la pagina entera
 		bool hayAlgunBloqueUsado= RecorrerHastaEncontrarUnMetadataUsed(datosPagina);

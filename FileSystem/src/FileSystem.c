@@ -70,10 +70,14 @@ void obtenerValoresArchivoConfiguracion() {
 	config_destroy(arch);
 }
 
+bool archivoEsValido(char* pathForValidation) {
+	return string_ends_with(pathForValidation, ".bin");
+}
+
 int validarArchivo(char* path, int socketFD) {
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
 	string_append(&pathForValidation, path);
-	if(existeArchivo(pathForValidation)) {
+	if(archivoEsValido(pathForValidation) && existeArchivo(pathForValidation)) {
 		EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
 		return 1;
 	}
@@ -178,7 +182,8 @@ ValoresArchivo* reservarBloques(char* path, int tamanioNecesitado, ValoresArchiv
 	return valoresNuevos;
 }
 
-void crearArchivo(char* path,int socketFD) {
+void crearArchivo(void* puntero,int socketFD) {
+	char* path = puntero+sizeof(uint32_t);
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
 	string_append(&pathForValidation, path);
 	if (!validarArchivo(pathForValidation, 0)) {
@@ -208,7 +213,8 @@ void crearArchivo(char* path,int socketFD) {
 	}
 }
 
-void borrarArchivo(char* path, int socketFD) {
+void borrarArchivo(void* puntero, int socketFD) {
+	char* path = puntero+sizeof(uint32_t);
 	char* pathArchivo = string_new();
 	pathArchivo = string_duplicate(ARCHIVOSPATH);
 	string_append(&pathArchivo, path);
@@ -327,27 +333,32 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, char* buffer, int 
 
 
 void accion(Paquete* paquete, int socketFD){
-	switch ((*(uint32_t*)paquete->Payload)){
-		(uint32_t*)paquete->Payload++;
-		uint32_t* datos = paquete->Payload;
-		printf("Los datos son %u", *datos);
-		case VALIDAR_ARCHIVO:
-			validarArchivo(paquete->Payload, socketFD);
-		break;
-		case CREAR_ARCHIVO:
-			printf("crear");
-			crearArchivo(paquete->Payload, socketFD);
-		break;
-		case BORRAR_ARCHIVO:
-			borrarArchivo(paquete->Payload, socketFD);
-		break;
-		case OBTENER_DATOS:
-			obtenerDatos(&(datos[2]), datos[0], datos[1], socketFD);
-		break;
-		case GUARDAR_DATOS:
-			guardarDatos(&(datos[2]), datos[0], datos[1],&(datos[3]), socketFD);
-		break;
+	uint32_t* datos = paquete->Payload;
+
+	if(paquete->header.tipoMensaje == ESDATOS)
+	{
+		switch (*(uint32_t*)paquete->Payload){
+
+			case VALIDAR_ARCHIVO:
+				printf("El path es %s", paquete->Payload);
+				validarArchivo((char*)paquete->Payload+sizeof(uint32_t), socketFD);
+			break;
+			case CREAR_ARCHIVO:
+				printf("crear");
+				crearArchivo(paquete->Payload, socketFD);
+			break;
+			case BORRAR_ARCHIVO:
+				borrarArchivo(paquete->Payload, socketFD);
+			break;
+			case OBTENER_DATOS:
+				obtenerDatos(&(datos[3]), datos[1], datos[2], socketFD);
+			break;
+			case GUARDAR_DATOS:
+				guardarDatos(&(datos[3]), datos[1], datos[2],&(datos[4]), socketFD);
+			break;
+		}
 	}
+
 }
 
 /*void accion(void* socket){

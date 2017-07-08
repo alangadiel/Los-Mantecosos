@@ -428,17 +428,16 @@ uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path) {
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = VALIDAR_ARCHIVO;
 
-	char* destinoPath = datos + sizeof(uint32_t);
-	strcpy(destinoPath, path);
+	/*char* destinoPath = datos + sizeof(uint32_t);
+	strcpy(destinoPath, path);*/
+	memcpy(datos + sizeof(uint32_t), path, string_length(path)+1);
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	Paquete* paquete = malloc(sizeof(Paquete));
-	printf("Antes de mandar a FS");
 	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
-	printf("Recibi de FS %d", r);
 	free(paquete->Payload);
 	free(paquete);
-	free(((uint32_t*) datos)[1]);
+	//free(((uint32_t*) datos)[1]);
 	free(datos);
 	return r;
 }
