@@ -164,8 +164,7 @@ t_valor_variable primitiva_dereferenciar(t_puntero puntero) {
 	  hay que validar que el puntero a dereferenciar no sea 0, pq la dir logica 0 es de las paginas de
 	  codigo  */
 
-	if(puntero==0){
-		huboError = true;
+	if(huboError == true){
 		pcb.ExitCode = -10;
 	}
 	else{

@@ -353,15 +353,16 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						else
 						{
 							pthread_mutex_lock(&mutexQueueEjecutando);
-							list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
+							BloqueControlProceso* pcbEjecutado = list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
 								return ((BloqueControlProceso*)item)->PID == pcb->PID;
 							}));
+							if(pcbEjecutado!=NULL){
+								Evento_ListosAdd();
+								pthread_mutex_lock(&mutexQueueListos);
+								queue_push(Listos, pcb);
+								pthread_mutex_unlock(&mutexQueueListos);
+							}
 							pthread_mutex_unlock(&mutexQueueEjecutando);
-
-							Evento_ListosAdd();
-							pthread_mutex_lock(&mutexQueueListos);
-							queue_push(Listos, pcb);
-							pthread_mutex_unlock(&mutexQueueListos);
 						}
 					} else
 						printf("Error al finalizar ejecucion");

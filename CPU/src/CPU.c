@@ -166,6 +166,7 @@ int main(void) {
 		switch(paquete.header.tipoMensaje) {
 			/*case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
 				DesconectarCPU = true;
+				progTerminado = true;
 			break;*/
 			case ESTAEJECUTANDO: {
 				int tamDatos = sizeof(uint32_t) +sizeof(bool);
