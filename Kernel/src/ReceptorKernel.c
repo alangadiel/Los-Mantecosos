@@ -127,13 +127,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							return strcmp(nombreActual, nombreSem) == 0;
 							}));
 						pthread_mutex_unlock(&mutexSemaforos);
-
 						if(result != NULL)
 						{
+							printf("nombre semaforo %s", ((Semaforo*)result)->nombreSemaforo);
 							Semaforo* semaf = (Semaforo*)result;
 							semaf->valorSemaforo--;
 
-							BloqueControlProceso* pcb = list_find(Semaforos, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
+							BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
 							RecibirPaqueteServidorKernel(socketConectado, KERNEL, paquete);
 							RecibirPCB(pcb, paquete->Payload, paquete->header.tamPayload,KERNEL);
 
