@@ -70,10 +70,14 @@ void obtenerValoresArchivoConfiguracion() {
 	config_destroy(arch);
 }
 
+bool archivoEsValido(char* pathForValidation) {
+	return string_ends_with(pathForValidation, ".bin");
+}
+
 int validarArchivo(char* path, int socketFD) {
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
 	string_append(&pathForValidation, path);
-	if(existeArchivo(pathForValidation)) {
+	if(archivoEsValido(pathForValidation) && existeArchivo(pathForValidation)) {
 		EnviarDatos(socketFD, FS, 1, sizeof(uint32_t));
 		return 1;
 	}
