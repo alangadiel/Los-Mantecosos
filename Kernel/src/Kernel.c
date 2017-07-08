@@ -10,7 +10,7 @@ t_list* HilosDeConexiones;
 void agregarIdSemaforo(char* item){
 	Semaforo* sem = malloc(sizeof(Semaforo));
 	sem->nombreSemaforo = string_duplicate(item);
-	list_add(Semaforos, &sem);
+	list_add(Semaforos, sem);
 	cantNombresSemaforos++;
 }
 
@@ -24,7 +24,7 @@ void agregarSharedVar(char* item) {
 	VariableCompartida* nuevaVar = malloc(sizeof(VariablesCompartidas));
 	nuevaVar->nombreVariableGlobal = item;
 	nuevaVar->valorVariableGlobal=0;
-	list_add(VariablesCompartidas,&nuevaVar);
+	list_add(VariablesCompartidas,nuevaVar);
 }
 
 void LlenarListas() {

@@ -113,7 +113,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case WAITSEM:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						nombreSem = paquete->Payload + sizeof(uint32_t)*2;
+						nombreSem = string_duplicate(paquete->Payload + sizeof(uint32_t)*2);
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
 						result = list_find(Semaforos,
