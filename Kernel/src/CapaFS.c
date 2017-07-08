@@ -177,7 +177,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 			*tipoError = ACCEDERAARCHIVOINEXISTENTE;
 		}
 	}
-
+	printf("el fd es %d", FD);
 	return archivoEstaCreado;
 }
 
