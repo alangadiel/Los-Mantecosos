@@ -5,12 +5,6 @@
 #include "ThreadsKernel.h"
 
 typedef struct {
- uint32_t size;
- bool isFree;
-}__attribute__((packed)) HeapMetadata;
-
-// hay que leerlo de la memoria o guardarlo aca?
-typedef struct {
 	char* nombreVariableGlobal;
 	uint32_t valorVariableGlobal;
 } VariableCompartida;
