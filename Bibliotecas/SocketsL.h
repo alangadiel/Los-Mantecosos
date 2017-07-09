@@ -31,6 +31,7 @@
 #define ESERROR 6
 #define ESTAEJECUTANDO 7
 #define ESDESCONEXIONCPU -8
+#define ESPCBWAIT 9
 
 //Comunicacion Kernel con CPU
 #define PEDIRSHAREDVAR 0
@@ -175,7 +176,7 @@ estructuras usadas para administrar la memoria.
 bool IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog);
 //Borra las paginas de ese programa. devuelve 0 si hay error, 1 sino.
 
-void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe);
+void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe,uint32_t tipoEnvioPCB);
 
 void RecibirPCB(BloqueControlProceso* pecebe, void* payload,uint32_t tamPayload, char receptor[11]);
 uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path);

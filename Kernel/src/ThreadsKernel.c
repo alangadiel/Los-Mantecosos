@@ -314,7 +314,7 @@ void dispatcher()
 
 				PCBAMandar->cantidadDeRafagasEjecutadas = 0;
 				printf("Despachando proceso %u por socket %i\n", PCBAMandar->PID, cpuAUsar->socketCPU);
-				EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar);
+				EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar,ESPCB);
 
 				cpuAUsar->isFree = false;
 				cpuAUsar->pid = PCBAMandar->PID;

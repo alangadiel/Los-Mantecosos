@@ -1,5 +1,5 @@
 #include "ReceptorKernel.h"
-
+Semaforo semaforoAVerificar;
 void receptorKernel(Paquete* paquete, int socketConectado){
 	switch(paquete->header.tipoMensaje)	{
 	case ESSTRING:
@@ -59,7 +59,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					uint32_t tamanioArchivo;
 					void* result;
 					void* datos;
-					VariableCompartida var;
+					VariableCompartida* var;
 					int tamDatos;
 
 					char* nombreSem;
@@ -67,99 +67,69 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case PEDIRSHAREDVAR:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						variableCompartida =paquete->Payload + sizeof(uint32_t) * 2;
+						variableCompartida = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2);
+						printf("Variable compartida solicitada :%s\n",variableCompartida);
+
 						//Busco la variable compartida
 						result = NULL;
 						pthread_mutex_lock(&mutexVariablesCompartidas);
-						result = list_find(VariablesCompartidas,
-							LAMBDA(bool _(void* item) {
-								return strcmp(((VariableCompartida*)item)->nombreVariableGlobal, variableCompartida) == 0;
-						}));
+						bool buscarSharedVar(void *item){
+							VariableCompartida* var = item;
+							char* nombreVarEnCuestion = string_substring_from(var->nombreVariableGlobal,1);
+							return strcmp(nombreVarEnCuestion, variableCompartida) == 0;
+						}
+						VariableCompartida* sharedVar = list_find(VariablesCompartidas,buscarSharedVar);
 						pthread_mutex_unlock(&mutexVariablesCompartidas);
-						 var = *(VariableCompartida*)result;
+						printf("Variable compartida encontrada :%s\n",sharedVar->nombreVariableGlobal);
+
 						//Devuelvo a la cpu el valor de la variable compartida
 						tamDatos = sizeof(int32_t);
 						datos = malloc(tamDatos);
-						((int32_t*) datos)[0] = var.valorVariableGlobal;
-
+						((int32_t*) datos)[0] = sharedVar->valorVariableGlobal;
 						EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-
 						free(datos);
 					break;
 
 					case ASIGNARSHAREDVAR:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						valorAAsignar = ((int32_t*)paquete->Payload)[2];
-						variableCompartida =paquete->Payload + sizeof(uint32_t) * 3;
+						variableCompartida =string_duplicate(paquete->Payload + sizeof(uint32_t) * 3);
 						//Busco la variable compartida
 						result = NULL;
 						pthread_mutex_lock(&mutexVariablesCompartidas);
-						result = list_find(VariablesCompartidas,
-							LAMBDA(bool _(void* item) {
-								return strcmp(((VariableCompartida*)item)->nombreVariableGlobal, variableCompartida) == 0; }));
+						VariableCompartida* sharedvar = list_find(VariablesCompartidas,buscarSharedVar);
+						sharedvar->valorVariableGlobal = valorAAsignar;
 						pthread_mutex_unlock(&mutexVariablesCompartidas);
-						var = *(VariableCompartida*)result;
-						var.valorVariableGlobal = valorAAsignar;
 
 						//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
 						tamDatos = sizeof(int32_t);
 						datos = malloc(tamDatos);
-						((int32_t*) datos)[0] = var.valorVariableGlobal;
-
+						((int32_t*) datos)[0] = sharedvar->valorVariableGlobal;
 						EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-
 						free(datos);
 					break;
 
 					case WAITSEM:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						nombreSem = string_duplicate(paquete->Payload + sizeof(uint32_t)*2);
+						printf("Semaforo recibido desde la cpu: %s\n",nombreSem);
+
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
-						result = list_find(Semaforos,
-							LAMBDA(bool _(void* item) {
-							return strcmp(((Semaforo*) item)->nombreSemaforo, nombreSem) == 0;
-							}));
+						bool buscarSemaforo(void* item){
+							Semaforo *sem = item;
+							return strcmp(sem->nombreSemaforo,nombreSem)==0;
+						}
+						Semaforo *semaforoEncontrado = list_find(Semaforos,buscarSemaforo);
 						pthread_mutex_unlock(&mutexSemaforos);
-						printf("Semaforo: %s\n",nombreSem);
 
-						if(result != NULL)
+						if(semaforoEncontrado != NULL)
 						{
-							printf("entro al if");
-							Semaforo* semaf = (Semaforo*)result;
-							printf("Semaforo: %s\n",semaf->nombreSemaforo);
-							semaf->valorSemaforo--;
-
-							BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == PID; }));
-							RecibirPaqueteServidorKernel(socketConectado, KERNEL, paquete);
-							RecibirPCB(pcb, paquete->Payload, paquete->header.tamPayload,KERNEL);
-
-							if (semaf->valorSemaforo < 0)
-							{ //se bloquea
-								pthread_mutex_lock(&mutexSemaforos);
-								uint32_t* pid = malloc(sizeof(uint32_t));
-								*pid=PID;
-								list_add(semaf->listaDeProcesos, pid);
-								pthread_mutex_unlock(&mutexSemaforos);
-								pthread_mutex_lock(&mutexQueueEjecutando);
-								list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
-									return ((BloqueControlProceso*)item)->PID == pcb->PID;
-								}));
-								pthread_mutex_unlock(&mutexQueueEjecutando);
-								pthread_mutex_lock(&mutexQueueBloqueados);
-								queue_push(Bloqueados, pcb);
-								pthread_mutex_unlock(&mutexQueueBloqueados);
-							}
-
-							else
-							{
-								//si hay un wait, se mete otra vez en la cola de listos
-								//pcb->ProgramCounter++;
-								Evento_ListosAdd();
-								pthread_mutex_lock(&mutexQueueListos);
-								list_add_in_index(Listos->elements, 0, pcb);
-								pthread_mutex_unlock(&mutexQueueListos);
-							}
+							printf("entro al if de esWait\n");
+							semaforoEncontrado->valorSemaforo--;
+							//semaforoAVerificar = malloc(sizeof(Semaforo));
+							semaforoAVerificar = *semaforoEncontrado;
+							printf("Semaforo: %s\n",semaforoAVerificar.nombreSemaforo);
 						}
 						else
 						{
@@ -169,28 +139,26 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case SIGNALSEM:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						nombreSem = paquete->Payload + sizeof(uint32_t)*2;
+						nombreSem = string_duplicate(paquete->Payload + sizeof(uint32_t)*2);
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
-						result = list_find(Semaforos,
-							LAMBDA(bool _(void* item) {
-							char* nombreActual = ((Semaforo*) item)->nombreSemaforo;
-							return strcmp(nombreActual, nombreSem) == 0;
-							}));
+						result = list_find(Semaforos,buscarSemaforo);
 						pthread_mutex_unlock(&mutexSemaforos);
 						if(result != NULL)
 						{
 							Semaforo* semaf = (Semaforo*)result;
-							semaf->valorSemaforo++;
+							printf("semafoto encontrado para signal :%s\n",semaf->nombreSemaforo);
 
-							if (semaf->valorSemaforo >= 0)
+							semaf->valorSemaforo++;
+							printf("Valor semaforo: %i\n",semaf->valorSemaforo);
+							printf("cant procesos bloqueados por el semaforo: %u\n",queue_size(semaf->listaDeProcesos));
+							if (semaf->valorSemaforo >= 0 && queue_size(semaf->listaDeProcesos)>0)
 							{
 								pthread_mutex_lock(&mutexSemaforos);
-								uint32_t pid = *(uint32_t*) list_get(semaf->listaDeProcesos, 0);
-								list_remove_by_condition(semaf->listaDeProcesos, LAMBDA(bool _(void* item) { return *((uint32_t*) item) == pid; }));
+								uint32_t* pidDesbloqueadoDeLaColaDelSem = queue_pop(semaf->listaDeProcesos);
 								pthread_mutex_unlock(&mutexSemaforos);
 								pthread_mutex_lock(&mutexQueueBloqueados);
-								BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == pid; }));
+								BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == *pidDesbloqueadoDeLaColaDelSem; }));
 								//pcbDesbloqueado->ProgramCounter++;
 								pthread_mutex_unlock(&mutexQueueBloqueados);
 
@@ -329,6 +297,59 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					}
 				}
 				break;
+			case ESPCBWAIT:
+				if(strcmp(paquete->header.emisor, CPU) == 0)
+				{
+					printf("entro a esPCBWAIT\n");
+					pthread_mutex_lock(&mutexCPUsConectadas);
+					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
+					pthread_mutex_unlock(&mutexCPUsConectadas);
+					pthread_mutex_lock(&mutexQueueEjecutando);
+					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
+					pthread_mutex_unlock(&mutexQueueEjecutando);
+					if(pcb!=NULL){
+						RecibirPCB(pcb, paquete->Payload, paquete->header.tamPayload,KERNEL);
+						printf("entro al if de esPCBWAIT\n");
+						printf("valor semaforo dsps de decrementar %i",semaforoAVerificar.valorSemaforo);
+						if (semaforoAVerificar.valorSemaforo < 0)
+						{ //se bloquea
+							printf("Se va a bloquear el proceso\n");
+
+							pthread_mutex_lock(&mutexSemaforos);
+							uint32_t* pid = malloc(sizeof(uint32_t));
+							*pid=pcb->PID;
+							queue_push(semaforoAVerificar.listaDeProcesos, pid);
+							pthread_mutex_unlock(&mutexSemaforos);
+							pthread_mutex_lock(&mutexQueueEjecutando);
+							list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
+								return ((BloqueControlProceso*)item)->PID == pcb->PID;
+							}));
+							pthread_mutex_unlock(&mutexQueueEjecutando);
+							pthread_mutex_lock(&mutexQueueBloqueados);
+							queue_push(Bloqueados, pcb);
+							pthread_mutex_unlock(&mutexQueueBloqueados);
+						}
+
+						else
+						{
+							//si hay un wait, se mete otra vez en la cola de listos
+							//pcb->ProgramCounter++;
+							Evento_ListosAdd();
+							pthread_mutex_lock(&mutexQueueListos);
+							list_add_in_index(Listos->elements, 0, pcb);
+							pthread_mutex_unlock(&mutexQueueListos);
+						}
+						DatosCPU * datoscpu = list_find(CPUsConectadas,LAMBDA(bool _(void* item) {
+							return ((DatosCPU*)item)->socketCPU == socketConectado;
+						}));
+						datoscpu->isFree = true;
+						sem_post(&semDispatcherCpus);
+
+						//free(semaforoAVerificar);
+					} else
+						printf("Error al finalizar ejecucion");
+				}
+			break;
 
 			case ESPCB:
 				//termino la rafaga normalmente sin bloquearse

@@ -5,7 +5,7 @@ BloqueControlProceso pcb;
 DatosCPU datosCpu;
 uint32_t cantRafagasAEjecutar;
 uint32_t cantRafagasEjecutadas=0;
-bool primitivaBloqueante = false;
+bool primitivaWait = false;
 bool huboError = false;
 bool progTerminado = false;
 
@@ -182,7 +182,8 @@ int main(void) {
 				estadoActual.ejecutando = true;
 				int i=0;
 				progTerminado = false;
-				while(!primitivaBloqueante && !huboError && !progTerminado) { //TODO sacar i< pcb.cantidadDeRafagasAEjecutar y hacer q finalize en una primitiva
+				primitivaWait = false;
+				while(!primitivaWait && !huboError && !progTerminado) { //TODO sacar i< pcb.cantidadDeRafagasAEjecutar y hacer q finalize en una primitiva
 					if(pcb.cantidadDeRafagasAEjecutar > 0 && i >= pcb.cantidadDeRafagasAEjecutar) break;
 
 					RegIndiceCodigo* registro = list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
@@ -198,7 +199,10 @@ int main(void) {
 				i=0;
 				// Avisar al kernel que terminaste de ejecutar la instruccion
 				printf("Fin de ejecucion de rafagas\n");
-				EnviarPCB(socketKernel, CPU, &pcb);
+				if(primitivaWait)
+					EnviarPCB(socketKernel, CPU, &pcb,ESPCBWAIT);
+				else
+					EnviarPCB(socketKernel, CPU, &pcb,ESPCB);
 				estadoActual.pcb = pcb;
 				estadoActual.ejecutando = false;
 			}

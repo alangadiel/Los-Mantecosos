@@ -13,44 +13,6 @@ void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos){
 	return r;
 }
 
-t_valor_variable PedirValorVariableCompartida(t_nombre_variable* nombre){
-	int tamDatos = sizeof(uint32_t)*2+ string_length(nombre)+1;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
-	((uint32_t*) datos)[1] = pcb.PID;
-	memcpy(datos+sizeof(uint32_t)*2, nombre, string_length(nombre)+1);
-	//t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
-	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
-	int32_t r;
-	if(paquete->header.tipoMensaje == ESERROR)
-		r = NULL;
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = *(int32_t*)paquete->Payload;
-	free(paquete);
-	free(datos);
-	return r;
-}
-t_valor_variable AsignarValorVariableCompartida(t_nombre_variable* nombre,t_valor_variable valor ){
-	int tamDatos = sizeof(uint32_t)*3+ string_length(nombre)+1;
-	void* datos = malloc(tamDatos);
-	((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
-	((uint32_t*) datos)[1] = pcb.PID;
-	((int32_t*) datos)[2] = valor;
-	memcpy(datos+sizeof(uint32_t)*3, nombre, string_length(nombre)+1);
-	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
-	int32_t r;
-	if(paquete->header.tipoMensaje == ESERROR)
-		r = NULL;
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = *(int32_t*)paquete->Payload;
-	free(paquete);
-	free(datos);
-	return r;
-}
 /*Al ejecutar la última sentencia, el CPU deberá notificar al Kernel que el proceso finalizó para que este
 se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
 
@@ -96,25 +58,18 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 
 	return r;
 }
-
+void limpiar_string(char** string){
+	int i ;
+	for(i=0;i<string_length(*string); i++){
+		if((*string)[i]=='\n')
+			(*string)[i]='\0';
+	}
+}
 void CrearRegistroStack(regIndiceStack* is){
 	is->Argumentos = list_create();
 	is->Variables = list_create();
 }
-/*
-int32_t obtenerUltimoOffset(regIndiceStack* regIS){
-	int32_t r = -sizeof(uint32_t);
-	Variable* ultimoArg = (Variable*)list_get(regIS->Argumentos,list_size(regIS->Argumentos)-1);
-	Variable* ultimoVar = (Variable*)list_get(regIS->Variables,list_size(regIS->Variables)-1);
-	if(ultimoVar!=NULL)
-		r = ultimoVar->Posicion.NumeroDePagina*ultimoVar->Posicion.Tamanio + ultimoVar->Posicion.Offset;
-	if(ultimoArg!=NULL){
-		uint32_t ultimaDirVirtualArg = ultimoArg->Posicion.NumeroDePagina*ultimoArg->Posicion.Tamanio + ultimoArg->Posicion.Offset;
-		if(ultimaDirVirtualArg>r)
-			r = ultimaDirVirtualArg;
-	}
-	return r;
-}*/
+
 bool hayLugarEnStack(){
 	return StackSizeEnPaginas * TamanioPaginaMemoria > pcb.cantTotalVariables*sizeof(int);
 }
@@ -221,27 +176,59 @@ void primitiva_asignar(t_puntero puntero, t_valor_variable variable) {
 }
 
 t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
-	t_valor_variable result = PedirValorVariableCompartida(variable);
-	t_valor_variable val = *(t_valor_variable*)result;
+	char* nombreAMandar = string_new();
+	strcpy(nombreAMandar,variable);
+	limpiar_string(&nombreAMandar);
+	int tamDatos = sizeof(uint32_t)*2+ string_length(nombreAMandar)+1;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = PEDIRSHAREDVAR;
+	((uint32_t*) datos)[1] = pcb.PID;
+	memcpy(datos+sizeof(uint32_t)*2, nombreAMandar, string_length(nombreAMandar)+1);
+	//t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	free(nombreAMandar);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	int32_t r;
+	if(paquete->header.tipoMensaje == ESERROR){
+		huboError = true;
+		pcb.ExitCode = ((int32_t*)paquete->Payload)[0];
+	}
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = *(int32_t*)paquete->Payload;
+	free(paquete);
+	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
-	//pcb.ProgramCounter++;
-	return val;
+	return r;
 }
 
 t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
-	t_valor_variable result = AsignarValorVariableCompartida(variable,valor);
-	t_valor_variable val = *(t_valor_variable*)result;
-	pcb.cantidadSyscallEjecutadas++;
-	//pcb.ProgramCounter++;
-	return val;
-}
-void limpiar_string(char** string){
-	int i ;
-	for(i=0;i<string_length(*string); i++){
-		if((*string)[i]=='\n')
-			(*string)[i]='\0';
+	char* nombreAMandar = string_new();
+	strcpy(nombreAMandar,variable);
+	limpiar_string(&nombreAMandar);
+	int tamDatos = sizeof(uint32_t)*3+ string_length(nombreAMandar)+1;
+	void* datos = malloc(tamDatos);
+	((uint32_t*) datos)[0] = ASIGNARSHAREDVAR;
+	((uint32_t*) datos)[1] = pcb.PID;
+	((int32_t*) datos)[2] = valor;
+	memcpy(datos+sizeof(uint32_t)*3, nombreAMandar, string_length(nombreAMandar)+1);
+	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	free(nombreAMandar);
+	Paquete* paquete = malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	int32_t r;
+	if(paquete->header.tipoMensaje == ESERROR){
+		huboError = true;
+		pcb.ExitCode = ((int32_t*)paquete->Payload)[0];
 	}
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = *(int32_t*)paquete->Payload;
+	free(paquete);
+	free(datos);
+	pcb.cantidadSyscallEjecutadas++;
+	return r;
 }
+
 
 void primitiva_irAlLabel(t_nombre_etiqueta etiqueta){
 	//La proxima instruccion a ejecutar es la de la linea donde esta la etiqueta
@@ -309,11 +296,15 @@ void primitiva_wait(t_nombre_semaforo identificador_semaforo){
 		void* datos = malloc(tamDatos);
 		((uint32_t*) datos)[0] = WAITSEM;
 		((uint32_t*) datos)[1] = pcb.PID;
-		memcpy(datos+sizeof(uint32_t)*2, identificador_semaforo, string_length(identificador_semaforo)+1);
+		char* nombreAMandar = string_new();
+		strcpy(nombreAMandar,identificador_semaforo);
+		limpiar_string(&nombreAMandar);
+		memcpy(datos+sizeof(uint32_t)*2, nombreAMandar, string_length(nombreAMandar)+1);
 		EnviarDatos(socketKernel,CPU,datos,tamDatos);
-		free(datos);
+		free(nombreAMandar);
+		//free(datos);
 		pcb.cantidadSyscallEjecutadas++;
-		primitivaBloqueante = true;
+		primitivaWait = true;
 }
 
 void primitiva_signal(t_nombre_semaforo identificador_semaforo){
@@ -322,8 +313,12 @@ void primitiva_signal(t_nombre_semaforo identificador_semaforo){
 		void* datos = malloc(tamDatos);
 		((uint32_t*) datos)[0] = SIGNALSEM;
 		((uint32_t*) datos)[1] = pcb.PID;
-		memcpy(datos+sizeof(uint32_t)*2, identificador_semaforo, string_length(identificador_semaforo)+1);
+		char* nombreAMandar = string_new();
+		strcpy(nombreAMandar,identificador_semaforo);
+		limpiar_string(&nombreAMandar);
+		memcpy(datos+sizeof(uint32_t)*2, nombreAMandar, string_length(nombreAMandar)+1);
 		EnviarDatos(socketKernel,CPU,datos,tamDatos);
+		free(nombreAMandar);
 		free(datos);
 		pcb.cantidadSyscallEjecutadas++;
 		//pcb.ProgramCounter++;

@@ -23,7 +23,7 @@ int PUERTO_MEMORIA;
 int socketKernel;
 int socketMemoria;
 extern BloqueControlProceso pcb;
-extern bool primitivaBloqueante;
+extern bool primitivaWait;
 extern bool huboError;
 extern bool progTerminado;
 

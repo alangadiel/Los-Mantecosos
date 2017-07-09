@@ -527,7 +527,7 @@ void serializar(void** pcbSerializado, void* datos, uint32_t tam,uint32_t* tamTo
 	memcpy(*pcbSerializado + (*tamTotal-tam), datos, tam);
 }
 
-void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe) {
+void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe,uint32_t tipoEnvioPCB) {
 
 	int i = 0;
 	uint32_t tamTotal = 0;
@@ -588,7 +588,7 @@ void EnviarPCB(int socketCliente, char emisor[11], BloqueControlProceso* pecebe)
 		}
 	}
 	//Lo envio
-	EnviarDatosTipo(socketCliente,emisor,pcbSerializado,tamTotal,ESPCB);
+	EnviarDatosTipo(socketCliente,emisor,pcbSerializado,tamTotal,tipoEnvioPCB);
 	free(pcbSerializado);
 }
 
