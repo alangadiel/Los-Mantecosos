@@ -42,18 +42,18 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	memcpy(datos+sizeof(AbrirArchivo), direccion, string_length(direccion)+1);
 
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	Paquete* paquete = malloc(sizeof(Paquete));
+	Paquete paquete;
 
-	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
 
 	t_descriptor_archivo r;
 
-	if(paquete->header.tipoMensaje == ESERROR)
-		*tipoError = ((int32_t*)paquete->Payload)[0];
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = *((t_descriptor_archivo*)paquete->Payload);
+	if(paquete.header.tipoMensaje == ESERROR)
+		*tipoError = ((int32_t*)paquete.Payload)[0];
+	else if(paquete.header.tipoMensaje == ESDATOS)
+		r = *((t_descriptor_archivo*)paquete.Payload);
 
-	free(paquete);
+	free(paquete.Payload);
 	free(datos);
 
 	return r;

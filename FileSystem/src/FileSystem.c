@@ -37,6 +37,7 @@ void crearDirectorio(char* path) {
 char* obtenerPathABloque(int num) {
 	char* pathAEscribir = string_new();
 	string_append(&pathAEscribir, BLOQUESPATH);
+	string_append(&pathAEscribir, "/");
 	string_append(&pathAEscribir, string_itoa(num));
 	string_append(&pathAEscribir, ".bin");
 	return pathAEscribir;
@@ -75,7 +76,6 @@ bool archivoEsValido(char* pathForValidation) {
 }
 void armarPath(char** path){
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
-	//char* subsrt = string_substring(*path, 1, string_length(*path)-2);
 	char* subsrt = string_new();
 	int finWhile = 0;
 	int hasta = 0;
@@ -177,6 +177,8 @@ int encontrarPrimerBloqueLibre() {
 		if (bitmapArray[i] == 0) {
 			return i;
 		}
+
+		i++;
 	}
 	return -1;
 }
@@ -190,7 +192,7 @@ void crearBloqueVacio(int idBloque) {
 void crearBloques(t_list* bloques) {
 	int i;
 	for (i = 0; i < list_size(bloques); i++) {
-		int idBloque = (int) list_get(bloques, i);
+		int idBloque = (int)list_get(bloques, i);
 		crearBloqueVacio(idBloque);
 		cambiarValorBitmap(idBloque, 1);
 	}
@@ -208,6 +210,7 @@ void eliminarBloques(t_list* bloques) {
 
 void modificarValoresDeArchivo(ValoresArchivo* valoresNuevos, char* path) {
 	FILE* newFile = fopen(path, "w+");
+
 	char* strTamanio = string_new();
 	string_append(&strTamanio, "TAMANIO=");
 	string_append(&strTamanio, string_itoa(valoresNuevos->Tamanio));
@@ -243,7 +246,8 @@ ValoresArchivo* reservarBloques(char* path, int tamanioNecesitado, ValoresArchiv
 		}
 		list_add(bloquesNuevos, &posicion);
 	}
-	list_add_all(bloquesTotales, bloquesViejos);
+
+	//list_add_all(bloquesTotales, bloquesViejos);
 	list_add_all(bloquesTotales, bloquesNuevos);
 	crearBloques(bloquesNuevos);
 	ValoresArchivo* valoresNuevos = malloc(sizeof(ValoresArchivo));
@@ -262,22 +266,34 @@ void crearArchivo(char* path,int socketFD) {
 	if (!validarArchivoSinEnviarAKernel(path)) {
 		char** pathArray = string_split(path, "/");
 		int i = 0;
-		char* nuevoPath = pathArray[0];
+		char* nuevoPath = string_new();
+
+		string_append(&nuevoPath, "/");
+		string_append(&nuevoPath, pathArray[0]);
+
 		while (!string_ends_with(pathArray[i], ".bin")) {
 			if(i != 0)
 			{
 				string_append(&nuevoPath, "/");
 				string_append(&nuevoPath, pathArray[i]);
-				if (existeDirectorio(nuevoPath)) {
-					crearDirectorio(nuevoPath);
-				}
 			}
 
 			i++;
 		}
+
+		if (!existeDirectorio(nuevoPath)) {
+			crearDirectorio(nuevoPath);
+		}
+
 		string_append(&nuevoPath, "/");
 		string_append(&nuevoPath, pathArray[i]);
-		ValoresArchivo* nuevosValores = reservarBloques(nuevoPath, 0, NULL);
+
+		//REVISAR ESTO, HICE CUALQUIER COSA PARA PODER SEGUIR EJECUTANDO
+		ValoresArchivo* valoresViejos = malloc(sizeof(ValoresArchivo));
+		valoresViejos->Bloques = list_create();
+		valoresViejos->Tamanio = 0;
+
+		ValoresArchivo* nuevosValores = reservarBloques(nuevoPath, 0, valoresViejos);
 		if (nuevosValores != NULL) {
 			uint32_t r = 1;
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
@@ -286,6 +302,7 @@ void crearArchivo(char* path,int socketFD) {
 			uint32_t r = 0;
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
+
 		free(nuevosValores);
 		free(nuevoPath);
 		free(pathArray);
@@ -502,8 +519,9 @@ void archivoBitmap() {
 		char* stringBitmap = leerTodoElArchivo(BITMAPFILE);
 		int i;
 		for (i = 0; i < CANTIDAD_BLOQUES; i++) {
-			bitmapArray[i] = (int) strtol(&stringBitmap[i], (char **)NULL, 10);
+			bitmapArray[i] = stringBitmap[i] - 48; //Para pasar de ASCII
 		}
+
 		fclose(bitmap);
 		free(stringBitmap);
 	}
