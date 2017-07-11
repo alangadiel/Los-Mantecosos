@@ -20,7 +20,7 @@ extern char* IP;
 
 typedef struct {
 	uint32_t Frame;
-	uint32_t PID;
+	int32_t PID;
 	uint32_t Pag;
 	bool disponible;
 } RegistroTablaPaginacion;
@@ -34,7 +34,7 @@ typedef struct {
 extern void* BloquePrincipal;
 extern void* ContenidoMemoria;
 extern int tamanioTotalBytesMemoria;
-extern int tamEstructurasAdm;
+extern int MarcosEstructurasAdm;
 extern int cantPagAsignadas;
 extern int socketABuscar;
 extern t_list* tablaCacheRastro;

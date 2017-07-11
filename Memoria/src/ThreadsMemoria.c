@@ -4,7 +4,10 @@ uint32_t Hash(uint32_t x, uint32_t y){
 	x--;
 	uint32_t r = ((x + y) * (x + y + 1)) / 2 + y;
 	while(r>MARCOS)
-		r -= MARCOS;
+		r -= MARCOS; //cota superior
+	int d = r - MarcosEstructurasAdm;
+	if(d<0) r-=d; //cota inferior
+
 	return r;
 }
 uint32_t FrameLookup(uint32_t pid, uint32_t pag){
@@ -148,8 +151,10 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 	//Los datos son parametros
 	//Parámetros: PID, #página, offset, tamaño y buffer.
 	uint32_t result=0;
+	pthread_mutex_lock( &mutexTablaPagina);
 	pthread_mutex_lock( &mutexContenidoMemoria );
 	if(DATOS[2]>=0 && cuantasPagTieneVivos(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
+		pthread_mutex_unlock( &mutexTablaPagina);
 		//esperar tiempo definido por arch de config
 		SleepMemoria(RETARDO_MEMORIA);
 		//buscar pagina
@@ -166,6 +171,7 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 		result = 1;
 		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
 	} else {
+		pthread_mutex_unlock( &mutexTablaPagina);
 		pthread_mutex_unlock( &mutexContenidoMemoria );
 		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
 	}

@@ -32,6 +32,10 @@ char* getWord(char* string, int pos) {
 	return word;
 }
 
+unsigned int roundUp(double dividend, double divisor)
+{
+    return ceil(dividend/divisor);
+}
 char* integer_to_string(int x) {
 	char* buffer = malloc(sizeof(char) * sizeof(int) * 4 + 1);
 	if (buffer) {
