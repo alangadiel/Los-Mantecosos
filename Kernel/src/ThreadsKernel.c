@@ -17,6 +17,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* indice)
 
 	//Ejecutando
 	pthread_mutex_lock(&mutexQueueEjecutando);
+
 	if(queue_size(Ejecutando)>0){
 		while(ProcesoEstaEjecutandoseActualmente(pid)==true);
 		pcb = (BloqueControlProceso*)list_remove_by_condition(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
@@ -122,6 +123,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 	int indice;
 	pthread_mutex_lock(&mutexFinalizarPrograma);
 	finalizarProgramaCapaFS(PID);
+	printf("Pid a finalizar : %u\n",PID);
 	obtenerError(tipoFinalizacion);
 	pcbRemovido = removerPidDeListas(PID, &indice);
 	if(pcbRemovido != NULL)
@@ -183,13 +185,6 @@ bool ProcesoEstaEjecutandoseActualmente(int pidAFinalizar)
 	for (i = 0; i < sizeCpusConectadas; i++)
 	{
 		DatosCPU* cpu = (DatosCPU*) list_get(CPUsConectadas, i);
-/*
-		EnviarDatosTipo(cpu->socketCPU, KERNEL, NULL,0, ESTAEJECUTANDO);
-		Paquete* paquete2 = malloc(sizeof(Paquete));
-		RecibirPaqueteCliente(cpu->socketCPU, KERNEL, paquete2);
-		bool* estaEjecutando = ((bool*)paquete2->Payload)[0];
-		uint32_t* PID = (uint32_t*)( paquete2->Payload+sizeof(bool));
-*/
 		if (cpu->pid == pidAFinalizar && cpu->isFree == false)
 		{
 			pthread_mutex_unlock(&mutexCPUsConectadas);

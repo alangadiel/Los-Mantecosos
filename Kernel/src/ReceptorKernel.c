@@ -59,7 +59,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					uint32_t tamanioArchivo;
 					void* result;
 					void* datos;
-					VariableCompartida* var;
 					int tamDatos;
 
 					char* nombreSem;
@@ -304,6 +303,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					printf("entro a esPCBWAIT\n");
 					pthread_mutex_lock(&mutexCPUsConectadas);
 					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
+					cpuActual->isFree = true;
 					pthread_mutex_unlock(&mutexCPUsConectadas);
 					pthread_mutex_lock(&mutexQueueEjecutando);
 					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
@@ -335,15 +335,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						{
 							//si hay un wait, se mete otra vez en la cola de listos
 							//pcb->ProgramCounter++;
-							Evento_ListosAdd();
 							pthread_mutex_lock(&mutexQueueListos);
 							list_add_in_index(Listos->elements, 0, pcb);
 							pthread_mutex_unlock(&mutexQueueListos);
+							Evento_ListosAdd();
+
 						}
-						DatosCPU * datoscpu = list_find(CPUsConectadas,LAMBDA(bool _(void* item) {
-							return ((DatosCPU*)item)->socketCPU == socketConectado;
-						}));
-						datoscpu->isFree = true;
+
 						sem_post(&semDispatcherCpus);
 
 						//free(semaforoAVerificar);
@@ -358,16 +356,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 				{
 					pthread_mutex_lock(&mutexCPUsConectadas);
 					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
+					cpuActual->isFree = true;
 					pthread_mutex_unlock(&mutexCPUsConectadas);
 					pthread_mutex_lock(&mutexQueueEjecutando);
 					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
 					pthread_mutex_unlock(&mutexQueueEjecutando);
 					if(pcb!=NULL){
 						RecibirPCB(pcb, paquete->Payload, paquete->header.tamPayload,KERNEL);
-
-						DatosCPU * datoscpu = list_find(CPUsConectadas,LAMBDA(bool _(void* item) {
-							return ((DatosCPU*)item)->socketCPU == socketConectado;
-						}));
 
 						if (pcb->ExitCode<= 0)
 						{
@@ -384,10 +379,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_lock(&mutexQueueListos);
 								queue_push(Listos, pcb);
 								pthread_mutex_unlock(&mutexQueueListos);
+
 							}
 							pthread_mutex_unlock(&mutexQueueEjecutando);
 						}
-						datoscpu->isFree = true;
 						sem_post(&semDispatcherCpus);
 					} else
 						printf("Error al finalizar ejecucion");
