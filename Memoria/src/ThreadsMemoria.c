@@ -9,8 +9,11 @@ uint32_t Hash(uint32_t x, uint32_t y){
 }
 uint32_t FrameLookup(uint32_t pid, uint32_t pag){
 	uint32_t frame = Hash(pid, pag);
-	while(TablaDePagina[frame].PID != pid || TablaDePagina[frame].Pag != pag)
+	while(TablaDePagina[frame].PID != pid || TablaDePagina[frame].Pag != pag){
 		frame++;
+		if(frame>=MARCOS)
+			frame -= MARCOS;
+	}
 	return frame;
 }
 uint32_t cuantasPagTieneTodos(uint32_t pid){
@@ -88,7 +91,11 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 		for (i = 0; i < cantPag; i++) {
 			//lo agregamos a la tabla
 			uint32_t frame = Hash(pid, i);
-			while(TablaDePagina[frame].disponible==false) frame++;
+			while(TablaDePagina[frame].disponible==false){
+				frame++;
+				if(frame>=MARCOS)
+					frame -= MARCOS;
+			}
 			TablaDePagina[frame].PID = pid;
 			TablaDePagina[frame].Pag = i;
 			TablaDePagina[frame].disponible=false;
@@ -168,17 +175,24 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 	uint32_t result=0;
 	pthread_mutex_lock( &mutexTablaPagina );
 	int32_t cantPaginasPid = cuantasPagTieneVivos(pid);
-	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cantPaginasPid > 0) {
+	if (cantPagAsignadas + cantPagParaAsignar <= MARCOS && cantPaginasPid > 0) {
 
 		int i;
 		for (i = cantPaginasPid; i < cantPagParaAsignar+cantPaginasPid; i++) {
 			//lo agregamos a la tabla
 			uint32_t frame = Hash(pid, i);
-			while(TablaDePagina[frame].disponible==false) frame++;
+
+			while(TablaDePagina[frame].disponible==false) {
+				frame++;
+				if(frame>=MARCOS)
+					frame -= MARCOS;
+			}
 			TablaDePagina[frame].PID = pid;
 			TablaDePagina[frame].Pag = i;
 			TablaDePagina[frame].disponible=false;
 			cantPagAsignadas++;
+
+
 		}
 		pthread_mutex_unlock( &mutexTablaPagina );
 		result = 1;

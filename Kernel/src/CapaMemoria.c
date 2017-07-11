@@ -82,8 +82,10 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 	*tipoError = 0;
 	uint32_t cantTotal = cantAReservar+sizeof(HeapMetadata);
 	uint32_t punteroAlPrimerDisponible=0;
+	pthread_mutex_lock(&mutexQueueEjecutando);
 	BloqueControlProceso* pcb= list_find(Ejecutando->elements,
 					LAMBDA(bool _(void* item) {return ((BloqueControlProceso*)item)->PID == PID;}));
+	pthread_mutex_unlock(&mutexQueueEjecutando);
 	//Como maximo, podes solicitar reservar: TamañoPagina -10(correspondiente a los metedatas iniciales)
 	if(cantTotal <= TamanioPagina-sizeof(HeapMetadata)*2){
 		void* result = NULL;
@@ -115,9 +117,7 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 					LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}));
 			pthread_mutex_unlock(&mutexPaginasPorProceso);
 			int maximoNroPag = 0;
-			pthread_mutex_lock(&mutexPaginasPorProceso);
-			 maximoNroPag = list_size(pagesProcess);
-			pthread_mutex_unlock(&mutexPaginasPorProceso);
+			maximoNroPag = list_size(pagesProcess);
 			PaginaDelProceso* nuevaPPP = malloc(sizeof(PaginaDelProceso));
 			nuevaPPP->nroPagina = maximoNroPag+pcb->PaginasDeCodigo+STACK_SIZE;
 			nuevaPPP->pid = PID;

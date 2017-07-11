@@ -367,8 +367,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						DatosCPU * datoscpu = list_find(CPUsConectadas,LAMBDA(bool _(void* item) {
 							return ((DatosCPU*)item)->socketCPU == socketConectado;
 						}));
-						datoscpu->isFree = true;
-						sem_post(&semDispatcherCpus);
+
 						if (pcb->ExitCode<= 0)
 						{
 							FinalizarPrograma(pcb->PID,pcb->ExitCode);
@@ -387,6 +386,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							}
 							pthread_mutex_unlock(&mutexQueueEjecutando);
 						}
+						datoscpu->isFree = true;
+						sem_post(&semDispatcherCpus);
 					} else
 						printf("Error al finalizar ejecucion");
 				}

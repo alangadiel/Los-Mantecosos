@@ -18,10 +18,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* indice)
 	//Ejecutando
 	pthread_mutex_lock(&mutexQueueEjecutando);
 	if(queue_size(Ejecutando)>0){
-		pthread_mutex_unlock(&mutexQueueEjecutando);
-
 		while(ProcesoEstaEjecutandoseActualmente(pid)==true);
-		pthread_mutex_lock(&mutexQueueEjecutando);
 		pcb = (BloqueControlProceso*)list_remove_by_condition(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pid ;}));
 		if (pcb != NULL)
 		{
@@ -291,44 +288,35 @@ void dispatcher()
 {
 	while (!planificacion_detenida)
 	{
+		sem_wait(&semDispacherListos);
+		sem_wait(&semDispatcherCpus);
 		pthread_mutex_lock(&mutexQueueListos);
-		if(queue_size(Listos)==0){
-			pthread_mutex_unlock(&mutexQueueListos);
-			sem_wait(&semDispacherListos);
-		}
-		else
-		{
-			pthread_mutex_unlock(&mutexQueueListos);
-			sem_wait(&semDispatcherCpus);
-			pthread_mutex_lock(&mutexQueueListos);
-			BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
-			pthread_mutex_unlock(&mutexQueueListos);
-			if(PCBAMandar!=NULL){
-				pthread_mutex_lock(&mutexCPUsConectadas);
-				DatosCPU* cpuAUsar = (DatosCPU*) list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
-				pthread_mutex_unlock(&mutexCPUsConectadas);
-				if (strcmp(ALGORITMO, "FIFO") == 0)
-				{
-					PCBAMandar->cantidadDeRafagasAEjecutar = 0;//sin limite
-				}
-				else if (strcmp(ALGORITMO, "RR") == 0)
-				{
-					PCBAMandar->cantidadDeRafagasAEjecutar = QUANTUM;
-				}
-
-				PCBAMandar->cantidadDeRafagasEjecutadas = 0;
-				printf("Despachando proceso %u por socket %i\n", PCBAMandar->PID, cpuAUsar->socketCPU);
-				EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar,ESPCB);
-
-				cpuAUsar->isFree = false;
-				cpuAUsar->pid = PCBAMandar->PID;
-				pthread_mutex_lock(&mutexQueueEjecutando);
-				queue_push(Ejecutando, PCBAMandar);
-				pthread_mutex_unlock(&mutexQueueEjecutando);
-				//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
+		BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
+		pthread_mutex_unlock(&mutexQueueListos);
+		if(PCBAMandar!=NULL){
+			pthread_mutex_lock(&mutexCPUsConectadas);
+			DatosCPU* cpuAUsar = (DatosCPU*) list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
+			pthread_mutex_unlock(&mutexCPUsConectadas);
+			if (strcmp(ALGORITMO, "FIFO") == 0)
+			{
+				PCBAMandar->cantidadDeRafagasAEjecutar = 0;//sin limite
 			}
+			else if (strcmp(ALGORITMO, "RR") == 0)
+			{
+				PCBAMandar->cantidadDeRafagasAEjecutar = QUANTUM;
+			}
+
+			PCBAMandar->cantidadDeRafagasEjecutadas = 0;
+			printf("Despachando proceso %u por socket %i\n", PCBAMandar->PID, cpuAUsar->socketCPU);
+			EnviarPCB(cpuAUsar->socketCPU, KERNEL, PCBAMandar,ESPCB);
+
+			cpuAUsar->isFree = false;
+			cpuAUsar->pid = PCBAMandar->PID;
+			pthread_mutex_lock(&mutexQueueEjecutando);
+			queue_push(Ejecutando, PCBAMandar);
+			pthread_mutex_unlock(&mutexQueueEjecutando);
+			//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
 		}
-		//pthread_mutex_unlock(&mutexDispacher);
 	}
 }
 
