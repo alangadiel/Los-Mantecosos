@@ -61,7 +61,7 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 void limpiar_string(char** string){
 	int i ;
 	for(i=0;i<string_length(*string); i++){
-		if((*string)[i]=='\n')
+		if((*string)[i]=='\n' || (*string)[i]=='\r' )
 			(*string)[i]='\0';
 	}
 }
