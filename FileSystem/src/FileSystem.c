@@ -75,7 +75,65 @@ bool archivoEsValido(char* pathForValidation) {
 }
 void armarPath(char** path){
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
-	char* subsrt = string_substring(*path, 1, string_length(*path)-2);
+	//char* subsrt = string_substring(*path, 1, string_length(*path)-2);
+	char* subsrt = string_new();
+	int finWhile = 0;
+	int hasta = 0;
+
+	string_trim(path);
+
+	int i = 0;
+
+	while(i < string_length(*path) && finWhile != 4)
+	{
+		hasta++;
+
+		if((*path)[i] == '.')
+		{
+			finWhile++;
+		}
+
+		if((*path)[i-1] == '.')
+		{
+			if((*path)[i] == 'b')
+			{
+				finWhile++;
+			}
+			else
+			{
+				finWhile = 0;
+			}
+		}
+
+		if((*path)[i-2] == '.' && (*path)[i-1] == 'b')
+		{
+			if((*path)[i] == 'i')
+			{
+				finWhile++;
+			}
+			else
+			{
+				finWhile = 0;
+			}
+		}
+
+		if((*path)[i-3] == '.' && (*path)[i-2] == 'b' && (*path)[i-1] == 'i')
+		{
+			if((*path)[i] == 'n')
+			{
+				finWhile++;
+			}
+			else
+			{
+				finWhile = 0;
+			}
+		}
+
+		i++;
+	}
+
+	subsrt = string_substring_until(*path, hasta);
+
 	string_append(&pathForValidation,subsrt);
 	free(*path);
 	*path = string_duplicate(pathForValidation);
@@ -195,19 +253,29 @@ ValoresArchivo* reservarBloques(char* path, int tamanioNecesitado, ValoresArchiv
 	return valoresNuevos;
 }
 
+bool validarArchivoSinEnviarAKernel(char* path)
+{
+	return archivoEsValido(path) && existeArchivo(path);
+}
+
 void crearArchivo(char* path,int socketFD) {
-	if (!validarArchivo(path, 0)) {
+	if (!validarArchivoSinEnviarAKernel(path)) {
 		char** pathArray = string_split(path, "/");
 		int i = 0;
-		char* nuevoPath = string_duplicate(ARCHIVOSPATH);
+		char* nuevoPath = pathArray[0];
 		while (!string_ends_with(pathArray[i], ".bin")) {
-			string_append(&nuevoPath, pathArray[i]);
-			string_append(&nuevoPath, "/");
-			if (existeDirectorio(nuevoPath)) {
-				crearDirectorio(nuevoPath);
+			if(i != 0)
+			{
+				string_append(&nuevoPath, "/");
+				string_append(&nuevoPath, pathArray[i]);
+				if (existeDirectorio(nuevoPath)) {
+					crearDirectorio(nuevoPath);
+				}
 			}
+
 			i++;
 		}
+		string_append(&nuevoPath, "/");
 		string_append(&nuevoPath, pathArray[i]);
 		ValoresArchivo* nuevosValores = reservarBloques(nuevoPath, 0, NULL);
 		if (nuevosValores != NULL) {
@@ -342,7 +410,6 @@ void accion(Paquete* paquete, int socketFD){
 
 	if(paquete->header.tipoMensaje == ESDATOS)
 	{
-
 		uint32_t* datos = paquete->Payload;
 		char* path = paquete->Payload+sizeof(uint32_t);
 		switch (*datos){
