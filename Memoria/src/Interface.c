@@ -27,6 +27,7 @@ void dumpMemoryContent() {
 
 }
 void dumpVariablesOfPID(uint32_t pid,uint32_t pagCodigo){
+	pthread_mutex_lock( &mutexTablaPagina);
 	uint32_t cantPag = cuantasPagTieneTodos(pid);
 	if (cantPag == 0){
 		printf("El proceso no existe\n");
@@ -54,9 +55,12 @@ void dumpVariablesOfPID(uint32_t pid,uint32_t pagCodigo){
 		}
 		fclose(file);
 	}
+	pthread_mutex_unlock( &mutexTablaPagina);
 }
 
 void dumpHeapOfPID(uint32_t pid,uint32_t pagCodigo){
+
+	pthread_mutex_lock( &mutexTablaPagina);
 	uint32_t cantPag = cuantasPagTieneTodos(pid);
 	if (cantPag == 0){
 		printf("El proceso no existe\n");
@@ -100,9 +104,12 @@ void dumpHeapOfPID(uint32_t pid,uint32_t pagCodigo){
 		}
 		fclose(file);
 	}
+	pthread_mutex_unlock( &mutexTablaPagina);
 }
 
 void dumpMemoryContentOfPID(uint32_t pid) {
+
+	pthread_mutex_lock( &mutexTablaPagina);
 	uint32_t cantPag = cuantasPagTieneTodos(pid);
 	if (cantPag == 0){
 		printf("El proceso no existe\n");
@@ -123,6 +130,7 @@ void dumpMemoryContentOfPID(uint32_t pid) {
 		}
 		fclose(file);
 	}
+	pthread_mutex_unlock( &mutexTablaPagina);
 }
 
 void dumpMemoryStruct() {
@@ -160,11 +168,11 @@ void dumpMemoryContentOfCache() {
 		pthread_mutex_lock( &mutexTablaCache );
 		for(i=0; i<list_size(tablaCache);i++) {
 			entrada = list_get(tablaCache, i);
-			pthread_mutex_lock( &mutexContenidoMemoria );
 			contenido = ContenidoMemoria + MARCO_SIZE*FrameLookup(entrada->PID, entrada->Pag);
-			pthread_mutex_unlock( &mutexContenidoMemoria );
+			pthread_mutex_lock( &mutexContenidoMemoria );
 			printf("PID: %u, Pag: %u: %*s\n",entrada->PID, entrada->Pag, MARCO_SIZE, contenido);
 			fprintf(file, "PID: %u, Pag: %u: %*s\n",entrada->PID, entrada->Pag, MARCO_SIZE, contenido);
+			pthread_mutex_unlock( &mutexContenidoMemoria );
 		}
 		pthread_mutex_unlock( &mutexTablaCache );
 		fclose(file);
@@ -174,23 +182,21 @@ void dumpMemoryContentOfOldCache() {
 	if(list_is_empty(tablaCacheRastro)){
 		printf("La memoria cache esta vacia\n");
 	} else {
-		printf("Imprimiendo todo el contenido de la memoria cache\n");
-		char nombreDelArchivo[64+33+1];//tam de la hora + tam de "Contenido de la memoria cache en " + \0
+		printf("Imprimiendo las estructuras anteriores de la memoria cache\n");
+		char nombreDelArchivo[200];//tam de la hora + tam de "Contenido de la memoria cache en " + \0
 		char* t = temporal_get_string_time();
 		//char* tr = string_substring_from(t, )
-		sprintf(nombreDelArchivo, "Contenido de la memoria cache en %s", t);
+		sprintf(nombreDelArchivo, "Contenido viejo de la memoria cache en %s", t);
 		free(t);
 		FILE* file = fopen(nombreDelArchivo, "w");
 		int i; entradaCache* entrada;
-		char* contenido;
 		pthread_mutex_lock( &mutexTablaCache );
 		for(i=0; i<list_size(tablaCacheRastro);i++) {
 			entrada = list_get(tablaCacheRastro, i);
-			pthread_mutex_lock( &mutexContenidoMemoria );
-			contenido = ContenidoMemoria + MARCO_SIZE*FrameLookup(entrada->PID, entrada->Pag);
-			pthread_mutex_unlock( &mutexContenidoMemoria );
-			printf("PID: %u, Pag: %u: %*s\n",entrada->PID, entrada->Pag, MARCO_SIZE, contenido);
-			fprintf(file, "PID: %u, Pag: %u: %*s\n",entrada->PID, entrada->Pag, MARCO_SIZE, contenido);
+			if(entrada!=NULL) {
+				printf("PID %u, Pag %u\n",entrada->PID, entrada->Pag);
+				fprintf(file, "PID %u, Pag %u\n",entrada->PID, entrada->Pag);
+			}
 		}
 		pthread_mutex_unlock( &mutexTablaCache );
 		fclose(file);
@@ -335,9 +341,12 @@ void userInterfaceHandler(void* socketFD) {
 				long pid = strtol(command, NULL, 10);
 				if (pid != 0 && pid <= (2^32)) {
 					//que sea un numero y que no se pase del max del uint32
+
+					pthread_mutex_lock( &mutexTablaPagina);
 					printf("El proceso %li tiene %u paginas asignadas, y llego a tener %u.\n",
 							pid, cuantasPagTieneVivos(pid), cuantasPagTieneTodos(pid));
 
+					pthread_mutex_unlock( &mutexTablaPagina);
 				} else
 					printf("Numero invalido\n");
 
