@@ -16,23 +16,23 @@ uint32_t FrameLookup(uint32_t pid, uint32_t pag){
 uint32_t cuantasPagTieneTodos(uint32_t pid){
 	uint32_t c = 0;
 	uint32_t i;
-	pthread_mutex_lock( &mutexTablaPagina);
+	//pthread_mutex_lock( &mutexTablaPagina);
 	for(i=0; i < MARCOS; i++){
 		if(TablaDePagina[i].PID == pid)
 			c++;
 	}
-	pthread_mutex_unlock( &mutexTablaPagina );
+	//pthread_mutex_unlock( &mutexTablaPagina );
 	return c;
 }
 uint32_t cuantasPagTieneVivos(uint32_t pid){
 	uint32_t c = 0;
 	uint32_t i;
-	pthread_mutex_lock( &mutexTablaPagina);
+	//pthread_mutex_lock( &mutexTablaPagina);
 	for(i=0; i < MARCOS; i++){
 		if(TablaDePagina[i].PID == pid && TablaDePagina[i].disponible == false)
 			c++;
 	}
-	pthread_mutex_unlock( &mutexTablaPagina );
+	//pthread_mutex_unlock( &mutexTablaPagina );
 	return c;
 }
 
@@ -80,8 +80,8 @@ void agregarACache(uint32_t pid, uint32_t numPag){
 
 void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 	uint32_t result;
+	pthread_mutex_lock( &mutexTablaPagina );
 	if (pid != 0 && cuantasPagTieneVivos(pid) == 0 && cantPagAsignadas + cantPag < MARCOS) {
-		pthread_mutex_lock( &mutexTablaPagina );
 		//si no existe el proceso y hay lugar en la memoria
 		int i;
 
@@ -99,11 +99,12 @@ void IniciarPrograma(uint32_t pid, uint32_t cantPag, int socketFD) {
 		result = 1;
 		EnviarDatos(socketFD, MEMORIA, &result , sizeof(uint32_t));
 	} else {
+		pthread_mutex_unlock( &mutexTablaPagina );
 		result = 0;
 		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
 	}
 }
-SleepMemoria(uint32_t milliseconds){
+void SleepMemoria(uint32_t milliseconds){
 	struct timespec ts;
 	ts.tv_sec = milliseconds / 1000;
 	ts.tv_nsec = (milliseconds % 1000) * 1000000;
@@ -112,7 +113,11 @@ SleepMemoria(uint32_t milliseconds){
 
 void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam, int socketFD) {
 	//valido los parametros
+
+	pthread_mutex_lock( &mutexTablaPagina);
+	pthread_mutex_lock( &mutexContenidoMemoria );
 	if(numPag>=0 && cuantasPagTieneVivos(pid)>=numPag && offset+tam <= MARCO_SIZE) {
+		pthread_mutex_unlock( &mutexTablaPagina);
 		//si no esta en chache, esperar tiempo definido por arch de config
 		if (!estaEnCache(pid, numPag)) {
 			SleepMemoria(RETARDO_MEMORIA);
@@ -121,10 +126,13 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam
 		//buscar pagina
 		uint32_t frame = FrameLookup(pid, numPag);
 		void*  datosSolicitados = ContenidoMemoria + MARCO_SIZE * frame + offset;
-		pthread_mutex_lock( &mutexContenidoMemoria );
+
 		EnviarDatos(socketFD, MEMORIA, datosSolicitados, tam);
 		pthread_mutex_unlock( &mutexContenidoMemoria );
 	} else {
+
+		pthread_mutex_unlock( &mutexTablaPagina);
+		pthread_mutex_unlock( &mutexContenidoMemoria );
 		uint32_t r = 0;
 		EnviarDatosTipo(socketFD, MEMORIA, &r, sizeof(uint32_t), ESERROR);
 	}
@@ -133,12 +141,13 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 	//Los datos son parametros
 	//Parámetros: PID, #página, offset, tamaño y buffer.
 	uint32_t result=0;
+	pthread_mutex_lock( &mutexContenidoMemoria );
 	if(DATOS[2]>=0 && cuantasPagTieneVivos(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
 		//esperar tiempo definido por arch de config
 		SleepMemoria(RETARDO_MEMORIA);
 		//buscar pagina
 		void* pagina = ContenidoMemoria + MARCO_SIZE * FrameLookup(DATOS[1], DATOS[2]);
-		pthread_mutex_lock( &mutexContenidoMemoria );
+
 		//escribir en pagina
 		memcpy(pagina + DATOS[3],paquete.Payload+(sizeof(uint32_t)*5), DATOS[4]);
 		pthread_mutex_unlock( &mutexContenidoMemoria );
@@ -149,15 +158,18 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 		}
 		result = 1;
 		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
-	} else
+	} else {
+		pthread_mutex_unlock( &mutexContenidoMemoria );
 		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
+	}
 }
 
 void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 	uint32_t result=0;
+	pthread_mutex_lock( &mutexTablaPagina );
 	int32_t cantPaginasPid = cuantasPagTieneVivos(pid);
 	if (cantPagAsignadas + cantPagParaAsignar < MARCOS && cantPaginasPid > 0) {
-		pthread_mutex_lock( &mutexTablaPagina );
+
 		int i;
 		for (i = cantPaginasPid; i < cantPagParaAsignar+cantPaginasPid; i++) {
 			//lo agregamos a la tabla
@@ -172,15 +184,16 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 		result = 1;
 		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
 	} else {
+		pthread_mutex_unlock( &mutexTablaPagina );
 		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
 	}
 }
 
 void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
 	uint32_t result=0;
-
+	pthread_mutex_lock( &mutexTablaPagina );
 	if(cuantasPagTieneVivos(pid) > 0) {
-		pthread_mutex_lock( &mutexTablaPagina );
+
 		cantPagAsignadas--;
 		TablaDePagina[FrameLookup(pid, numPag)].disponible=true;
 		pthread_mutex_unlock( &mutexTablaPagina );
@@ -193,18 +206,21 @@ void LiberarPaginas(uint32_t pid, uint32_t numPag, int socketFD) {
 		pthread_mutex_unlock( &mutexTablaCache );
 		result =1;
 		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
-	} else
+	} else {
+		pthread_mutex_unlock( &mutexTablaPagina );
 		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
+	}
 }
 
 void FinalizarPrograma(uint32_t pid, int socketFD) {
 	printf("\nFinalizando programa %u\n", pid);
 	uint32_t result=0;
+	pthread_mutex_lock( &mutexTablaPagina );
 	uint32_t cantPag = cuantasPagTieneVivos(pid);
 	if(cantPag > 0) {
 
 		uint32_t i;
-		pthread_mutex_lock( &mutexTablaPagina );
+
 		pthread_mutex_lock( &mutexTablaCache );
 		for(i=0; i < cantPag; i++){
 			TablaDePagina[FrameLookup(pid, i)].disponible=true;
@@ -219,8 +235,10 @@ void FinalizarPrograma(uint32_t pid, int socketFD) {
 		pthread_mutex_unlock( &mutexTablaPagina );
 		result=1;
 		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
-	} else
+	} else {
+		pthread_mutex_unlock( &mutexTablaPagina );
 		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
+	}
 }
 
 int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {

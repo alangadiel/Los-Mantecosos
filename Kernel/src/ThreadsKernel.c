@@ -133,8 +133,8 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 		pcbRemovido->ExitCode = tipoFinalizacion;
 		list_add(Finalizados->elements, pcbRemovido);
 		//Analizo si el proceso tiene Memory Leaks o no
-		t_list* pagesProcess = list_filter(PaginasPorProceso,
-				LAMBDA(bool _(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}));
+		bool esDelPID(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}
+		t_list* pagesProcess = list_filter(PaginasPorProceso, esDelPID);
 		if(list_size(pagesProcess) > 0)
 		{
 			int i = 0;
@@ -166,6 +166,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 		{
 			pcbRemovido->ExitCode = EXCEPCIONDEMEMORIA;
 		}
+		list_remove_by_condition(PaginasPorProceso, esDelPID);
 		list_destroy_and_destroy_elements(pagesProcess,free);
 	}
 	/*else{
@@ -290,11 +291,14 @@ void dispatcher()
 {
 	while (!planificacion_detenida)
 	{
+		pthread_mutex_lock(&mutexQueueListos);
 		if(queue_size(Listos)==0){
+			pthread_mutex_unlock(&mutexQueueListos);
 			sem_wait(&semDispacherListos);
 		}
 		else
 		{
+			pthread_mutex_unlock(&mutexQueueListos);
 			sem_wait(&semDispatcherCpus);
 			pthread_mutex_lock(&mutexQueueListos);
 			BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
