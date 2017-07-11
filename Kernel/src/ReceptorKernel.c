@@ -183,6 +183,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						int32_t tipoError=0;
 						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar,&tipoError);
 						if(tipoError==0){
+							printf("entra al if despues de solicitar heap");
 							tamDatos = sizeof(uint32_t);
 							void *data = malloc(tamDatos);
 							//(uint32_t*) data) = punteroADevolver;

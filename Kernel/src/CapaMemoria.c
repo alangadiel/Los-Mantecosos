@@ -146,13 +146,14 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 				printf("espacio que quedo disponible: %i\n",nuevaPPP->espacioDisponible);
 
 				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP->nroPagina,cantAReservar,tipoError);
+				printf("volvio de actualizar metadata");
 			}
 			else{
 				*tipoError = NOSEPUEDENASIGNARMASPAGINAS;
 
 			}
 			//Destruyo la lista PagesProcess
-			list_destroy_and_destroy_elements(pagesProcess,free);
+			list_destroy(pagesProcess);
 		}
 	}
 	else{ //Debe finalizar el programa pq quiere reservar mas de lo permitido
