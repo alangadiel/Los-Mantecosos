@@ -14,6 +14,7 @@ void* BloquePrincipal;
 void* ContenidoMemoria;
 int tamanioTotalBytesMemoria;
 int tamEstructurasAdm;
+int MarcosEstructurasAdm;
 int cantPagAsignadas;
 int socketABuscar;
 t_list* tablaCacheRastro;
@@ -41,7 +42,14 @@ void obtenerValoresArchivoConfiguracion() {
 
 void InicializarTablaDePagina() {
 	uint32_t i;
-	for(i=0;i<MARCOS;i++){
+
+	for(i=0;i<MarcosEstructurasAdm;i++){
+		TablaDePagina[i].Frame = i;
+		TablaDePagina[i].PID = -1;
+		TablaDePagina[i].Pag = i;
+		TablaDePagina[i].disponible = false;
+	}
+	for(i=MarcosEstructurasAdm;i<MARCOS;i++){
 		TablaDePagina[i].Frame = i;
 		TablaDePagina[i].PID = 0;
 		TablaDePagina[i].Pag = 0;
@@ -56,9 +64,10 @@ int main(void) {
 	tablaCacheRastro = list_create();
 
 	tamEstructurasAdm = sizeof(RegistroTablaPaginacion) * MARCOS;
-	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE) + tamEstructurasAdm;
+	MarcosEstructurasAdm = roundUp(tamEstructurasAdm, MARCO_SIZE);
+	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE);// + tamEstructurasAdm;
 	BloquePrincipal = malloc(tamanioTotalBytesMemoria); //Reservo toda mi memoria
-	ContenidoMemoria = BloquePrincipal + tamEstructurasAdm; //guardo el puntero donde empieza el contenido
+	ContenidoMemoria = BloquePrincipal;// + MarcosEstructurasAdm * MARCO_SIZE; //guardo el puntero donde empieza el contenido
 	cantPagAsignadas = 0;
 
 	InicializarTablaDePagina();
@@ -74,7 +83,9 @@ int main(void) {
 	list_destroy_and_destroy_elements(tablaCache, free);
 	list_destroy_and_destroy_elements(tablaCacheRastro, free);
 	free(BloquePrincipal); free(IP); free(REEMPLAZO_CACHE);
+	pthread_mutex_destroy(&mutexTablaPagina);
+	pthread_mutex_destroy(&mutexTablaCache);
+	pthread_mutex_destroy(&mutexContenidoMemoria);
 
-	exit(3); //TODO: ¿Esto va? Se supone que termina todos los hilos del proceso.
 	return 0;
 }

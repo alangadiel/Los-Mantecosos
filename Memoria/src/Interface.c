@@ -145,10 +145,16 @@ void dumpMemoryStruct() {
 		pthread_mutex_lock( &mutexTablaPagina );
 		RegistroTablaPaginacion reg = TablaDePagina[i];
 		pthread_mutex_unlock( &mutexTablaPagina );
-		if(reg.PID!=0){
-			printf("Frame: %i, PID: %i, Pagina: %i, Disponible: %i\n", reg.Frame, reg.PID, reg.Pag, reg.disponible);
-			fprintf(file, "Frame: %i, PID: %i, Pagina: %i, Disponible: %i\n", reg.Frame, reg.PID, reg.Pag, reg.disponible);
-		}
+		//if(reg.PID!=0){
+			if(reg.disponible) {
+				printf("Frame: %i, PID: %i, Pagina: %i, Estado: Disponible\n", reg.Frame, reg.PID, reg.Pag);
+				fprintf(file, "Frame: %i, PID: %i, Pagina: %i, Estado: Disponible\n", reg.Frame, reg.PID, reg.Pag);
+			} else {
+				printf("Frame: %i, PID: %i, Pagina: %i, Estado: Ocupado\n", reg.Frame, reg.PID, reg.Pag);
+				fprintf(file, "Frame: %i, PID: %i, Pagina: %i, Estado: Ocupado\n", reg.Frame, reg.PID, reg.Pag);
+			}
+
+		//}
 	}
 	fclose(file);
 }
