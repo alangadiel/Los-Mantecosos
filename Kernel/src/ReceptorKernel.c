@@ -208,12 +208,25 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					case ABRIRARCHIVO:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						printf("El archivo fue abierto\n");
+
 						permisosArchivo permisos;
-						/*permisos.creacion = *((bool*)paquete->Payload+sizeof(uint32_t) * 2);
-						permisos.escritura = *((bool*)paquete->Payload+sizeof(uint32_t) * 3);
-						permisos.lectura = *((bool*)paquete->Payload+sizeof(uint32_t) * 4);*/
+						/*permisos.creacion = *(bool*)(paquete->Payload+sizeof(uint32_t) * 2);
+						permisos.escritura = *(bool*)(paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool));
+						permisos.lectura = *(bool*)(paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 2);*/
 						AbrirArchivo a = *(AbrirArchivo*)paquete->Payload;
 
+						permisos.creacion = a.creacion;
+						permisos.escritura = a.escritura;
+						permisos.lectura = a.lectura;
+
+						if(permisos.creacion)
+							printf("creacion true");
+
+						if(permisos.escritura)
+							printf("escritura true");
+
+						if(permisos.lectura)
+						printf("lectura true");
 						printf("La ruta de archivo es %s \n", ((char*)(paquete->Payload+sizeof(AbrirArchivo))));
 
 						char* path = string_new();

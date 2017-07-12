@@ -235,6 +235,21 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 	{
 		archivoProceso* archivoProc = (archivoProceso*)result;
 
+		printf("\nel FD de archivoProc es %d", archivoProc->FD);
+		printf("\nel PID de archivoProc es %d", archivoProc->PID);
+		printf("\nel globalFD de archivoProc es %d", archivoProc->globalFD);
+
+		if(archivoProc->flags == NULL)
+		{
+			printf("\nel flag lectura de archivoProc es NULL");
+		}
+		else
+		{
+			printf("\n el flag de archivoProc no es NULL");
+		}
+
+
+
 		if(archivoProc->flags.lectura == true)
 		{
 			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
