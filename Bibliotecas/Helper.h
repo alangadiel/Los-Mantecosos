@@ -37,6 +37,15 @@ typedef struct {
  bool isFree;
 }__attribute__((packed)) HeapMetadata;
 
+typedef struct
+{
+	uint32_t abrir;
+	uint32_t pid;
+	bool lectura;
+	bool escritura;
+	bool creacion;
+}__attribute__((packed)) AbrirArchivo;
+
 typedef struct {
 	uint32_t NumeroDePagina;
 	uint32_t Offset; //Desplazamiento

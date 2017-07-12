@@ -16,27 +16,14 @@ void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos){
 /*Al ejecutar la última sentencia, el CPU deberá notificar al Kernel que el proceso finalizó para que este
 se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
 
-typedef struct
-{
-	uint32_t abrir;
-	uint32_t pid;
-	t_banderas banderas;
-}AbrirArchivo;
-
 t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags, int32_t *tipoError){
-	//TODO: Programar en kernel para que abra el archivo
 	int tamDatos = sizeof(AbrirArchivo)+string_length(direccion)+1;
 	AbrirArchivo* datos = malloc(tamDatos);
-	/*((uint32_t*) datos)[0] = ABRIRARCHIVO;
-	((uint32_t*) datos)[1] = pcb.PID;
-	((uint32_t*) datos)[2] =flags.creacion;
-	((bool*) datos)[3] =flags.escritura;
-	((bool*) datos)[4] =flags.lectura;
-
-	*(datos+2)*/
 
 	datos->abrir = ABRIRARCHIVO;
-	datos->banderas = flags;
+	datos->creacion = flags.creacion;
+	datos->escritura = flags.escritura;
+	datos->lectura = flags.lectura;
 	datos->pid = pcb.PID;
 
 	memcpy(datos+sizeof(AbrirArchivo), direccion, string_length(direccion)+1);

@@ -173,8 +173,8 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 		}
 		else
 		{
-			//TODO: Avisarle a la CPU que termino
 			*tipoError = ACCEDERAARCHIVOINEXISTENTE;
+			EnviarDatosTipo(socketConectado, KERNEL, tipoError, sizeof(uint32_t), ESERROR);
 		}
 	}
 
