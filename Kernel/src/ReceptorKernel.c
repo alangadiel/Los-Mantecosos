@@ -79,7 +79,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}
 						VariableCompartida* sharedVar = list_find(VariablesCompartidas,buscarSharedVar);
 						pthread_mutex_unlock(&mutexVariablesCompartidas);
-						printf("Variable compartida encontrada :%s\n",sharedVar->nombreVariableGlobal);
+						printf("Variable compartida encontrada: %s y su valor es: %i \n",sharedVar->nombreVariableGlobal,sharedVar->valorVariableGlobal);
 
 						//Devuelvo a la cpu el valor de la variable compartida
 						tamDatos = sizeof(int32_t);
@@ -124,7 +124,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 						if(semaforoEncontrado != NULL)
 						{
-							printf("entro al if de esWait\n");
 							semaforoEncontrado->valorSemaforo--;
 							//semaforoAVerificar = malloc(sizeof(Semaforo));
 							semaforoAVerificar = *semaforoEncontrado;
@@ -159,6 +158,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_lock(&mutexQueueBloqueados);
 								BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == *pidDesbloqueadoDeLaColaDelSem; }));
 								//pcbDesbloqueado->ProgramCounter++;
+								printf("Pcb desbloqueado : %u\n",pcbDesbloqueado->PID);
 								pthread_mutex_unlock(&mutexQueueBloqueados);
 
 								Evento_ListosAdd();
@@ -301,7 +301,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 			case ESPCBWAIT:
 				if(strcmp(paquete->header.emisor, CPU) == 0)
 				{
-					printf("entro a esPCBWAIT\n");
 					pthread_mutex_lock(&mutexCPUsConectadas);
 					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
 					cpuActual->isFree = true;
@@ -311,8 +310,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					pthread_mutex_unlock(&mutexQueueEjecutando);
 					if(pcb!=NULL){
 						RecibirPCB(pcb, paquete->Payload, paquete->header.tamPayload,KERNEL);
-						printf("entro al if de esPCBWAIT\n");
-						printf("valor semaforo dsps de decrementar %i",semaforoAVerificar.valorSemaforo);
+						printf("Valor semaforo dsps de decrementar %i\n",semaforoAVerificar.valorSemaforo);
 						if (semaforoAVerificar.valorSemaforo < 0)
 						{ //se bloquea
 							printf("Se va a bloquear el proceso\n");
@@ -375,6 +373,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							BloqueControlProceso* pcbEjecutado = list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
 								return ((BloqueControlProceso*)item)->PID == pcb->PID;
 							}));
+							pthread_mutex_unlock(&mutexQueueEjecutando);
 							if(pcbEjecutado!=NULL){
 								Evento_ListosAdd();
 								pthread_mutex_lock(&mutexQueueListos);
@@ -382,7 +381,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_unlock(&mutexQueueListos);
 
 							}
-							pthread_mutex_unlock(&mutexQueueEjecutando);
 						}
 						sem_post(&semDispatcherCpus);
 					} else

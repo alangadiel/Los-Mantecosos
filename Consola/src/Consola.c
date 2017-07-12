@@ -150,7 +150,6 @@ void endProgram(structProceso* sp) {
 
 	Paquete nuevoPaquete;
 	while(RecibirPaqueteCliente(sp->socket, CONSOLA, &nuevoPaquete)<0);
-	free(sp);
 
 	if(nuevoPaquete.header.tipoMensaje==ESSTRING){
 		if(strcmp(nuevoPaquete.header.emisor,KERNEL)==0){
@@ -161,6 +160,7 @@ void endProgram(structProceso* sp) {
 			}
 		}
 	}
+	free(sp);
 	free(nuevoPaquete.Payload);
 }
 
@@ -198,9 +198,7 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 		if (strcmp(command, "start_program") == 0) {
 			scanf("%s", parametro);
 			startProgram(parametro);
-		} else if (strcmp(command, "end_program") == 0) {
-
-
+		} else if (strcmp(command, "kill_program") == 0) {
 			scanf("%s", parametro);
 			uint32_t pid = atoi(parametro);
 			structProceso* sp = (structProceso*)list_find(listaProcesos,LAMBDA(bool _(void* item) { return ((structProceso*)item)->pid == pid; }));

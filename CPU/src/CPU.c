@@ -45,7 +45,12 @@ AnSISOP_kernel kernel_functions = {
 	.AnSISOP_signal = primitiva_signal,
 	.AnSISOP_wait = primitiva_wait
 };
-
+void sleepCpu(uint32_t milliseconds){
+	struct timespec ts;
+	ts.tv_sec = milliseconds / 1000;
+	ts.tv_nsec = (milliseconds % 1000) * 1000000;
+	nanosleep(&ts, NULL);
+}
 void obtenerValoresArchivoConfiguracion(){
 	t_config* arch = config_create("ArchivoConfiguracion.txt");
 	IP_KERNEL = string_duplicate(config_get_string_value(arch, "IP_KERNEL"));
@@ -183,9 +188,10 @@ int main(void) {
 				int i=0;
 				progTerminado = false;
 				primitivaWait = false;
+				huboError = false;
 				while(!primitivaWait && !huboError && !progTerminado) {
 					if(pcb.cantidadDeRafagasAEjecutar > 0 && i >= pcb.cantidadDeRafagasAEjecutar) break;
-
+					sleepCpu(QuantumSleep);
 					RegIndiceCodigo* registro = list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 					char instruccion[registro->offset];
 					obtenerLineaAEjecutar(instruccion, registro);

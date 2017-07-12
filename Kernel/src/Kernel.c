@@ -22,8 +22,13 @@ void agregarValorSemaforo(char* item) {
 }
 
 void agregarSharedVar(char* item) {
-	VariableCompartida* nuevaVar = malloc(sizeof(VariablesCompartidas));
-	nuevaVar->nombreVariableGlobal = item;
+	VariableCompartida* nuevaVar = malloc(sizeof(VariableCompartida));
+	int i ;
+	for(i=0;i<string_length(item); i++){
+		if(item[i]==']')
+			item[i]='\0';
+	}
+	nuevaVar->nombreVariableGlobal =  string_duplicate(item);
 	nuevaVar->valorVariableGlobal=0;
 	list_add(VariablesCompartidas,nuevaVar);
 }

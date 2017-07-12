@@ -1,6 +1,7 @@
 #include "SocketsL.h"
 uint32_t TamanioPaginaMemoria;
 uint32_t StackSizeEnPaginas;
+uint32_t QuantumSleep;
 
 void Servidor(char* ip, int puerto, char nombre[11],
 		void (*accion)(Paquete* paquete, int socketFD),
@@ -248,7 +249,8 @@ void RecibirHandshake_DeKernel(int socketFD, char emisor[11]){
 				if(strcmp(paquete->header.emisor, KERNEL) == 0){
 					paquete->Payload = malloc(paquete->header.tamPayload);
 					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
-					StackSizeEnPaginas = *((uint32_t*)paquete->Payload);
+					StackSizeEnPaginas = ((uint32_t*)paquete->Payload)[0];
+					QuantumSleep = ((uint32_t*)paquete->Payload)[1];
 					free(paquete->Payload);
 				}
 		} else

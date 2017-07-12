@@ -94,6 +94,7 @@ typedef struct {
 } structHilo;
 
 extern uint32_t StackSizeEnPaginas;
+extern uint32_t QuantumSleep;
 extern uint32_t TamanioPaginaMemoria;
 
 void Servidor(char* ip, int puerto, char nombre[11],
