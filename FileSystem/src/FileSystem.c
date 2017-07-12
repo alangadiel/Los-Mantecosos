@@ -135,8 +135,6 @@ void armarPath(char** path){
 
 	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
 	{
-		char c = (*path)[hasta];
-		bool b = (*path)[hasta] == '\n';
 		hasta++;
 	}
 

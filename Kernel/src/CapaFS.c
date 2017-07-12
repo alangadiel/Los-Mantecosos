@@ -8,21 +8,55 @@
 
 
 
+void armarPath(char** path)
+{
+	int finWhile = 0;
+	int hasta = 0;
+	char* subsrt;
+
+	string_trim(path);
+
+	printf("el path con trim es %s", *path);
+
+	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
+	{
+		hasta++;
+	}
+
+	subsrt = string_substring_until(*path, hasta);
+	printf("substring es %s", subsrt);
+	string_append(&subsrt, ".bin");
+	printf("y con .bin", subsrt);
+	free(*path);
+
+	*path = string_duplicate(subsrt);
+
+	free(subsrt);
+}
+
+
 uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
 {
 	void* result = NULL;
 
-	result = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == path; }));
+	armarPath(&path);
 
-	archivoGlobal* archivoGlob = malloc(sizeof(archivoGlobal)); //El free se hace en limpiar listas
+	result = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, path) == 0; }));
+
+	archivoGlobal* archivoGlob = malloc(sizeof(uint32_t) + string_length(path) + 1); //El free se hace en limpiar listas
 	archivoProceso* archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
 
 	if(result == NULL) //No hay un archivo global con ese path
 	{
-		archivoGlob->pathArchivo = path;
+		archivoGlob->pathArchivo = string_new();
+
+		string_append(&archivoGlob->pathArchivo, path);
 		archivoGlob->cantAperturas = 1;
 
 		list_add(ArchivosGlobales, archivoGlob);
+
+		archivoGlobal* a = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, path) == 0; }));
+		printf("el path global es %s", a->pathArchivo);
 	}
 	else
 	{
@@ -131,7 +165,7 @@ void finalizarProgramaCapaFS(int PID)
 		{
 			archivoProceso* archivoProc = (archivoProceso*)list_get(listaProcesoAFinalizar, j);
 
-			archivoGlobal* archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD - 3);
+			archivoGlobal* archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
 
 			archivoGlob->cantAperturas--;
 
@@ -141,7 +175,7 @@ void finalizarProgramaCapaFS(int PID)
 			}
 			else
 			{
-				list_replace(ArchivosGlobales, archivoProc->globalFD - 3, archivoGlob);
+				list_replace(ArchivosGlobales, archivoProc->globalFD, archivoGlob);
 			}
 		}
 
@@ -203,7 +237,8 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
 
 		if(archivoProc->flags.lectura == true)
 		{
-			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD); //El -3 es porque los FD empiezan desde 3
+			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
+			printf("el path del global es %s", archGlob->pathArchivo);
 
 			void* dato = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, 0, sizeArchivo);
 
