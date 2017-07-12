@@ -13,7 +13,7 @@ void armarPath(char** path)
 	int finWhile = 0;
 	int hasta = 0;
 	char* subsrt;
-
+	printf("estoy aca");
 	string_trim(path);
 
 	printf("el path con trim es %s", *path);
@@ -26,7 +26,7 @@ void armarPath(char** path)
 	subsrt = string_substring_until(*path, hasta);
 	printf("substring es %s", subsrt);
 	string_append(&subsrt, ".bin");
-	printf("y con .bin", subsrt);
+	printf(" y con .bin %s", subsrt);
 	free(*path);
 
 	*path = string_duplicate(subsrt);
@@ -71,7 +71,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permis
 		{
 			archivoGlobal* arch = (archivoGlobal*)list_get(ArchivosGlobales, i);
 
-			if(arch->pathArchivo == path)
+			if(strcmp(arch->pathArchivo, path) == 0)
 			{
 				indice = i;
 			}
@@ -101,7 +101,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permis
 	{
 		archivoGlobal* arch = list_get(ArchivosGlobales, j);
 
-		if(arch->pathArchivo == path)
+		if(strcmp(arch->pathArchivo, path) == 0)
 		{
 			indice = j;
 		}
@@ -208,7 +208,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 		else
 		{
 			*tipoError = ACCEDERAARCHIVOINEXISTENTE;
-			EnviarDatosTipo(socketConectado, KERNEL, tipoError, sizeof(uint32_t), ESERROR);
+			EnviarDatosTipo(socketConectado, KERNEL, tipoError, sizeof(int32_t), ESERROR);
 		}
 	}
 
@@ -216,7 +216,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 }
 
 
-void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo)
+void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punteroArchivo)
 {
 	void* result = NULL;
 	int i = 0;

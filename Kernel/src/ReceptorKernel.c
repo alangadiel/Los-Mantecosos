@@ -57,6 +57,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					uint32_t PID;
 					uint32_t FD;
 					uint32_t tamanioArchivo;
+					uint32_t punteroArchivo;
 					void* result;
 					void* datos;
 					int tamDatos;
@@ -215,7 +216,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 						printf("La ruta de archivo es %s \n", ((char*)(paquete->Payload+sizeof(AbrirArchivo))));
 
-						abrirArchivo(((char*)(paquete->Payload+sizeof(uint32_t) * 2 + sizeof(bool) * 3)), PID, permisos, socketConectado,&tipoError);
+						char* path = string_new();
+
+						string_append(&path, ((char*)(paquete->Payload+sizeof(AbrirArchivo))));
+
+						abrirArchivo(path, PID, permisos, socketConectado,&tipoError);
+
+						free(path);
 					break;
 
 					case BORRARARCHIVO:
@@ -258,8 +265,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
+						punteroArchivo = ((uint32_t*)paquete->Payload)[4];
 						printf("Se va a leer el PID %d y FD %d", PID, FD);
-						void* datosLeidos = leerArchivo(FD, PID, tamanioArchivo);
+						void* datosLeidos = leerArchivo(FD, PID, tamanioArchivo, punteroArchivo);
 
 						printf("Se leyo %s", datosLeidos);
 					break;

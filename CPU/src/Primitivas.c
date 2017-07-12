@@ -423,12 +423,13 @@ void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informaci
 
 }
 void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio){
-	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo) +sizeof(t_puntero);
+	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo) + sizeof(t_puntero);
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = LEERARCHIVO;
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = descriptor_archivo;
 	((uint32_t*) datos)[3] = tamanio;
+	((uint32_t*) datos)[4] = informacion;
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
