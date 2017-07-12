@@ -76,15 +76,16 @@ bool archivoEsValido(char* pathForValidation) {
 }
 void armarPath(char** path){
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
-	char* subsrt = string_new();
+	string_append(&pathForValidation, "/");
 	int finWhile = 0;
 	int hasta = 0;
+	char* subsrt;
 
 	string_trim(path);
 
 	int i = 0;
 
-	while(i < string_length(*path) && finWhile != 4)
+	/*while(i < string_length(*path) && finWhile != 4)
 	{
 		hasta++;
 
@@ -130,11 +131,16 @@ void armarPath(char** path){
 		}
 
 		i++;
+	}*/
+
+	while(hasta < string_length(*path) && (*path)[hasta] != "\n")
+	{
+		hasta++;
 	}
 
 	subsrt = string_substring_until(*path, hasta);
 
-	string_append(&pathForValidation,subsrt);
+	string_append(&pathForValidation, subsrt);
 	free(*path);
 	*path = string_duplicate(pathForValidation);
 	free(pathForValidation);
