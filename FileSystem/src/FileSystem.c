@@ -133,7 +133,7 @@ void armarPath(char** path){
 		i++;
 	}*/
 
-	while(hasta < string_length(*path) && (*path)[hasta] != "\n")
+	while(hasta < string_length(*path) && strcmp((*path)[hasta], "\n") != 0)
 	{
 		hasta++;
 	}
