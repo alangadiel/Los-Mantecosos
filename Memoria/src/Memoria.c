@@ -68,7 +68,7 @@ int main(void) {
 	tamanioTotalBytesMemoria = (MARCOS * MARCO_SIZE);// + tamEstructurasAdm;
 	BloquePrincipal = malloc(tamanioTotalBytesMemoria); //Reservo toda mi memoria
 	ContenidoMemoria = BloquePrincipal;// + MarcosEstructurasAdm * MARCO_SIZE; //guardo el puntero donde empieza el contenido
-	cantPagAsignadas = 0;
+	cantPagAsignadas = MarcosEstructurasAdm;
 
 	InicializarTablaDePagina();
 
