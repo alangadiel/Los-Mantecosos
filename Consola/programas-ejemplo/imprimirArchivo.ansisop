@@ -2,7 +2,7 @@
 
 begin
 	variables a, b
-	abrir b LC /unArchivo.bin
+	abrir b /unArchivo.bin LC
 	alocar a 200
 	leer b a b 10
 	prints s b

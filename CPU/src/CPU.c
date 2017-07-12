@@ -183,7 +183,7 @@ int main(void) {
 				int i=0;
 				progTerminado = false;
 				primitivaWait = false;
-				while(!primitivaWait && !huboError && !progTerminado) { //TODO sacar i< pcb.cantidadDeRafagasAEjecutar y hacer q finalize en una primitiva
+				while(!primitivaWait && !huboError && !progTerminado) {
 					if(pcb.cantidadDeRafagasAEjecutar > 0 && i >= pcb.cantidadDeRafagasAEjecutar) break;
 
 					RegIndiceCodigo* registro = list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);

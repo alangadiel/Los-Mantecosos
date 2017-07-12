@@ -305,7 +305,7 @@ int RecibirPaqueteServidor(int socketFD, char receptor[11], Paquete* paquete) {
 }
 
 int RecibirPaqueteCliente(int socketFD, char receptor[11], Paquete* paquete) {
-	paquete->Payload = malloc(1);
+	paquete->Payload = NULL;
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0 && paquete->header.tipoMensaje >= 0) { //si no hubo error ni es un handshake
 		paquete->Payload = realloc(paquete->Payload,
@@ -428,13 +428,13 @@ uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path) {
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = VALIDAR_ARCHIVO;
 
-	/*char* destinoPath = datos + sizeof(uint32_t);
-	strcpy(destinoPath, path);*/
 	memcpy(datos + sizeof(uint32_t), path, string_length(path)+1);
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
+
 	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
+	while (RecibirPaqueteCliente(socketFD, KERNEL, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
+
 	free(paquete->Payload);
 	free(paquete);
 	//free(((uint32_t*) datos)[1]);
