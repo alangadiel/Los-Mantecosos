@@ -307,7 +307,7 @@ int RecibirPaqueteServidor(int socketFD, char receptor[11], Paquete* paquete) {
 }
 
 int RecibirPaqueteCliente(int socketFD, char receptor[11], Paquete* paquete) {
-	paquete->Payload = NULL;
+	paquete->Payload = malloc(1);
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0 && paquete->header.tipoMensaje >= 0) { //si no hubo error ni es un handshake
 		paquete->Payload = realloc(paquete->Payload,

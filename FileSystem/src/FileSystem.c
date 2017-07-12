@@ -76,7 +76,7 @@ bool archivoEsValido(char* pathForValidation) {
 }
 void armarPath(char** path){
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
-	string_append(&pathForValidation, "/");
+
 	int finWhile = 0;
 	int hasta = 0;
 	char* subsrt;
@@ -133,16 +133,22 @@ void armarPath(char** path){
 		i++;
 	}*/
 
-	while(hasta < string_length(*path) && strcmp((*path)[hasta], "\n") != 0)
+	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
 	{
+		char c = (*path)[hasta];
+		bool b = (*path)[hasta] == '\n';
 		hasta++;
 	}
 
 	subsrt = string_substring_until(*path, hasta);
 
+	string_append(&subsrt, ".bin");
 	string_append(&pathForValidation, subsrt);
+
 	free(*path);
+
 	*path = string_duplicate(pathForValidation);
+
 	free(pathForValidation);
 	free(subsrt);
 }
