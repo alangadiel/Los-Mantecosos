@@ -47,13 +47,13 @@ char* IP_FS;
 int PUERTO_FS;
 
 int QUANTUM;
-int QUANTUM_SLEEP;
+uint32_t QUANTUM_SLEEP;
 char* ALGORITMO;
 int GRADO_MULTIPROG;
 char** SEM_IDS;
 char** SEM_INIT;
 char** SHARED_VARS;
-int STACK_SIZE;
+uint32_t STACK_SIZE;
 
 void CrearListasYSemaforos() {
 	Nuevos = queue_create();

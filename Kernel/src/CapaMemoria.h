@@ -6,7 +6,7 @@
 
 typedef struct {
 	char* nombreVariableGlobal;
-	uint32_t valorVariableGlobal;
+	int32_t valorVariableGlobal;
 } VariableCompartida;
 
 typedef struct {

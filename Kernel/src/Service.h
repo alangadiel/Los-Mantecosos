@@ -84,13 +84,13 @@ extern char* IP_FS;
 extern int PUERTO_FS;
 
 extern int QUANTUM;
-extern int QUANTUM_SLEEP;
+extern uint32_t QUANTUM_SLEEP;
 extern char* ALGORITMO;
 extern int GRADO_MULTIPROG;
 extern char** SEM_IDS;
 extern char** SEM_INIT;
 extern char** SHARED_VARS;
-extern int STACK_SIZE;
+extern uint32_t STACK_SIZE;
 extern bool planificacion_detenida;
 
 extern sem_t semDispacherListos;

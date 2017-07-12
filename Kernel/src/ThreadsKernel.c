@@ -130,6 +130,19 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 	{
 		printf("\nFinalizando proceso %u \n", pcbRemovido->PID);
 		pcbRemovido->ExitCode = tipoFinalizacion;
+		//Tengo que sacar a ese proceso de la cola de procesos bloqueados en los semaforos
+		int z;
+		for(z=0;z< list_size(Semaforos);z++){
+			Semaforo* sem = list_get(Semaforos,z);
+			if(list_size(Semaforos)> 0){
+				bool buscarProcesoBloqueadoEnSemaforo(void * item){
+					uint32_t* pid=item;
+					return *pid==pcbRemovido->PID;
+				}
+				list_remove_by_condition(sem->listaDeProcesos->elements,buscarProcesoBloqueadoEnSemaforo);
+			}
+		}
+
 		list_add(Finalizados->elements, pcbRemovido);
 		//Analizo si el proceso tiene Memory Leaks o no
 		bool esDelPID(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}
@@ -254,10 +267,17 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 
 				Paquete paquete;
 				paquete.header.tipoMensaje = ESHANDSHAKE;
-				paquete.header.tamPayload = sizeof(uint32_t);
+				paquete.header.tamPayload = sizeof(uint32_t)*2;
 				strcpy(paquete.header.emisor, KERNEL);
-				paquete.Payload=&STACK_SIZE;
+				//((uint32_t*) paquete.Payload)[0] = STACK_SIZE;
+				//((uint32_t*) paquete.Payload)[1] = QUANTUM_SLEEP;
+				void* data = malloc(paquete.header.tamPayload);
+				((uint32_t*) data)[0] = STACK_SIZE;
+				((uint32_t*) data)[1] = QUANTUM_SLEEP;
+				paquete.Payload=data;
+				//paquete.Payload=&STACK_SIZE;
 				EnviarPaquete(socketFD, &paquete);
+				free(data);
 			}
 			else{
 				EnviarHandshake(socketFD, receptor); // paquete->header.emisor
