@@ -49,7 +49,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 		case ESDATOS:
 			if(strcmp(paquete->header.emisor, CPU) == 0)
 			{
-				printf("Tipo operacion : %u\n",*(uint32_t*)paquete->Payload);
+				printf("\nTipo operacion : %u\n",*(uint32_t*)paquete->Payload);
 				switch ((*(uint32_t*)paquete->Payload))
 				{
 					int32_t valorAAsignar;
@@ -219,8 +219,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						permisos.escritura = a.escritura;
 						permisos.lectura = a.lectura;
 
-						printf("La ruta de archivo es %s \n", ((char*)(paquete->Payload+sizeof(AbrirArchivo))));
-
 						char* path = string_new();
 
 						string_append(&path, ((char*)(paquete->Payload+sizeof(AbrirArchivo))));
@@ -254,13 +252,14 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
+
 						//Si el FD es 1, hay que mostrarlo por pantalla
 						if(FD==1){
 							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
 						else{
-							escribirArchivo(FD, PID, tamanioArchivo, ((char*)paquete->Payload+sizeof(uint32_t) * 4));
-							printf("El archivo fue escrito con %s \n", ((char*)paquete->Payload+sizeof(uint32_t) * 4));
+							escribirArchivo(FD, PID, tamanioArchivo, ((void*)paquete->Payload+sizeof(uint32_t) * 4));
+							printf("El archivo fue escrito con %s \n", ((void*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
 					break;
 
@@ -269,7 +268,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
 						punteroArchivo = ((uint32_t*)paquete->Payload)[4];
-						printf("Se va a leer el PID %d y FD %d", PID, FD);
+
 						void* datosLeidos = leerArchivo(FD, PID, tamanioArchivo, punteroArchivo);
 
 						printf("Se leyo %s", datosLeidos);

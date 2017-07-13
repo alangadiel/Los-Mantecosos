@@ -80,8 +80,14 @@ bool archivoEsValido(char* pathForValidation) {
 void armarPath(char** path){
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
 
+	int desde = 0;
 	int hasta = 0;
 	char* subsrt;
+
+	while(desde < string_length(*path) && (*path)[desde] != '/')
+	{
+		desde++;
+	}
 
 	string_trim(path);
 
@@ -90,7 +96,7 @@ void armarPath(char** path){
 		hasta++;
 	}
 
-	subsrt = string_substring_until(*path, hasta);
+	subsrt = string_substring(*path, desde, hasta - desde);
 
 	if(strcmp(string_substring(subsrt, string_length(subsrt) - 4, 4), ".bin") != 0)
 	{

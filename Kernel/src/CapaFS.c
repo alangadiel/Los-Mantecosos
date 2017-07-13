@@ -10,8 +10,14 @@
 
 void armarPath(char** path)
 {
+	int desde = 0;
 	int hasta = 0;
 	char* subsrt;
+
+	while(desde < string_length(*path) && (*path)[desde] != '/')
+	{
+		desde++;
+	}
 
 	string_trim(path);
 
@@ -20,8 +26,13 @@ void armarPath(char** path)
 		hasta++;
 	}
 
-	subsrt = string_substring_until(*path, hasta);
-	string_append(&subsrt, ".bin");
+	subsrt = string_substring(*path, desde, hasta - desde);
+
+	if(strcmp(string_substring(subsrt, string_length(subsrt) - 4, 4), ".bin") != 0)
+	{
+		string_append(&subsrt, ".bin");
+	}
+
 	free(*path);
 
 	*path = string_duplicate(subsrt);
@@ -38,15 +49,17 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permis
 
 	result = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, path) == 0; }));
 
-	archivoGlobal* archivoGlob = malloc(sizeof(uint32_t) + string_length(path) + 1); //El free se hace en limpiar listas
-	archivoProceso* archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
+	archivoGlobal* archivoGlob;
+	archivoProceso* archivoProc;
 
 	if(result == NULL) //No hay un archivo global con ese path
 	{
-		archivoGlob->pathArchivo = string_duplicate(path);
+		archivoGlob = malloc(sizeof(uint32_t) + string_length(path) + 1); //El free se hace en limpiar listas
+		archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
 
-		//string_append(&archivoGlob->pathArchivo, path);
-		printf("el path q le asigne es %s\n", archivoGlob->pathArchivo);
+		archivoGlob->pathArchivo = string_new();
+
+		string_append(&archivoGlob->pathArchivo, path);
 		archivoGlob->cantAperturas = 1;
 
 		list_add(ArchivosGlobales, archivoGlob);
@@ -57,7 +70,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permis
 
 		archivoGlob->cantAperturas++;
 
-		int indice = 0;
+		/*int indice = 0;
 		int i;
 
 		for(i = 0; i < list_size(ArchivosGlobales); i++)
@@ -70,7 +83,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permis
 			}
 		}
 
-		list_replace(ArchivosGlobales, indice, archivoGlob);
+		list_replace(ArchivosGlobales, indice, archivoGlob);*/
 	}
 
 	int i = 0;
@@ -128,7 +141,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permis
 
 		list_add(listaArchivoProceso, archivoProc);
 
-		list_replace(ArchivosProcesos, i-1, listaArchivoProceso);
+		//list_replace(ArchivosProcesos, i-1, listaArchivoProceso);
 	}
 
 	return archivoProc->FD;
@@ -164,7 +177,7 @@ void finalizarProgramaCapaFS(int PID)
 
 			if(archivoGlob->cantAperturas == 0)
 			{
-				list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }), free);
+				list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }), free);
 			}
 			else
 			{
@@ -182,10 +195,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
 
 	uint32_t FD;
-	printf(permisos.lectura == true ? "lectura entro como true al abrirArchivo\n": "lectura entro como false al abrirArchivo\n");
-	printf(permisos.escritura == true ? "escritura entro como true al abrirArchivo\n": "escritura entro como false al abrirArchivo\n");
-	printf(permisos.creacion == true ? "creacion entro como true al abrirArchivo\n": "creacion entro como false al abrirArchivo\n");
-	printf("Archivo creada: %u\n",archivoEstaCreado);
+
 	if(archivoEstaCreado == 1)
 	{
 		FD = cargarEnTablasArchivos(path, PID, permisos);
@@ -198,7 +208,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 		{
 			archivoEstaCreado = FS_CrearPrograma(socketConFS, KERNEL, path);
 			FD = cargarEnTablasArchivos(path, PID, permisos);
-			printf("Se creo el archivo? %d", archivoEstaCreado);
+
 			EnviarDatos(socketConectado, KERNEL, &FD, sizeof(uint32_t));
 		}
 		else
@@ -231,23 +241,9 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 	{
 		archivoProceso* archivoProc = (archivoProceso*)result;
 
-		printf("\nel globalFD de archivoProc es %d", archivoProc->globalFD);
-		printf("\nel size de la global es %d", list_size(ArchivosGlobales));
-
-		archivoGlobal* archGlob;
-
-		archGlob->pathArchivo = string_new();
-		archGlob = (archivoGlobal*)list_get(ArchivosGlobales, 0);
-
-		printf("\nen el indice 0 de archivos globales hay %s", archGlob->pathArchivo);
-		printf("\nen el indice 0 de archivos globales hay %d", archGlob->cantAperturas);
-		printf("\nel FD de archivoProc es %d", archivoProc->FD);
-		printf("\nel PID de archivoProc es %d", archivoProc->PID);
-
 		if(archivoProc->flags.lectura == true)
 		{
 			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
-			printf("\nel path del global es %s", archGlob->pathArchivo);
 
 			void* dato = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, 0, sizeArchivo);
 
@@ -283,32 +279,30 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* 
 
 	if(result != NULL)
 	{
-		archivoProceso* archivoProc = malloc(sizeof(archivoProceso));
-
-		archivoProc = (archivoProceso*)result;
+		archivoProceso* archivoProc = (archivoProceso*)result;
 
 		if(archivoProc->flags.escritura == true)
 		{
-			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->FD - 3); //El -3 es porque los FD empiezan desde 3
+			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
 
 			uint32_t archivoFueEscrito = FS_GuardarDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo, datosAGrabar);
 
 			archivoProc->offsetArchivo += sizeArchivo;
 
-			list_replace(ArchivosProcesos, FD - 3, archivoProc);
-
 			return archivoFueEscrito;
 		}
 		else
 		{
-			free(archivoProc);
-
 			FinalizarPrograma(PID, ESCRIBIRARCHIVOSINPERMISO);
+
+			return 0;
 		}
 	}
 	else
 	{
 		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
+
+		return 0;
 	}
 }
 
@@ -340,13 +334,14 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 
 		if(archivoGlob->cantAperturas == 0)
 		{
-			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }), free);
+			printf("El archivo con path: %s, fue eliminado de la tabla de archivos globales ya que ningun proceso lo tiene abierto\n", archivoGlob->pathArchivo);
+
+			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }), free);
 		}
 	}
 	else
 	{
 		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
 
@@ -382,7 +377,7 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
 
 			if(fueBorrado == 1)
 			{
-				list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->pathArchivo == archivoGlob->pathArchivo; }),free);
+				list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
 			}
 			else
 			{
@@ -393,7 +388,6 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
 	else
 	{
 		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
 
@@ -428,7 +422,6 @@ uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 	else
 	{
 		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
-		//Finalizar ejecucion del proceso, liberar recursos y poner exitCode = -2
 	}
 }
 
