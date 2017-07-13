@@ -51,6 +51,7 @@ int calcularCantidadDeBloques(int tamanio) {
 
 ValoresArchivo* obtenerValoresDeArchivo(char* pathArchivo) {
 	ValoresArchivo* valores = malloc(sizeof(ValoresArchivo));
+	valores->Bloques = list_create();
 	t_config* arch = config_create(pathArchivo);
 	char** Bloques = config_get_array_value(arch, "BLOQUES");
 	valores->Tamanio = config_get_int_value(arch, "TAMANIO");
@@ -58,7 +59,9 @@ ValoresArchivo* obtenerValoresDeArchivo(char* pathArchivo) {
 	if (cantidadBloques == 0) cantidadBloques = 1;
 	int i = 0;
 	for (i = 0; i<cantidadBloques; i++) {
-		list_add(valores->Bloques, Bloques[i]);
+		int* bloque = malloc(sizeof(int));
+		*bloque = atoi(Bloques[i]);
+		list_add(valores->Bloques, bloque);
 	}
 	return valores;
 }
@@ -77,61 +80,10 @@ bool archivoEsValido(char* pathForValidation) {
 void armarPath(char** path){
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
 
-	int finWhile = 0;
 	int hasta = 0;
 	char* subsrt;
 
 	string_trim(path);
-
-	int i = 0;
-
-	/*while(i < string_length(*path) && finWhile != 4)
-	{
-		hasta++;
-
-		if((*path)[i] == '.')
-		{
-			finWhile++;
-		}
-
-		if((*path)[i-1] == '.')
-		{
-			if((*path)[i] == 'b')
-			{
-				finWhile++;
-			}
-			else
-			{
-				finWhile = 0;
-			}
-		}
-
-		if((*path)[i-2] == '.' && (*path)[i-1] == 'b')
-		{
-			if((*path)[i] == 'i')
-			{
-				finWhile++;
-			}
-			else
-			{
-				finWhile = 0;
-			}
-		}
-
-		if((*path)[i-3] == '.' && (*path)[i-2] == 'b' && (*path)[i-1] == 'i')
-		{
-			if((*path)[i] == 'n')
-			{
-				finWhile++;
-			}
-			else
-			{
-				finWhile = 0;
-			}
-		}
-
-		i++;
-	}*/
 
 	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
 	{
@@ -140,7 +92,11 @@ void armarPath(char** path){
 
 	subsrt = string_substring_until(*path, hasta);
 
-	string_append(&subsrt, ".bin");
+	if(strcmp(string_substring(subsrt, string_length(subsrt) - 4, 4), ".bin") != 0)
+	{
+		string_append(&subsrt, ".bin");
+	}
+
 	string_append(&pathForValidation, subsrt);
 
 	free(*path);
@@ -369,7 +325,7 @@ void obtenerDatos(char* pathAObtener, uint32_t offset, uint32_t size, int socket
 	if (validarArchivo(pathAObtener, 0)) {
 		ValoresArchivo* valores = obtenerValoresDeArchivo(pathAObtener);
 		char* datosAEnviar = string_substring(obtenerTodosLosDatosDeBloques(valores), offset, size);
-		EnviarDatos(socketFD,FS,datosAEnviar, sizeof(char) * string_length(datosAEnviar));
+		EnviarDatos(socketFD,FS,datosAEnviar, sizeof(char) * string_length(datosAEnviar) + 1);
 		free(datosAEnviar);
 		free(valores);
 	}
