@@ -113,11 +113,31 @@ void armarPath(char** path){
 		hasta++;
 	}
 
-	subsrt = string_substring(*path, desde, hasta - desde);
+	if(desde != string_length(*path))
+	{
+		subsrt = string_substring(*path, desde, hasta - desde);
+	}
+	else
+	{
+		subsrt = string_substring_until(*path, hasta);
+	}
 
 	if(strcmp(string_substring(subsrt, string_length(subsrt) - 4, 4), ".bin") != 0)
 	{
 		string_append(&subsrt, ".bin");
+	}
+
+	if(subsrt[0] != '/')
+	{
+		char* a = string_new();
+
+		string_append(&a, "/");
+
+		string_append(&a, subsrt);
+
+		subsrt = string_duplicate(a);
+
+		free(a);
 	}
 
 	string_append(&pathForValidation, subsrt);
