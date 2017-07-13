@@ -10,13 +10,10 @@
 
 void armarPath(char** path)
 {
-	int finWhile = 0;
 	int hasta = 0;
 	char* subsrt;
-	printf("estoy aca");
-	string_trim(path);
 
-	printf("el path con trim es %s", *path);
+	string_trim(path);
 
 	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
 	{
@@ -24,9 +21,7 @@ void armarPath(char** path)
 	}
 
 	subsrt = string_substring_until(*path, hasta);
-	printf("substring es %s", subsrt);
 	string_append(&subsrt, ".bin");
-	printf(" y con .bin %s", subsrt);
 	free(*path);
 
 	*path = string_duplicate(subsrt);
@@ -51,12 +46,10 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permis
 		archivoGlob->pathArchivo = string_new();
 
 		string_append(&archivoGlob->pathArchivo, path);
+		printf("el path q le asigne es %s", archivoGlob->pathArchivo);
 		archivoGlob->cantAperturas = 1;
 
 		list_add(ArchivosGlobales, archivoGlob);
-
-		archivoGlobal* a = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, path) == 0; }));
-		printf("el path global es %s", a->pathArchivo);
 	}
 	else
 	{
@@ -235,20 +228,18 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 	{
 		archivoProceso* archivoProc = (archivoProceso*)result;
 
+		printf("\nel globalFD de archivoProc es %d", archivoProc->globalFD);
+		printf("\nel size de la global es %d", list_size(ArchivosGlobales));
+
+		archivoGlobal* archGlob;
+
+		archGlob->pathArchivo = string_new();
+		archGlob = (archivoGlobal*)list_get(ArchivosGlobales, 0);
+
+		printf("\nen el indice 0 de archivos globales hay %s", *archGlob->pathArchivo);
+		printf("\nen el indice 0 de archivos globales hay %d", archGlob->cantAperturas);
 		printf("\nel FD de archivoProc es %d", archivoProc->FD);
 		printf("\nel PID de archivoProc es %d", archivoProc->PID);
-		printf("\nel globalFD de archivoProc es %d", archivoProc->globalFD);
-
-		if(archivoProc->flags == NULL)
-		{
-			printf("\nel flag lectura de archivoProc es NULL");
-		}
-		else
-		{
-			printf("\n el flag de archivoProc no es NULL");
-		}
-
-
 
 		if(archivoProc->flags.lectura == true)
 		{

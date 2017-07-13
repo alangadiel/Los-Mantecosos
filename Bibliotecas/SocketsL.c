@@ -479,6 +479,7 @@ uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path) {
 	return r;
 }
 void* FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset, uint32_t size) {
+	printf("estoy en obtenerdatos");
 	int tamDatos = sizeof(uint32_t) * 3 + sizeof(char) * string_length(path) + 1;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = OBTENER_DATOS;

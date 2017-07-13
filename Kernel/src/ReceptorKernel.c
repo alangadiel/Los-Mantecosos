@@ -219,14 +219,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						permisos.escritura = a.escritura;
 						permisos.lectura = a.lectura;
 
-						if(permisos.creacion)
-							printf("creacion true");
-
-						if(permisos.escritura)
-							printf("escritura true");
-
-						if(permisos.lectura)
-						printf("lectura true");
 						printf("La ruta de archivo es %s \n", ((char*)(paquete->Payload+sizeof(AbrirArchivo))));
 
 						char* path = string_new();
