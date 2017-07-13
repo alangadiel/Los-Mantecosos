@@ -84,12 +84,29 @@ void armarPath(char** path){
 	int hasta = 0;
 	char* subsrt;
 
-	while(desde < string_length(*path) && (*path)[desde] != '/')
+	if((*path)[0] != '/')
 	{
-		desde++;
+		while(desde < string_length(*path) && (*path)[desde] != '/')
+		{
+			desde++;
+		}
 	}
+	/*else
+	{
+		string_trim(&(*path));
 
-	string_trim(path);
+		char* a = string_new();
+
+		string_append(&a, "/");
+
+		string_append(&a, (*path));
+
+		(*path) = string_duplicate(a);
+
+		free(a);
+	}*/
+
+	//string_trim(path);
 
 	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
 	{
