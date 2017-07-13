@@ -189,7 +189,10 @@ uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int so
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
 
 	uint32_t FD;
-
+	printf(permisos.lectura == true ? "lectura entro como true al abrirArchivo\n": "lectura entro como false al abrirArchivo\n");
+	printf(permisos.escritura == true ? "escritura entro como true al abrirArchivo\n": "escritura entro como false al abrirArchivo\n");
+	printf(permisos.creacion == true ? "creacion entro como true al abrirArchivo\n": "creacion entro como false al abrirArchivo\n");
+	printf("Archivo creada: %u\n",archivoEstaCreado);
 	if(archivoEstaCreado == 1)
 	{
 		FD = cargarEnTablasArchivos(path, PID, permisos);
@@ -239,13 +242,13 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 		printf("\nel PID de archivoProc es %d", archivoProc->PID);
 		printf("\nel globalFD de archivoProc es %d", archivoProc->globalFD);
 
-		if(archivoProc->flags == NULL)
+		if(archivoProc->flags.escritura == true)
 		{
-			printf("\nel flag lectura de archivoProc es NULL");
+			printf("\nel flag escritura de archivoProc es true");
 		}
 		else
 		{
-			printf("\n el flag de archivoProc no es NULL");
+			printf("\nel flag escritura de archivoProc es false");
 		}
 
 
