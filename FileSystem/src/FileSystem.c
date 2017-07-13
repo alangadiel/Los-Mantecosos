@@ -202,9 +202,9 @@ void crearBloqueVacio(int idBloque) {
 void crearBloques(t_list* bloques) {
 	int i;
 	for (i = 0; i < list_size(bloques); i++) {
-		int idBloque = (int)list_get(bloques, i);
-		crearBloqueVacio(idBloque);
-		cambiarValorBitmap(idBloque, 1);
+		int* idBloque = list_get(bloques, i);
+		crearBloqueVacio(*idBloque);
+		cambiarValorBitmap(*idBloque, 1);
 	}
 }
 
@@ -230,7 +230,8 @@ void modificarValoresDeArchivo(ValoresArchivo* valoresNuevos, char* path) {
 
 	char* strBloque = string_new();
 	string_append(&strBloque, "BLOQUES=[");
-	string_append(&strBloque, string_itoa((int)list_get(valoresNuevos->Bloques, 0)));
+	int* vn = list_get(valoresNuevos->Bloques, 0);
+	string_append(&strBloque, string_itoa(*vn));
 	int i;
 	for (i = 1; i < list_size(valoresNuevos->Bloques); i++) {
 		string_append(&strBloque, ",");
@@ -250,11 +251,13 @@ ValoresArchivo* reservarBloques(char* path, int tamanioNecesitado, ValoresArchiv
 	t_list* bloquesTotales = list_create();
 	int i;
 	for (i = 0; i < cantidadDeBloquesAReservar; i++) {
-		int posicion = encontrarPrimerBloqueLibre();
-		if (posicion < 0) {
+		int* posicion = malloc(sizeof(int));
+
+		*posicion = encontrarPrimerBloqueLibre();
+		if (*posicion < 0) {
 			return NULL;
 		}
-		list_add(bloquesNuevos, &posicion);
+		list_add(bloquesNuevos, posicion);
 	}
 
 	//list_add_all(bloquesTotales, bloquesViejos);

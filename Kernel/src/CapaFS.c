@@ -10,13 +10,10 @@
 
 void armarPath(char** path)
 {
-	int finWhile = 0;
 	int hasta = 0;
 	char* subsrt;
-	printf("estoy aca");
-	string_trim(path);
 
-	printf("el path con trim es %s", *path);
+	string_trim(path);
 
 	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
 	{
@@ -24,9 +21,7 @@ void armarPath(char** path)
 	}
 
 	subsrt = string_substring_until(*path, hasta);
-	printf("substring es %s", subsrt);
 	string_append(&subsrt, ".bin");
-	printf(" y con .bin %s", subsrt);
 	free(*path);
 
 	*path = string_duplicate(subsrt);
@@ -48,15 +43,13 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permis
 
 	if(result == NULL) //No hay un archivo global con ese path
 	{
-		archivoGlob->pathArchivo = string_new();
+		archivoGlob->pathArchivo = string_duplicate(path);
 
-		string_append(&archivoGlob->pathArchivo, path);
+		//string_append(&archivoGlob->pathArchivo, path);
+		printf("el path q le asigne es %s\n", archivoGlob->pathArchivo);
 		archivoGlob->cantAperturas = 1;
 
 		list_add(ArchivosGlobales, archivoGlob);
-
-		archivoGlobal* a = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, path) == 0; }));
-		printf("el path global es %s", a->pathArchivo);
 	}
 	else
 	{
@@ -238,25 +231,23 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 	{
 		archivoProceso* archivoProc = (archivoProceso*)result;
 
+		printf("\nel globalFD de archivoProc es %d", archivoProc->globalFD);
+		printf("\nel size de la global es %d", list_size(ArchivosGlobales));
+
+		archivoGlobal* archGlob;
+
+		archGlob->pathArchivo = string_new();
+		archGlob = (archivoGlobal*)list_get(ArchivosGlobales, 0);
+
+		printf("\nen el indice 0 de archivos globales hay %s", archGlob->pathArchivo);
+		printf("\nen el indice 0 de archivos globales hay %d", archGlob->cantAperturas);
 		printf("\nel FD de archivoProc es %d", archivoProc->FD);
 		printf("\nel PID de archivoProc es %d", archivoProc->PID);
-		printf("\nel globalFD de archivoProc es %d", archivoProc->globalFD);
-
-		if(archivoProc->flags.escritura == true)
-		{
-			printf("\nel flag escritura de archivoProc es true");
-		}
-		else
-		{
-			printf("\nel flag escritura de archivoProc es false");
-		}
-
-
 
 		if(archivoProc->flags.lectura == true)
 		{
 			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
-			printf("el path del global es %s", archGlob->pathArchivo);
+			printf("\nel path del global es %s", archGlob->pathArchivo);
 
 			void* dato = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, 0, sizeArchivo);
 
