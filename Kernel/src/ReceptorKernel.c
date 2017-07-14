@@ -58,7 +58,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					uint32_t FD;
 					uint32_t tamanioArchivo;
 					uint32_t punteroArchivo;
-					AbrirArchivo* a;
+					char* path;
 					void* result;
 					void* datos;
 					int tamDatos;
@@ -208,24 +208,16 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case ABRIRARCHIVO:
-						a = (AbrirArchivo*)(paquete->Payload + sizeof(uint32_t));
+						PID = ((uint32_t*)paquete->Payload)[1];
 						printf("hola 1");
 
-						permisosArchivo permisos;
-
-						permisos.creacion = a->creacion;
-						permisos.lectura = a->lectura;
-						permisos.escritura = a->escritura;
-
-						PID = a->pid;
+						t_banderas* bandera = (t_banderas*)(paquete->Payload + sizeof(uint32_t) * 2);
 
 						printf("hola 2");
 
-						char* path = string_new();
+						path = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2 + sizeof(t_banderas));
 
-						string_append(&path, ((char*)(paquete->Payload+sizeof(uint32_t)+sizeof(AbrirArchivo))));
-
-						uint32_t abrir = abrirArchivo(path, PID, permisos, socketConectado,&tipoError);
+						uint32_t abrir = abrirArchivo(path, PID, *bandera, socketConectado, &tipoError);
 
 						if(abrir == 0)
 						{

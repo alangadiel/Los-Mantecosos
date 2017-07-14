@@ -17,21 +17,25 @@ void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos){
 se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
 
 t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags, int32_t *tipoError){
-	int tamDatos = sizeof(uint32_t) + sizeof(AbrirArchivo) + string_length(direccion)+1;
+	int tamDatos = sizeof(uint32_t) * 2 + sizeof(t_banderas) + string_length(direccion)+1;
 	void* datos = malloc(tamDatos);
 
-	AbrirArchivo* infoArchivo = malloc(sizeof(AbrirArchivo));
+	t_banderas* bandera = malloc(sizeof(t_banderas));
 
-	infoArchivo->creacion = flags.creacion;
-	infoArchivo->escritura = flags.escritura;
-	infoArchivo->lectura = flags.lectura;
-	infoArchivo->pid = pcb.PID;
+	char* path = string_new();
+	strcpy(path, direccion);
+
+	bandera->creacion = flags.creacion;
+	bandera->escritura = flags.escritura;
+	bandera->lectura = flags.lectura;
 
 	((uint32_t*)datos)[0] = ABRIRARCHIVO;
-	memcpy(datos + sizeof(uint32_t), infoArchivo, sizeof(AbrirArchivo));
-	memcpy(datos + sizeof(uint32_t) + sizeof(AbrirArchivo), direccion, string_length(direccion)+1);
+	((uint32_t*)datos)[1] = pcb.PID;
+	memcpy(datos + sizeof(uint32_t) * 2, bandera, sizeof(t_banderas));
+	memcpy(datos + sizeof(uint32_t) * 2 + sizeof(t_banderas), path, string_length(direccion)+1);
 
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+
 	Paquete paquete;
 
 	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
@@ -45,7 +49,9 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	}
 	else if(paquete.header.tipoMensaje == ESDATOS)
 		r = *((t_descriptor_archivo*)paquete.Payload);
-	free(infoArchivo);
+
+	free(path);
+	free(bandera);
 	free(paquete.Payload);
 	free(datos);
 

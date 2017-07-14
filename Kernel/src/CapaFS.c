@@ -41,7 +41,7 @@ void armarPath(char** path)
 }
 
 
-uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, permisosArchivo permisos)
+uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, t_banderas permisos)
 {
 	void* result = NULL;
 
@@ -190,7 +190,7 @@ void finalizarProgramaCapaFS(int PID)
 }
 
 
-uint32_t abrirArchivo(char* path, uint32_t PID, permisosArchivo permisos, int socketConectado, int32_t* tipoError)
+uint32_t abrirArchivo(char* path, uint32_t PID, t_banderas permisos, int socketConectado, int32_t* tipoError)
 {
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
 
