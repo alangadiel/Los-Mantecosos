@@ -91,22 +91,6 @@ void armarPath(char** path){
 			desde++;
 		}
 	}
-	/*else
-	{
-		string_trim(&(*path));
-
-		char* a = string_new();
-
-		string_append(&a, "/");
-
-		string_append(&a, (*path));
-
-		(*path) = string_duplicate(a);
-
-		free(a);
-	}*/
-
-	//string_trim(path);
 
 	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
 	{
@@ -388,8 +372,8 @@ int obtenerTamanioDeArchivo(char* path) {
 
 void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int socketFD){
 	char* pathAEscribir = string_new();
-	string_append(&pathAEscribir, ARCHIVOSPATH);
-	string_append(&pathAEscribir, path);
+	/*string_append(&pathAEscribir, ARCHIVOSPATH);
+	string_append(&pathAEscribir, path);*/
 	if (validarArchivo(pathAEscribir, 0)) {
 		ValoresArchivo* valores = obtenerValoresDeArchivo(pathAEscribir);
 		int nuevoTamanioDeArchivo;
@@ -466,8 +450,9 @@ void accion(Paquete* paquete, int socketFD){
 			case GUARDAR_DATOS:
 				path = paquete->Payload+sizeof(uint32_t)*3;
 				path = string_duplicate(path);
+				void* buffer = paquete->Payload+sizeof(uint32_t)*3 + string_length(path) + 1;
 				armarPath(&path);
-				guardarDatos(path, datos[1], datos[2],&(datos[4]), socketFD);
+				guardarDatos(path, datos[1], datos[2], buffer, socketFD);
 			break;
 		}
 		free(path);

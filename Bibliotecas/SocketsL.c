@@ -510,14 +510,20 @@ uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, 
 	char* destinoPath = datos + sizeof(uint32_t) *3;
 	strcpy(destinoPath, path);
 
-	void* destinoBuffer2 = datos + sizeof(uint32_t)*3 + string_length(path) + 1;
-	memcpy(destinoBuffer2, buffer, size);
+	printf("Los datos a grabar son %s", buffer);
+
+	void* destinoBuffer = datos + sizeof(uint32_t)*3 + string_length(path) + 1;
+	memcpy(destinoBuffer, buffer, size);
+
+	printf("El path es %s\n", destinoPath);
+	printf("El contenido es %s\n", destinoBuffer);
 
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
-	free(datos);
+
 	Paquete* paquete = malloc(sizeof(Paquete));
 	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
+	free(datos);
 	free(paquete->Payload);
 	free(paquete);
 	return r;
