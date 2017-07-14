@@ -44,7 +44,7 @@ char* obtenerPathABloque(int num) {
 }
 
 int calcularCantidadDeBloques(int tamanio) {
-	int cantidad = ceil(tamanio/TAMANIO_BLOQUES);
+	int cantidad = ceil((double)tamanio/(double)TAMANIO_BLOQUES);
 	if (cantidad == 0) return 1;
 	return cantidad;
 }
@@ -372,8 +372,8 @@ int obtenerTamanioDeArchivo(char* path) {
 
 void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int socketFD){
 	char* pathAEscribir = string_new();
-	/*string_append(&pathAEscribir, ARCHIVOSPATH);
-	string_append(&pathAEscribir, path);*/
+	/*string_append(&pathAEscribir, ARCHIVOSPATH);*/
+	string_append(&pathAEscribir, path);
 	if (validarArchivo(pathAEscribir, 0)) {
 		ValoresArchivo* valores = obtenerValoresDeArchivo(pathAEscribir);
 		int nuevoTamanioDeArchivo;
@@ -415,6 +415,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 		uint32_t r = 0;
 		EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 	}
+
 	free(pathAEscribir);
 }
 
