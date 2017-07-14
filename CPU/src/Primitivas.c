@@ -17,16 +17,19 @@ void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos){
 se ocupe de solicitar la eliminación de las estructuras utilizadas por el sistema*/
 
 t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags, int32_t *tipoError){
-	int tamDatos = sizeof(AbrirArchivo)+string_length(direccion)+1;
-	AbrirArchivo* datos = malloc(tamDatos);
+	int tamDatos = sizeof(uint32_t) + sizeof(AbrirArchivo) + string_length(direccion)+1;
+	void* datos = malloc(tamDatos);
 
-	datos->abrir = ABRIRARCHIVO;
-	datos->creacion = flags.creacion;
-	datos->escritura = flags.escritura;
-	datos->lectura = flags.lectura;
-	datos->pid = pcb.PID;
+	AbrirArchivo a;
 
-	memcpy(datos+sizeof(AbrirArchivo), direccion, string_length(direccion)+1);
+	a.creacion = flags.creacion;
+	a.escritura = flags.escritura;
+	a.lectura = flags.lectura;
+	a.pid = pcb.PID;
+
+	((uint32_t*)datos)[0] = ABRIRARCHIVO;
+	memcpy(datos + sizeof(uint32_t), &a, sizeof(AbrirArchivo));
+	memcpy(datos + sizeof(uint32_t) + sizeof(AbrirArchivo), direccion, string_length(direccion)+1);
 
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	Paquete paquete;
