@@ -99,6 +99,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						pthread_mutex_lock(&mutexVariablesCompartidas);
 						VariableCompartida* sharedvar = list_find(VariablesCompartidas,buscarSharedVar);
 						sharedvar->valorVariableGlobal = valorAAsignar;
+						printf("Se le asigno a %s el valor %u\n", sharedvar->nombreVariableGlobal, sharedvar->valorVariableGlobal);
 						pthread_mutex_unlock(&mutexVariablesCompartidas);
 
 						//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
@@ -146,7 +147,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						if(result != NULL)
 						{
 							Semaforo* semaf = (Semaforo*)result;
-							printf("semafoto encontrado para signal :%s\n",semaf->nombreSemaforo);
+							printf("semaforo encontrado para signal : %s\n",semaf->nombreSemaforo);
 
 							semaf->valorSemaforo++;
 							printf("Valor semaforo: %i\n",semaf->valorSemaforo);
@@ -207,7 +208,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case ABRIRARCHIVO:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						printf("El archivo fue abierto\n");
 
 						permisosArchivo permisos;
 						/*permisos.creacion = *(bool*)(paquete->Payload+sizeof(uint32_t) * 2);
@@ -224,7 +224,16 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						string_append(&path, ((char*)(paquete->Payload+sizeof(AbrirArchivo))));
 						printf("path en el switch: %s",path);
 
-						abrirArchivo(path, PID, permisos, socketConectado,&tipoError);
+						uint32_t abrir = abrirArchivo(path, PID, permisos, socketConectado,&tipoError);
+
+						if(abrir == 0)
+						{
+							printf("El archivo no pudo ser abierto por falta de permisos de creacion\n");
+						}
+						else
+						{
+							printf("El archivo fue abierto\n");
+						}
 					break;
 
 					case BORRARARCHIVO:
@@ -260,6 +269,15 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}
 						else{
 							escribirArchivo(FD, PID, tamanioArchivo, ((void*)paquete->Payload+sizeof(uint32_t) * 4));
+
+							if(abrir == 0)
+							{
+								printf("El archivo no pudo ser abierto por falta de permisos de creacion\n");
+							}
+							else
+							{
+								printf("El archivo fue abierto\n");
+							}
 							printf("El archivo fue escrito con %s \n", ((void*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
 					break;

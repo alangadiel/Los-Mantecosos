@@ -36,7 +36,10 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	t_descriptor_archivo r;
 
 	if(paquete.header.tipoMensaje == ESERROR)
+	{
 		*tipoError = ((int32_t*)paquete.Payload)[0];
+		r = 0;
+	}
 	else if(paquete.header.tipoMensaje == ESDATOS)
 		r = *((t_descriptor_archivo*)paquete.Payload);
 
@@ -366,6 +369,13 @@ t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas f
 	int32_t tipoError = 0;
 
 	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags, &tipoError);
+
+	if(fd == 0)
+	{
+		huboError = true;
+		pcb.ExitCode = tipoError;
+	}
+
 	pcb.cantidadSyscallEjecutadas++;
 	//pcb.ProgramCounter++;
 	return fd;

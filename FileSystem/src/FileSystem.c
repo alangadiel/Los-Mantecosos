@@ -44,7 +44,7 @@ char* obtenerPathABloque(int num) {
 }
 
 int calcularCantidadDeBloques(int tamanio) {
-	int cantidad = ceil(tamanio/TAMANIO_BLOQUES);
+	int cantidad = ceil((double)tamanio/(double)TAMANIO_BLOQUES);
 	if (cantidad == 0) return 1;
 	return cantidad;
 }
@@ -91,33 +91,37 @@ void armarPath(char** path){
 			desde++;
 		}
 	}
-	/*else
-	{
-		string_trim(&(*path));
-
-		char* a = string_new();
-
-		string_append(&a, "/");
-
-		string_append(&a, (*path));
-
-		(*path) = string_duplicate(a);
-
-		free(a);
-	}*/
-
-	//string_trim(path);
 
 	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
 	{
 		hasta++;
 	}
 
-	subsrt = string_substring(*path, desde, hasta - desde);
+	if(desde != string_length(*path))
+	{
+		subsrt = string_substring(*path, desde, hasta - desde);
+	}
+	else
+	{
+		subsrt = string_substring_until(*path, hasta);
+	}
 
 	if(strcmp(string_substring(subsrt, string_length(subsrt) - 4, 4), ".bin") != 0)
 	{
 		string_append(&subsrt, ".bin");
+	}
+
+	if(subsrt[0] != '/')
+	{
+		char* a = string_new();
+
+		string_append(&a, "/");
+
+		string_append(&a, subsrt);
+
+		subsrt = string_duplicate(a);
+
+		free(a);
 	}
 
 	string_append(&pathForValidation, subsrt);
@@ -368,7 +372,7 @@ int obtenerTamanioDeArchivo(char* path) {
 
 void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int socketFD){
 	char* pathAEscribir = string_new();
-	string_append(&pathAEscribir, ARCHIVOSPATH);
+	/*string_append(&pathAEscribir, ARCHIVOSPATH);*/
 	string_append(&pathAEscribir, path);
 	if (validarArchivo(pathAEscribir, 0)) {
 		ValoresArchivo* valores = obtenerValoresDeArchivo(pathAEscribir);
@@ -411,6 +415,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 		uint32_t r = 0;
 		EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 	}
+
 	free(pathAEscribir);
 }
 
@@ -446,8 +451,9 @@ void accion(Paquete* paquete, int socketFD){
 			case GUARDAR_DATOS:
 				path = paquete->Payload+sizeof(uint32_t)*3;
 				path = string_duplicate(path);
+				void* buffer = paquete->Payload+sizeof(uint32_t)*3 + string_length(path) + 1;
 				armarPath(&path);
-				guardarDatos(path, datos[1], datos[2],&(datos[4]), socketFD);
+				guardarDatos(path, datos[1], datos[2], buffer, socketFD);
 			break;
 		}
 		free(path);

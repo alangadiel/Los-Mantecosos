@@ -268,6 +268,8 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* 
 	void* result = NULL;
 	int i = 0;
 
+	printf("Los datos a grabar son %s", datosAGrabar);
+
 	while(i < list_size(ArchivosProcesos) && result == NULL)
 	{
 		t_list* listaProceso = (t_list*)list_get(ArchivosProcesos, i);
