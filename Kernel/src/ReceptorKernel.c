@@ -1,6 +1,21 @@
 #include "ReceptorKernel.h"
 Semaforo semaforoAVerificar;
 void receptorKernel(Paquete* paquete, int socketConectado){
+	int32_t valorAAsignar;
+	char* variableCompartida;
+	uint32_t PID;
+	uint32_t FD;
+	uint32_t tamanioArchivo;
+	uint32_t punteroArchivo;
+	char* path;
+	void* result;
+	void* datos;
+	uint32_t abrir =0;
+	int tamDatos;
+
+	char* nombreSem;
+	uint32_t tamanioAReservar;
+
 	switch(paquete->header.tipoMensaje)	{
 	case ESSTRING:
 		if(strcmp(paquete->header.emisor, CONSOLA) == 0)
@@ -49,23 +64,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 		case ESDATOS:
 			if(strcmp(paquete->header.emisor, CPU) == 0)
 			{
-				printf("\nTipo operacion : %u\n",*(uint32_t*)paquete->Payload);
-				switch ((*(uint32_t*)paquete->Payload))
+				uint32_t tipoOperacion = ((uint32_t*)paquete->Payload)[0];
+				printf("\nTipo operacion : %u\n",tipoOperacion);
+				if(*(uint32_t*)paquete->Payload==ABRIRARCHIVO){
+					printf("\nPid : %u\n",((uint32_t*)paquete->Payload)[1]);
+				}
+				switch (tipoOperacion)
 				{
-					int32_t valorAAsignar;
-					char* variableCompartida;
-					uint32_t PID;
-					uint32_t FD;
-					uint32_t tamanioArchivo;
-					uint32_t punteroArchivo;
-					char* path;
-					void* result;
-					void* datos;
-					int tamDatos;
-
-					char* nombreSem;
-					uint32_t tamanioAReservar;
-
 					case PEDIRSHAREDVAR:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						variableCompartida = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2);
@@ -208,13 +213,14 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case ABRIRARCHIVO:
+						printf("hola 0");
 						PID = ((uint32_t*)paquete->Payload)[1];
+						printf("hola 1");
+						BanderasPermisos* bandera = paquete->Payload + sizeof(uint32_t) * 2;
 
-						t_banderas* bandera = (t_banderas*)(paquete->Payload + sizeof(uint32_t) * 2);
-
-						path = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2 + sizeof(t_banderas));
-
-						uint32_t abrir = abrirArchivo(path, PID, *bandera, socketConectado, &tipoError);
+						path = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2 + sizeof(BanderasPermisos));
+						printf("hola 2");
+						abrir = abrirArchivo(path, PID, *bandera, socketConectado, &tipoError);
 
 						if(abrir == 0)
 						{

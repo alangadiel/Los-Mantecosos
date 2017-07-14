@@ -41,7 +41,7 @@ void armarPath(char** path)
 }
 
 
-uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, t_banderas permisos)
+uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permisos)
 {
 	void* result = NULL;
 
@@ -55,7 +55,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, t_banderas permisos)
 	if(result == NULL) //No hay un archivo global con ese path
 	{
 		archivoGlob = malloc(sizeof(uint32_t) + string_length(path) + 1); //El free se hace en limpiar listas
-		archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
+
 
 		archivoGlob->pathArchivo = string_new();
 
@@ -70,32 +70,18 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, t_banderas permisos)
 
 		archivoGlob->cantAperturas++;
 
-		/*int indice = 0;
-		int i;
-
-		for(i = 0; i < list_size(ArchivosGlobales); i++)
-		{
-			archivoGlobal* arch = (archivoGlobal*)list_get(ArchivosGlobales, i);
-
-			if(strcmp(arch->pathArchivo, path) == 0)
-			{
-				indice = i;
-			}
-		}
-
-		list_replace(ArchivosGlobales, indice, archivoGlob);*/
 	}
 
 	int i = 0;
 
 	result = NULL;
-	t_list* lista;
+	t_list* lista=NULL;
 
 	while(i < list_size(ArchivosProcesos) && result == NULL)
 	{
 		lista = (t_list*)list_get(ArchivosProcesos, i);
-
-		result = (archivoProceso*)list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
+		if(lista!=NULL)
+			result = (archivoProceso*)list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
 
 		i++;
 	}
@@ -115,14 +101,17 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, t_banderas permisos)
 
 	if(result == NULL) //No hay ninguna lista de archivos para ese proceso porque no habia abierto ningun archivo todavia
 	{
+		archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
 		archivoProc->PID = PID;
 		archivoProc->FD = 3;
 		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
 		archivoProc->globalFD = indice;
-
-		t_list* listaArchivoProceso = list_create();
-
+		t_list* listaArchivoProceso;
+		if(lista==NULL)
+			listaArchivoProceso = list_create();
+		else
+			listaArchivoProceso = lista;
 		list_add(listaArchivoProceso, archivoProc);
 
 		list_add(ArchivosProcesos, listaArchivoProceso);
@@ -190,7 +179,7 @@ void finalizarProgramaCapaFS(int PID)
 }
 
 
-uint32_t abrirArchivo(char* path, uint32_t PID, t_banderas permisos, int socketConectado, int32_t* tipoError)
+uint32_t abrirArchivo(char* path, uint32_t PID, BanderasPermisos permisos, int socketConectado, int32_t* tipoError)
 {
 	uint32_t archivoEstaCreado = FS_ValidarPrograma(socketConFS, KERNEL, path);
 

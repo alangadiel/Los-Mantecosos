@@ -39,11 +39,10 @@ typedef struct {
 
 typedef struct
 {
-	uint32_t pid;
 	bool lectura;
 	bool escritura;
 	bool creacion;
-}__attribute__((packed)) AbrirArchivo;
+}__attribute__((packed)) BanderasPermisos;
 
 typedef struct {
 	uint32_t NumeroDePagina;
