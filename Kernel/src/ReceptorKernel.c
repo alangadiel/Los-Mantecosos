@@ -222,6 +222,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						char* path = string_new();
 
 						string_append(&path, ((char*)(paquete->Payload+sizeof(AbrirArchivo))));
+						printf("path en el switch: %s",path);
 
 						abrirArchivo(path, PID, permisos, socketConectado,&tipoError);
 					break;
