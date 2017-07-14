@@ -7,6 +7,11 @@
 #define CREARARCHIVOSINPERMISOS -10
 
 
+typedef struct {
+	t_list* listaArchivo;
+	uint32_t PID;
+} ListaArchivosProceso;
+
 
 void armarPath(char** path)
 {
@@ -56,7 +61,6 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 	{
 		archivoGlob = malloc(sizeof(uint32_t) + string_length(path) + 1); //El free se hace en limpiar listas
 
-
 		archivoGlob->pathArchivo = string_new();
 
 		string_append(&archivoGlob->pathArchivo, path);
@@ -74,14 +78,14 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 
 	int i = 0;
 
-	result = NULL;
-	t_list* lista=NULL;
+	ListaArchivosProceso* lista = NULL;
 
-	while(i < list_size(ArchivosProcesos) && result == NULL)
+	while(i < list_size(ArchivosProcesos))
 	{
-		lista = (t_list*)list_get(ArchivosProcesos, i);
-		if(lista!=NULL)
-			result = (archivoProceso*)list_find(lista, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
+		lista = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
+
+		//if(lista->listaArchivo != NULL)
+			//result = (archivoProceso*)list_find(lista->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
 
 		i++;
 	}
@@ -99,7 +103,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 		}
 	}
 
-	if(result == NULL) //No hay ninguna lista de archivos para ese proceso porque no habia abierto ningun archivo todavia
+	if(lista == NULL) //No hay ninguna lista de archivos para ese proceso porque no habia abierto ningun archivo todavia
 	{
 		archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
 		archivoProc->PID = PID;
@@ -107,18 +111,23 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
 		archivoProc->globalFD = indice;
-		t_list* listaArchivoProceso;
-		if(lista==NULL)
-			listaArchivoProceso = list_create();
-		else
-			listaArchivoProceso = lista;
-		list_add(listaArchivoProceso, archivoProc);
+
+		ListaArchivosProceso* listaArchivoProceso;
+		listaArchivoProceso = malloc(sizeof(listaArchivoProceso));
+
+		listaArchivoProceso->listaArchivo = list_create();
+		listaArchivoProceso->PID = PID;
+
+
+		list_add(listaArchivoProceso->listaArchivo, archivoProc);
 
 		list_add(ArchivosProcesos, listaArchivoProceso);
 	}
 	else //Hay una lista para ese proceso, entonces solo agrego un archivo
 	{
-		archivoProceso* arch = list_get(lista, sizeof(lista)-1);
+		archivoProceso* arch = list_get(lista->listaArchivo, list_size(lista->listaArchivo)-1);
+
+		archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
 
 		archivoProc->PID = PID;
 		archivoProc->FD = arch->FD+1;
@@ -126,9 +135,9 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 		archivoProc->offsetArchivo = 0;
 		archivoProc->globalFD = indice;
 
-		t_list* listaArchivoProceso = (t_list*)list_get(ArchivosProcesos, i-1);
+		ListaArchivosProceso* listaArchivoProceso = lista;
 
-		list_add(listaArchivoProceso, archivoProc);
+		list_add(listaArchivoProceso->listaArchivo, archivoProc);
 
 		//list_replace(ArchivosProcesos, i-1, listaArchivoProceso);
 	}
@@ -254,22 +263,16 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 
 uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* datosAGrabar)
 {
-	void* result = NULL;
+	archivoProceso* archivoProc = NULL;
+	ListaArchivosProceso* listaArchivos = NULL;
 	int i = 0;
 
-	while(i < list_size(ArchivosProcesos) && result == NULL)
+	listaArchivos = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
+
+	archivoProc = (archivoProceso*)list_find(listaArchivos->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+
+	if(archivoProc != NULL)
 	{
-		t_list* listaProceso = (t_list*)list_get(ArchivosProcesos, i);
-
-		result = (archivoProceso*)list_find(listaProceso, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
-
-		i++;
-	}
-
-	if(result != NULL)
-	{
-		archivoProceso* archivoProc = (archivoProceso*)result;
-
 		if(archivoProc->flags.escritura == true)
 		{
 			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
@@ -299,17 +302,11 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* 
 uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 {
 	void* result = NULL;
-	int i = 0;
-	t_list* listaProcesoACerrar;
+	ListaArchivosProceso* listaProcesoACerrar;
 
-	while(i < list_size(ArchivosProcesos) && result == NULL)
-	{
-		listaProcesoACerrar = (t_list*)list_get(ArchivosProcesos, i);
+	listaProcesoACerrar = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
 
-		result = (archivoProceso*)list_find(listaProcesoACerrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
-
-		i++;
-	}
+	result = (archivoProceso*)list_find(listaProcesoACerrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
 
 	if(result != NULL)
 	{
@@ -317,7 +314,7 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 
 		archivoGlobal* archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, procesoACerrar->globalFD);
 
-		list_remove_and_destroy_by_condition(listaProcesoACerrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
+		list_remove_and_destroy_by_condition(listaProcesoACerrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
 		archivoGlob->cantAperturas--;
 
