@@ -16,8 +16,10 @@ typedef struct {
 	int socket;
 	uint32_t pid;
 	pthread_t hilo;
+	char* pathCodigo;
 } structProceso;
 t_list * listaProcesos;
+pthread_mutex_t mutexListaProcesos = PTHREAD_MUTEX_INITIALIZER;
 
 bool existeArchivo(char* path) {
 	return access( path , F_OK ) != -1;
@@ -49,29 +51,27 @@ void sendSignalOpenFile(char* programPath, int socketFD) {
 	else
 		printf("No se encontro el archivo");
 }
-void programHandler(void *programPath) {
-	bool fin = false;
+void programHandler(void* structProc) {
+	structProceso* procesoActual = structProc;
+	bool finPrograma = false;
 	time_t tiempoDeInicio = time(NULL);
 	char* sTiempoDeInicio = temporal_get_string_time();
 	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
+	procesoActual->socket = socketFD;
 	uint32_t pid;
-	sendSignalOpenFile((char*) programPath, socketFD);
+	sendSignalOpenFile(procesoActual->pathCodigo, socketFD);
+	free(procesoActual->pathCodigo);
 	Paquete paquete;
-	while(!fin) {
+	while(!fin && !finPrograma) {
 		while(RecibirPaqueteCliente(socketFD, CONSOLA, &paquete)<0);
 		switch (paquete.header.tipoMensaje) {
 			case ESDATOS:
 				if(strcmp(paquete.header.emisor,KERNEL)==0){
 					pid = *((uint32_t*) paquete.Payload);
 					if(pid >= 1){
-						structProceso* sp = malloc(sizeof(structProceso));
-						sp->pid = pid;
-						sp->socket = socketFD;
-						list_add(listaProcesos,sp);
-
+						procesoActual->pid = pid;
 						printf("El pid del nuevo programa es %d \n",pid);
 					}
-
 				}
 			break;
 			case ESSTRING:
@@ -87,9 +87,15 @@ void programHandler(void *programPath) {
 						free(sTiempoDeInicio);
 						double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
 						printf("La duracion del programa en segundos es de %f\n", diferencia);
+						pthread_mutex_lock( &mutexListaProcesos );
 						list_remove_and_destroy_by_condition(listaProcesos,
-								LAMBDA(bool _(void* elem) { return ((structProceso*)elem)->socket == socketFD; }), free);
-						fin = true;
+							LAMBDA(bool _(void* elem) {
+								//printf("pid: %u\n", ((structProceso*)elem)->pid);
+								return ((structProceso*)elem)->socket == socketFD;
+							}) , free);
+						pthread_mutex_unlock( &mutexListaProcesos );
+
+						finPrograma = true;
 					}
 					else if (strcmp(string_substring_until(paquete.Payload,8),"imprimir") == 0) {
 						printf("%s\n", string_substring_from((char*)paquete.Payload,8));
@@ -97,45 +103,30 @@ void programHandler(void *programPath) {
 					else {
 						  printf("%s\n", (char*)paquete.Payload);
 					}
-
 				}
 			break;
-
 		}
+		free(paquete.Payload);
 	}
-	free(paquete.Payload);
+	printf("programa finalizado\n");
 
-
-	/*int end = 1;
-	int cantMensajes = 0;
-	while (end) {
-		uint32_t datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA,
-				&paquete);
-		while (datosRecibidos <= 0) {
-			datosRecibidos = RecibirPaqueteCliente(socketFD, CONSOLA, &paquete);
-		}
-
-		cantMensajes++;
-		if (strcmp(paquete.Payload, "kill") == 0) {
-			end = 0;
-			time_t tiempoFinalizacion = time(NULL);
-			printf("%s\n", obtenerTiempoString(tiempoDeInicio));
-			printf("%s\n", obtenerTiempoString(tiempoFinalizacion));
-			printf("%d\n", cantMensajes);
-			double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
-			printf("La duracion del programa en segundos es de %f\n",
-					diferencia);
-		} else if (strcmp(paquete.Payload, "imprimir") == 0) {
-			printf("%s\n", (char*)paquete.Payload);
-		}
-	}*/
 }
+void programDestroyer(void* p){
+	structProceso* sp = p;
+	//pthread_join(sp->hilo, NULL);
 
+	free(sp);
+}
 int startProgram(char* programPath) {
 	if (existeArchivo(programPath)) {
-		pthread_t* program = malloc(sizeof(pthread_t));
-		list_add(listaProcesos, program);
-		pthread_create(program, NULL, (void*)programHandler, programPath);
+		structProceso* stProg =  malloc(sizeof(structProceso));
+
+		stProg->pathCodigo = string_duplicate(programPath);
+		//pthread_t* program = malloc(sizeof(pthread_t));
+		pthread_mutex_lock( &mutexListaProcesos );
+		list_add(listaProcesos, stProg);
+		pthread_mutex_unlock( &mutexListaProcesos );
+		pthread_create(&(stProg->hilo), NULL, (void*)programHandler, stProg);
 	}
 	else {
 		printf("No existe el archivo\n");
@@ -147,21 +138,22 @@ void endProgram(structProceso* sp) {
 	//printf("socket: %d\n",sp->socket);
 	//printf("pid: %d\n",sp->pid);
 	EnviarDatosTipo(sp->socket, CONSOLA, &sp->pid, sizeof(uint32_t), KILLPROGRAM);
-
+/*
 	Paquete nuevoPaquete;
 	while(RecibirPaqueteCliente(sp->socket, CONSOLA, &nuevoPaquete)<0);
 
 	if(nuevoPaquete.header.tipoMensaje==ESSTRING){
 		if(strcmp(nuevoPaquete.header.emisor,KERNEL)==0){
-			char* result = (char*)nuevoPaquete.Payload;
+			char* result = nuevoPaquete.Payload;
 			printf("result: %s",result);
 			if (strcmp(result, "KILLEADO") == 0) {
 				printf("Se finalizo el programa N°: %d\n",sp->pid);
 			}
 		}
 	}
-	free(sp);
+	//free(sp);
 	free(nuevoPaquete.Payload);
+	*/
 }
 
 void clean() {
@@ -170,16 +162,21 @@ void clean() {
 
 void killAllPrograms() {
 	int i;
+	pthread_mutex_lock( &mutexListaProcesos );
 	for (i = 0; i < list_size(listaProcesos); i++) {
 		structProceso* proceso = (structProceso*) list_get(listaProcesos, i);
 		endProgram(proceso);
 		free(proceso);
 	}
+	pthread_mutex_unlock( &mutexListaProcesos );
 }
 
 void liberarMemoria() {
+	pthread_mutex_lock( &mutexListaProcesos );
 	list_destroy_and_destroy_elements(listaProcesos, free);
+	pthread_mutex_unlock( &mutexListaProcesos );
 	free(IP_KERNEL);
+	pthread_mutex_destroy( &mutexListaProcesos );
 }
 
 void killConsole() {
@@ -189,25 +186,39 @@ void killConsole() {
 }
 
 void userInterfaceHandler(uint32_t* socketGeneral) {
+	char command[100];
 
 	while (!fin) {
-		char command[100];
-		char parametro[100];
+
 		printf("\nIngrese una orden: \n");
 		scanf("%s", command);
 		if (strcmp(command, "start_program") == 0) {
+			char parametro[500]; //= string_new();
 			scanf("%s", parametro);
 			startProgram(parametro);
+			//free(parametro);
 		} else if (strcmp(command, "kill_program") == 0) {
-			scanf("%s", parametro);
-			uint32_t pid = atoi(parametro);
-			structProceso* sp = (structProceso*)list_find(listaProcesos,LAMBDA(bool _(void* item) { return ((structProceso*)item)->pid == pid; }));
-			if (sp != NULL) {
-				printf("pid a eliminar : %d\n",sp->pid);
-				endProgram(sp);
-			}
-			else {
-				printf("No se reconoce algun programa con ese PID");
+			command[0] = '\0'; //lo vacio
+			scanf("%s", command);
+			long pid = strtol(command, NULL, 10);
+			if (pid != 0 && pid <= (2^32)) {
+				//que sea un numero y que no se pase del max del uint32
+				pthread_mutex_lock( &mutexListaProcesos );
+				structProceso* sp = list_find(listaProcesos,
+					LAMBDA(bool _(void* item) {
+						return ((structProceso*)item)->pid == pid;
+					}));
+				pthread_mutex_unlock( &mutexListaProcesos );
+				if (sp != NULL) {
+					printf("Finalizando programa: %d\n",sp->pid);
+					endProgram(sp);
+				}
+				else {
+					printf("No se reconoce algun programa con ese PID");
+				}
+
+			} else {
+				printf("No se conoce el comando %s\n", command);
 			}
 		} else if (strcmp(command, "disconnect") == 0) {
 			killConsole();
@@ -216,7 +227,9 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 		} else {
 			printf("No se conoce el comando: %s\n", command);
 		}
+
 	}
+	printf("consola finalizada \n");
 }
 
 void sigintHandler(int sig_num)
