@@ -271,10 +271,11 @@ void userInterfaceHandler(void* socketFD) {
 							dumpHeapOfPID(_pid, _pag);
 
 						} else
-							printf("No se conoce el comando %s\n", command);
+							printf("Numero invalido\n");
+
 
 					} else
-						printf("Numero invalido\n");
+						printf("No se conoce el comando %s\n", command);
 
 				} else
 					printf("Numero invalido\n");
@@ -298,10 +299,9 @@ void userInterfaceHandler(void* socketFD) {
 							dumpVariablesOfPID(_pid, _pag);
 
 						} else
-							printf("No se conoce el comando %s\n", command);
-
+							printf("Numero invalido\n");
 					} else
-						printf("Numero invalido\n");
+						printf("No se conoce el comando %s\n", command);
 
 				} else
 					printf("Numero invalido\n");
