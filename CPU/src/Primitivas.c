@@ -25,9 +25,7 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	char* path = string_new();
 	strcpy(path, direccion);
 
-	bandera->creacion = flags.creacion;
-	bandera->escritura = flags.escritura;
-	bandera->lectura = flags.lectura;
+	*bandera = flags;
 
 	((uint32_t*)datos)[0] = ABRIRARCHIVO;
 	((uint32_t*)datos)[1] = pcb.PID;
@@ -36,23 +34,21 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 
-	Paquete paquete;
-
-	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
-
+	Paquete* paquete=malloc(sizeof(Paquete));
+	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	free(path);
 	t_descriptor_archivo r;
 
-	if(paquete.header.tipoMensaje == ESERROR)
+	if(paquete->header.tipoMensaje == ESERROR)
 	{
-		*tipoError = ((int32_t*)paquete.Payload)[0];
+		*tipoError = ((int32_t*)paquete->Payload)[0];
 		r = 0;
 	}
-	else if(paquete.header.tipoMensaje == ESDATOS)
-		r = *((t_descriptor_archivo*)paquete.Payload);
+	else if(paquete->header.tipoMensaje == ESDATOS)
+		r = *((t_descriptor_archivo*)paquete->Payload);
 
-	free(path);
 	free(bandera);
-	free(paquete.Payload);
+	free(paquete);
 	free(datos);
 
 	return r;
