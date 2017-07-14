@@ -209,11 +209,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					case ABRIRARCHIVO:
 						PID = ((uint32_t*)paquete->Payload)[1];
-						printf("hola 1");
 
 						t_banderas* bandera = (t_banderas*)(paquete->Payload + sizeof(uint32_t) * 2);
-
-						printf("hola 2");
 
 						path = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2 + sizeof(t_banderas));
 
@@ -257,10 +254,12 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
 
 						//Si el FD es 1, hay que mostrarlo por pantalla
-						if(FD==1){
+						if(FD == 1)
+						{
 							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
-						else{
+						else
+						{
 							escribirArchivo(FD, PID, tamanioArchivo, ((void*)paquete->Payload+sizeof(uint32_t) * 4));
 
 							if(abrir == 0)
@@ -271,6 +270,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							{
 								printf("El archivo fue abierto\n");
 							}
+
 							printf("El archivo fue escrito con %s \n", ((void*)paquete->Payload+sizeof(uint32_t) * 4));
 						}
 					break;

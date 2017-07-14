@@ -34,9 +34,14 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 
-	Paquete* paquete=malloc(sizeof(Paquete));
+	Paquete* paquete = malloc(sizeof(Paquete));
+
 	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+
+	free(datos);
 	free(path);
+	free(bandera);
+
 	t_descriptor_archivo r;
 
 	if(paquete->header.tipoMensaje == ESERROR)
@@ -47,9 +52,7 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	else if(paquete->header.tipoMensaje == ESDATOS)
 		r = *((t_descriptor_archivo*)paquete->Payload);
 
-	free(bandera);
 	free(paquete);
-	free(datos);
 
 	return r;
 }
