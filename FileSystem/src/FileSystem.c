@@ -154,16 +154,22 @@ int validarArchivo(char* path, int socketFD) {
 }
 
 void cambiarValorBitmap(int posicion, int valor) {
-	bitmapArray[posicion] = valor;
-	int i;
-	FILE* bitmap = fopen(BITMAPFILE, "w+");
-	char* bitmapToWrite = string_new();
-	for(i = 0; i < CANTIDAD_BLOQUES; i++) {
-		string_append(&bitmapToWrite, string_itoa(bitmapArray[i]));
+	if(bitmapArray[posicion] != 1)
+	{
+		bitmapArray[posicion] = valor;
+		int i;
+		FILE* bitmap = fopen(BITMAPFILE, "w+");
+		char* bitmapToWrite = string_new();
+
+		for(i = 0; i < CANTIDAD_BLOQUES; i++) {
+			string_append(&bitmapToWrite, string_itoa(bitmapArray[i]));
+		}
+
+		fputs(bitmapToWrite, bitmap);
+		fclose(bitmap);
+		free(bitmapToWrite);
 	}
-	fputs(bitmapToWrite, bitmap);
-	fclose(bitmap);
-	free(bitmapToWrite);
+
 }
 
 int encontrarPrimerBloqueLibre() {
@@ -223,7 +229,7 @@ void modificarValoresDeArchivo(ValoresArchivo* valoresNuevos) {
 	int i;
 	for (i = 1; i < list_size(valoresNuevos->Bloques); i++) {
 		string_append(&strBloque, ",");
-		string_append(&strBloque, string_itoa((int*)list_get(valoresNuevos->Bloques, i)));
+		string_append(&strBloque, string_itoa(*((int*)list_get(valoresNuevos->Bloques, i))));
 	}
 
 	string_append(&strBloque, "]");
@@ -315,7 +321,6 @@ void crearArchivo(char* path,int socketFD) {
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
 
-		free(nuevosValores);
 		free(nuevoPath);
 		free(pathArray);
 	}
@@ -397,7 +402,7 @@ void reservarBloquesParaEscribir(ValoresArchivo* valoresNuevos) {
 
 	int i;
 
-	for (i = 0; i < cantidadDeBloquesAReservar; i++) {
+	for (i = 0; i < cantidadDeBloquesAReservar - list_size(valoresNuevos->Bloques); i++) {
 		int* posicion = malloc(sizeof(int));
 
 		*posicion = encontrarPrimerBloqueLibre();
@@ -407,8 +412,6 @@ void reservarBloquesParaEscribir(ValoresArchivo* valoresNuevos) {
 			list_add(valoresNuevos->Bloques, posicion);
 		}
 	}
-
-	list_add(listaValoresArchivos, valoresNuevos);
 
 	//list_add_all(bloquesTotales, bloquesViejos);
 	//list_add_all(bloquesTotales, bloquesNuevos);
@@ -444,20 +447,21 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 		valores->Tamanio = nuevoTamanioDeArchivo;
 
 		reservarBloquesParaEscribir(valores);
-		char* datosAEscribir = obtenerTodosLosDatosDeBloques(valores);
+		char* datosAEscribir = string_new();
+		datosAEscribir = buffer;
 		//memcpy(datosActuales, buffer+offset, nuevoTamanioDeArchivo); //puede ser que deba avanzar x2
 
 		int j = 0;
 		int posicion;
 		int sizeParaRestar = size;
 		int desdeEscribir = 0;
-		int lengthEscribir = TAMANIO_BLOQUES - offset;
+		int lengthEscribir = size;
 		char* nombreF = string_new();
 		int i = 0;
 
 		if(size > TAMANIO_BLOQUES - offset)
 		{
-			while(sizeParaRestar != 0)
+			while(sizeParaRestar <= 0)
 			{
 				int* bloqueAEscribir = list_get(valores->Bloques, i);
 
@@ -468,15 +472,25 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 				fseek(file, offset, SEEK_SET);
 
 				char* substr = string_new();
-				substr = string_substring(datosAEscribir, desdeEscribir, lengthEscribir);
+
+				if(lengthEscribir > TAMANIO_BLOQUES)
+				{
+					substr = string_substring(datosAEscribir, desdeEscribir, TAMANIO_BLOQUES);
+
+					sizeParaRestar -= TAMANIO_BLOQUES;
+					desdeEscribir = TAMANIO_BLOQUES - offset;
+					lengthEscribir -= TAMANIO_BLOQUES;
+				}
+				else
+				{
+					substr = string_substring(datosAEscribir, desdeEscribir, lengthEscribir);
+
+					sizeParaRestar -= lengthEscribir;
+				}
 
 				fputs(substr, file);
 
 				fclose(file);
-
-				sizeParaRestar -= string_length(substr);
-				desdeEscribir = TAMANIO_BLOQUES - offset;
-				lengthEscribir = string_length(datosAEscribir) - lengthEscribir;
 
 				offset = 0;
 
@@ -508,7 +522,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 
 		//free(nuevosValores);
 		free(valores);
-		//free(datosActuales);
+		free(datosAEscribir);
 	}
 	else
 	{

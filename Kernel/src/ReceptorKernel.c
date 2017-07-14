@@ -213,13 +213,12 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case ABRIRARCHIVO:
-						printf("hola 0");
 						PID = ((uint32_t*)paquete->Payload)[1];
-						printf("hola 1");
+
 						BanderasPermisos* bandera = paquete->Payload + sizeof(uint32_t) * 2;
 
 						path = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2 + sizeof(BanderasPermisos));
-						printf("hola 2");
+
 						abrir = abrirArchivo(path, PID, *bandera, socketConectado, &tipoError);
 
 						if(abrir == 0)
