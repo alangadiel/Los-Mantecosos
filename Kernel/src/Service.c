@@ -36,6 +36,7 @@ pthread_mutex_t mutexCPUsConectadas = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexSemaforos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexVariablesCompartidas = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexPaginasPorProceso = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexConsolaFD1 = PTHREAD_MUTEX_INITIALIZER;
 
 //Variables archivo de configuracion
 char* IP_PROG;

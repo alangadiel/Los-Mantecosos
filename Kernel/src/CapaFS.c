@@ -222,23 +222,15 @@ uint32_t abrirArchivo(char* path, uint32_t PID, BanderasPermisos permisos, int s
 
 void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punteroArchivo)
 {
-	void* result = NULL;
-	int i = 0;
-	t_list* listaProceso;
+	archivoProceso* archivoProc = NULL;
+	ListaArchivosProceso* listaArchivos = NULL;
 
-	while(i < list_size(ArchivosProcesos) && result == NULL)
+	listaArchivos = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
+
+	archivoProc = (archivoProceso*)list_find(listaArchivos->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+
+	if(archivoProc != NULL)
 	{
-		listaProceso = (t_list*)list_get(ArchivosProcesos, i);
-
-		result = (archivoProceso*)list_find(listaProceso, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
-
-		i++;
-	}
-
-	if(result != NULL)
-	{
-		archivoProceso* archivoProc = (archivoProceso*)result;
-
 		if(archivoProc->flags.lectura == true)
 		{
 			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
@@ -265,7 +257,6 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* 
 {
 	archivoProceso* archivoProc = NULL;
 	ListaArchivosProceso* listaArchivos = NULL;
-	int i = 0;
 
 	listaArchivos = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
 
@@ -301,18 +292,16 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* 
 
 uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 {
-	void* result = NULL;
-	ListaArchivosProceso* listaProcesoACerrar;
+	archivoProceso* archivoProcesoACerrar = NULL;
+	ListaArchivosProceso* listaProcesoACerrar = NULL;
 
 	listaProcesoACerrar = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
 
-	result = (archivoProceso*)list_find(listaProcesoACerrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+	archivoProcesoACerrar = (archivoProceso*)list_find(listaProcesoACerrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
 
-	if(result != NULL)
+	if(archivoProcesoACerrar != NULL)
 	{
-		archivoProceso* procesoACerrar = (archivoProceso*)result;
-
-		archivoGlobal* archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, procesoACerrar->globalFD);
+		archivoGlobal* archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProcesoACerrar->globalFD);
 
 		list_remove_and_destroy_by_condition(listaProcesoACerrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
@@ -323,6 +312,10 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 			printf("El archivo con path: %s, fue eliminado de la tabla de archivos globales ya que ningun proceso lo tiene abierto\n", archivoGlob->pathArchivo);
 
 			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }), free);
+		}
+		else
+		{
+			printf("El archivo con path: %s, fue cerrado. %d proceso/s lo tiene/n abierto\n", archivoGlob->pathArchivo, archivoGlob->cantAperturas);
 		}
 	}
 	else

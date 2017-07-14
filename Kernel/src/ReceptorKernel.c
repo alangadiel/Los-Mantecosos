@@ -261,20 +261,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						//Si el FD es 1, hay que mostrarlo por pantalla
 						if(FD == 1)
 						{
+							pthread_mutex_lock(&mutexConsolaFD1);
 							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
+							pthread_mutex_unlock(&mutexConsolaFD1);
 						}
 						else
 						{
 							escribirArchivo(FD, PID, tamanioArchivo, ((void*)paquete->Payload+sizeof(uint32_t) * 4));
-
-							if(abrir == 0)
-							{
-								printf("El archivo no pudo ser abierto por falta de permisos de creacion\n");
-							}
-							else
-							{
-								printf("El archivo fue abierto\n");
-							}
 
 							printf("El archivo fue escrito con %s \n", ((void*)paquete->Payload+sizeof(uint32_t) * 4));
 						}

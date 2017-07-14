@@ -440,6 +440,7 @@ uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path) {
 	free(paquete->Payload);
 	free(paquete);
 	free(datos);
+
 	return r;
 }
 uint32_t FS_CrearPrograma(int socketFD, char emisor[11], char* path) {
@@ -457,6 +458,7 @@ uint32_t FS_CrearPrograma(int socketFD, char emisor[11], char* path) {
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);
+
 	return r;
 
 }
@@ -475,6 +477,7 @@ uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path) {
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);
+
 	return r;
 }
 void* FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset, uint32_t size) {
@@ -497,6 +500,7 @@ void* FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset
 	else if(paquete->header.tipoMensaje == ESDATOS)
 		r = paquete->Payload;
 	free(paquete);
+
 	return r;
 }
 uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, void* buffer) {//Agregado en el Fe de Erratas, responde 0 si hubo error y 1 si libero la pag.
@@ -508,8 +512,6 @@ uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, 
 
 	char* destinoPath = datos + sizeof(uint32_t) *3;
 	strcpy(destinoPath, path);
-
-	printf("Los datos a grabar son %s", buffer);
 
 	void* destinoBuffer = datos + sizeof(uint32_t) * 3 + string_length(path) + 1;
 	memcpy(destinoBuffer, buffer, size);

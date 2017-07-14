@@ -376,14 +376,14 @@ void obtenerDatos(char* pathAObtener, uint32_t offset, uint32_t size, int socket
 		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, pathAObtener) == 0; }));
 		char* datosAEnviar = string_substring(obtenerTodosLosDatosDeBloques(valores), offset, size);
 
-		EnviarDatos(socketFD,FS,datosAEnviar, sizeof(char) * string_length(datosAEnviar) + 1);
+		EnviarDatos(socketFD, FS, datosAEnviar, sizeof(char) * string_length(datosAEnviar) + 1);
 
 		free(datosAEnviar);
 		free(valores);
 	}
 	else {
 		uint32_t r = 0;
-		EnviarDatosTipo(socketFD, FS, &r, sizeof(uint32_t) , ESERROR);
+		EnviarDatosTipo(socketFD, FS, &r, sizeof(uint32_t), ESERROR);
 	}
 }
 
@@ -425,14 +425,13 @@ void reservarBloquesParaEscribir(ValoresArchivo* valoresNuevos) {
 
 
 void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int socketFD){
-	char* pathAEscribir = string_new();
 	//string_append(&pathAEscribir, ARCHIVOSPATH);
-	string_append(&pathAEscribir, path);
+	//string_append(&pathAEscribir, path);
 
-	if (validarArchivo(pathAEscribir, 0))
+	if (validarArchivo(path, 0))
 	{
-		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, pathAEscribir) == 0; }));
-		//char* datosAEnviar = string_substring(obtenerTodosLosDatosDeBloques(valores), offset, size);
+		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, path) == 0; }));
+
 		int nuevoTamanioDeArchivo;
 
 		if (valores->Tamanio > offset)
@@ -447,8 +446,8 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 		valores->Tamanio = nuevoTamanioDeArchivo;
 
 		reservarBloquesParaEscribir(valores);
-		char* datosAEscribir = string_new();
-		datosAEscribir = buffer;
+		char* datosAEscribir;
+		datosAEscribir = string_duplicate(buffer);
 		//memcpy(datosActuales, buffer+offset, nuevoTamanioDeArchivo); //puede ser que deba avanzar x2
 
 		int j = 0;
@@ -456,16 +455,16 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 		int sizeParaRestar = size;
 		int desdeEscribir = 0;
 		int lengthEscribir = size;
-		char* nombreF = string_new();
+		char* nombreF;
 		int i = 0;
 
 		if(size > TAMANIO_BLOQUES - offset)
 		{
-			while(sizeParaRestar <= 0)
+			while(sizeParaRestar > 0)
 			{
 				int* bloqueAEscribir = list_get(valores->Bloques, i);
 
-				nombreF = obtenerPathABloque(*bloqueAEscribir);
+				nombreF = string_duplicate(obtenerPathABloque(*bloqueAEscribir));
 
 				FILE* file = fopen(nombreF, "w+");
 
@@ -520,17 +519,14 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
 
-		//free(nuevosValores);
-		free(valores);
-		free(datosAEscribir);
+		//free(nombreF);
+		//free(datosAEscribir);
 	}
 	else
 	{
 		uint32_t r = 0;
 		EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 	}
-
-	free(pathAEscribir);
 }
 
 
