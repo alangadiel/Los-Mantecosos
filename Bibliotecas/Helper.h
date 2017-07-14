@@ -39,7 +39,6 @@ typedef struct {
 
 typedef struct
 {
-	uint32_t abrir;
 	uint32_t pid;
 	bool lectura;
 	bool escritura;
