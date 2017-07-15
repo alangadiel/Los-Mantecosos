@@ -193,6 +193,8 @@ BloqueControlProceso* buscarProcesoEnColas(uint32_t pid)
 }
 uint32_t ObtenerOffSetMetadataAnterior(void* datosPagina,uint32_t desplazamiento){
 	HeapMetadata* heapALiberar = datosPagina + desplazamiento - sizeof(HeapMetadata);
+	HeapMetadata* heapAnterior;
+	HeapMetadata* heap;
 	uint32_t offsetAnterior = 0;
 	//if (heapALiberar->size!=TamanioPagina- sizeof(HeapMetadata)) //si no es el unico heap
 	//HeapMetadata* heapAnterior = heapALiberar;
@@ -200,15 +202,18 @@ uint32_t ObtenerOffSetMetadataAnterior(void* datosPagina,uint32_t desplazamiento
 	uint32_t offset = PrimerHeap->size + sizeof(HeapMetadata);
 	while(offset<TamanioPagina-sizeof(HeapMetadata)){
 		//Recorro el HeapMetadata obtenido
-		HeapMetadata* heapAnterior = datosPagina + offsetAnterior;
-		HeapMetadata* heap = datosPagina + offset;
+		 heapAnterior = datosPagina + offsetAnterior;
+		 heap = datosPagina + offset;
 		//Lo leo
 		if(heap==heapALiberar) break;
 		//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
 		offset+=(sizeof(HeapMetadata)+ heap->size);
 		offsetAnterior+=(sizeof(HeapMetadata)+ heapAnterior->size);
 	}
-	return offsetAnterior;
+	if(offset==desplazamiento-sizeof(HeapMetadata))
+		return offsetAnterior;
+	else
+		return TamanioPagina;
 }
 
 void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* tipoError)
@@ -228,7 +233,6 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 	uint32_t offSetMetadataAActualizar = desplazamiento- sizeof(HeapMetadata);
 	//uint32_t sizeBloqueALiberar = *(uint32_t*)(datosPagina+offSetMetadataAActualizar);
 	HeapMetadata* heapMetaAActualizar = datosPagina + offSetMetadataAActualizar;
-	printf("size bloque a liberar: %u\n",heapMetaAActualizar->size);
 	HeapMetadata* heapMetedataAnterior = NULL;
 	uint32_t obtenerOffsetMetadataAnerior = ObtenerOffSetMetadataAnterior(datosPagina, desplazamiento);
 	if(obtenerOffsetMetadataAnerior<TamanioPagina){
@@ -239,13 +243,10 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 	//Me fijo el estado del siguiente Metadata(si esta Free o Used)
 	uint32_t offsetMetadataSiguiente = desplazamiento + heapMetaAActualizar->size;
 	HeapMetadata* heapMetedataSiguiente =datosPagina+offsetMetadataSiguiente;
-	printf("offsetMetadataSiguiente: %u\n", offsetMetadataSiguiente);
 
 	/*if(heapMetedataSiguiente!=NULL)
 		printf("Size bloque siguiente %u\n",heapMetedataSiguiente->size);*/
 	bool resultado;
-	printf("heapMetaAActualizar->size: %u\n", heapMetaAActualizar->size);
-	printf("heapMetedataAnterior->size: %u\n", heapMetedataAnterior->size);
 	if(heapMetedataAnterior != NULL && heapMetedataAnterior->isFree==true) {
 		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
 		//Si esta libre: puedo compactarlos como un metadata solo
@@ -286,7 +287,7 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 			}
 		}
 		pagEncontrada->espacioDisponible += heapMetaAActualizar->size;
-		printf("\nLos bloques de memoria dinámica se liberaron correctamente\n");
+		printf("\nEl bloque de memoria dinámica se liberó correctamente\n");
 
 	}
 	else{
@@ -295,21 +296,21 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 
 }
 
-int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
+bool RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
 {
 	bool encontroOcupado=false;
 	uint32_t offsetOcupado=0;
 	//Recorro hasta encontrar el primer bloque ocupado
 		while(offsetOcupado<TamanioPagina-sizeof(HeapMetadata) && encontroOcupado == false){
 			//Recorro el buffer obtenido
-			HeapMetadata heapMD = *(HeapMetadata*)(datosPagina + offsetOcupado);
-			if(heapMD.isFree==false){
+			HeapMetadata* heapMD = datosPagina + offsetOcupado;
+			if(heapMD->isFree==false){
 				//Si encuentra un metadata free, freno
 				encontroOcupado = true;
 			}
 			else{
 				//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
-				offsetOcupado+=(sizeof(HeapMetadata)+ heapMD.size);
+				offsetOcupado+=(sizeof(HeapMetadata)+ heapMD->size);
 			}
 		}
 	return encontroOcupado;

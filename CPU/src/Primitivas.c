@@ -41,7 +41,7 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
 
 	free(datos);
-	free(path);
+	//free(path);
 	free(bandera);
 
 	t_descriptor_archivo r;

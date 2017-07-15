@@ -120,13 +120,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						nombreSem = string_duplicate(paquete->Payload + sizeof(uint32_t)*2);
 
 						result = NULL;
-						pthread_mutex_lock(&mutexSemaforos);
+
 						bool buscarSemaforo(void* item){
 							Semaforo *sem = item;
 							return strcmp(sem->nombreSemaforo,nombreSem)==0;
 						}
+						pthread_mutex_lock(&mutexSemaforos);
 						Semaforo *semaforoEncontrado = list_find(Semaforos,buscarSemaforo);
-						pthread_mutex_unlock(&mutexSemaforos);
 
 						if(semaforoEncontrado != NULL)
 						{
@@ -134,9 +134,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							//semaforoAVerificar = malloc(sizeof(Semaforo));
 							semaforoAVerificar = *semaforoEncontrado;
 							printf("Semaforo: %s\n",semaforoAVerificar.nombreSemaforo);
+							pthread_mutex_unlock(&mutexSemaforos);
+
 						}
 						else
 						{
+							pthread_mutex_unlock(&mutexSemaforos);
+
 							FinalizarPrograma(PID, ERRORSINDEFINIR);
 						}
 					break;
@@ -147,13 +151,14 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
 						result = list_find(Semaforos,buscarSemaforo);
-						pthread_mutex_unlock(&mutexSemaforos);
 						if(result != NULL)
 						{
 							Semaforo* semaf = (Semaforo*)result;
 							printf("Semaforo encontrado para signal : %s\n",semaf->nombreSemaforo);
 
 							semaf->valorSemaforo++;
+							pthread_mutex_unlock(&mutexSemaforos);
+
 							printf("Valor semaforo despues de signal: %i\n",semaf->valorSemaforo);
 							printf("Cant procesos bloqueados por el semaforo: %u\n",queue_size(semaf->listaDeProcesos));
 							if (semaf->valorSemaforo >= 0 && queue_size(semaf->listaDeProcesos)>0)
@@ -164,19 +169,20 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_lock(&mutexQueueBloqueados);
 								BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == *pidDesbloqueadoDeLaColaDelSem; }));
 								//pcbDesbloqueado->ProgramCounter++;
-								printf("Pcb con %u desbloqueado \n",pcbDesbloqueado->PID);
 								pthread_mutex_unlock(&mutexQueueBloqueados);
+								printf("Pcb con PID: %u desbloqueado \n",pcbDesbloqueado->PID);
 
 								pthread_mutex_lock(&mutexQueueListos);
 								queue_push(Listos, pcbDesbloqueado);
 								pthread_mutex_unlock(&mutexQueueListos);
 								sem_post(&semDispatcherCpus);
 								Evento_ListosAdd();
-
 							}
+
 						}
 						else
 						{
+							pthread_mutex_unlock(&mutexSemaforos);
 							FinalizarPrograma(PID, ERRORSINDEFINIR);
 						}
 
@@ -234,7 +240,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 
-						borrarArchivo(FD, PID);
+						borrarArchivo(FD, PID, socketConFS);
 					break;
 
 					case CERRARARCHIVO:
@@ -376,8 +382,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 				{
 					pthread_mutex_lock(&mutexCPUsConectadas);
 					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
-					cpuActual->isFree = true;
 					pthread_mutex_unlock(&mutexCPUsConectadas);
+					cpuActual->isFree = true;
+
 					pthread_mutex_lock(&mutexQueueEjecutando);
 					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
 					pthread_mutex_unlock(&mutexQueueEjecutando);
@@ -388,7 +395,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						{
 							FinalizarPrograma(pcb->PID,pcb->ExitCode);
 							sem_post(&semDispatcherCpus);
-
 						}
 						else
 						{
@@ -403,8 +409,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_unlock(&mutexQueueListos);
 								sem_post(&semDispatcherCpus);
 								Evento_ListosAdd();
-
-
 							}
 						}
 					} else

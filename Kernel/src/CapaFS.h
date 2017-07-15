@@ -29,7 +29,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 uint32_t abrirArchivo(char* path, uint32_t PID, BanderasPermisos permisos, int socketConectado, int32_t* tipoError);
 void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punteroArchivo);
 uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion);
-uint32_t borrarArchivo(uint32_t FD, uint32_t PID);
+uint32_t borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado);
 void finalizarProgramaCapaFS(int PID);
 t_list* obtenerTablaArchivosDeUnProceso(uint32_t PID);
 t_list* obtenerTablaArchivosGlobales();
