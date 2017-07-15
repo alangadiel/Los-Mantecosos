@@ -42,10 +42,10 @@ void armarPath(char** path)
 
 	*path = string_duplicate(subsrt);
 
-	/*if(strcmp(string_substring_from(*path, string_length(*path) - 8), ".bin.bin") == 0)
+	if(strcmp(string_substring_from(*path, string_length(*path) - 8), ".bin.bin") == 0)
 	{
 		*path = string_substring_until(*path, string_length(*path) - 4);
-	}*/
+	}
 
 	free(subsrt);
 }
@@ -328,43 +328,29 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 }
 
 
-uint32_t borrarArchivo(uint32_t FD, uint32_t PID)
+uint32_t borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 {
-	void* result = NULL;
-	int i = 0;
-	t_list* listaProcesoABorrar;
+	ListaArchivosProceso* listaProcesoABorrar = NULL;
 
-	while(i < list_size(ArchivosProcesos) && result == NULL)
+	listaProcesoABorrar = list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
+
+	if(listaProcesoABorrar != NULL)
 	{
-		listaProcesoABorrar = list_get(ArchivosProcesos, i);
+		archivoProceso* archivoProcesoABorrar = list_find(listaProcesoABorrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
 
-		result = (archivoProceso*) list_find(listaProcesoABorrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+		archivoGlobal* archivoGlob = list_get(ArchivosGlobales, archivoProcesoABorrar->globalFD);
 
-		i++;
-	}
+		list_remove_and_destroy_by_condition(listaProcesoABorrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
-	if(result != NULL)
-	{
-		archivoProceso* procesoABorrar = (archivoProceso*)result;
+		uint32_t fueBorrado = FS_BorrarArchivo(socketConectado, KERNEL, archivoGlob->pathArchivo);
 
-		archivoGlobal* archivoGlob = list_get(ArchivosGlobales, procesoABorrar->globalFD);
-
-		list_remove_and_destroy_by_condition(listaProcesoABorrar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
-
-		archivoGlob->cantAperturas--;
-
-		if(archivoGlob->cantAperturas == 0)
+		if(fueBorrado == 1)
 		{
-			uint32_t fueBorrado = FS_BorrarArchivo(FD, KERNEL, archivoGlob->pathArchivo);
-
-			if(fueBorrado == 1)
-			{
-				list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
-			}
-			else
-			{
-				printf("No se pudo borrar el archivo global con path %s", archivoGlob->pathArchivo);
-			}
+			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
+		}
+		else
+		{
+			printf("No se pudo borrar el archivo global con path %s\n", archivoGlob->pathArchivo);
 		}
 	}
 	else

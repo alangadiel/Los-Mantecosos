@@ -334,9 +334,20 @@ void crearArchivo(char* path,int socketFD) {
 void borrarArchivo(char* pathArchivo , int socketFD) {
 	uint32_t r = 0;
 	if (validarArchivo(pathArchivo, 0)) {
-		ValoresArchivo* valores = obtenerValoresDeArchivo(pathArchivo);
+		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, pathArchivo) == 0; }));
+
+		if(valores == NULL)
+		{
+			valores = obtenerValoresDeArchivo(pathArchivo);
+			valores->path = string_duplicate(pathArchivo);
+
+			list_add(listaValoresArchivos, valores);
+		}
+
 		eliminarBloques(valores->Bloques);
+
 		int removeFile = remove(pathArchivo);
+
 		if (removeFile >= 0 && socketFD != 0) {
 			r = 1;
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
@@ -344,7 +355,8 @@ void borrarArchivo(char* pathArchivo , int socketFD) {
 		else {
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
-		free(valores);
+
+		list_remove_and_destroy_by_condition(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, pathArchivo) == 0; }), free);
 	}
 	else
 	{
