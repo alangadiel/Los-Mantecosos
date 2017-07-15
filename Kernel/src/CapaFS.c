@@ -148,26 +148,28 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 
 void finalizarProgramaCapaFS(int PID)
 {
-	void* result = NULL;
-	int i = 0;
-	t_list* listaProcesoAFinalizar;
+	int indice = 0;
+	ListaArchivosProceso* listaProcesoAFinalizar = NULL;
 
-	while(i < list_size(ArchivosProcesos) && result == NULL)
+	while(indice < list_size(ArchivosProcesos))
 	{
-		listaProcesoAFinalizar = (t_list*)list_get(ArchivosProcesos, i);
+		listaProcesoAFinalizar = list_get(ArchivosProcesos, indice);
 
-		result = (archivoProceso*)list_find(listaProcesoAFinalizar, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
+		if(listaProcesoAFinalizar->PID == PID)
+		{
+			break;
+		}
 
-		i++;
+		indice++;
 	}
 
-	if(result != NULL)
+	if(listaProcesoAFinalizar != NULL)
 	{
 		int j;
 
-		for(j = 0; j < list_size(listaProcesoAFinalizar); j++)
+		for(j = 0; j < list_size(listaProcesoAFinalizar->listaArchivo); j++)
 		{
-			archivoProceso* archivoProc = (archivoProceso*)list_get(listaProcesoAFinalizar, j);
+			archivoProceso* archivoProc = (archivoProceso*)list_get(listaProcesoAFinalizar->listaArchivo, j);
 
 			archivoGlobal* archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
 
@@ -177,13 +179,9 @@ void finalizarProgramaCapaFS(int PID)
 			{
 				list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }), free);
 			}
-			else
-			{
-				list_replace(ArchivosGlobales, archivoProc->globalFD, archivoGlob);
-			}
 		}
 
-		list_remove_and_destroy_element(ArchivosProcesos, i-1, free);
+		list_remove_and_destroy_element(ArchivosProcesos, indice, free);
 	}
 }
 
