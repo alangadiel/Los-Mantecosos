@@ -252,7 +252,6 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 		heapMetedataAnterior->size += heapMetaAActualizar->size + sizeof(HeapMetadata);
 		heapMetedataAnterior->isFree=true;
 		resultado = IM_GuardarDatos(socketConMemoria,KERNEL,pid,nropag,obtenerOffsetMetadataAnerior,sizeof(HeapMetadata),heapMetedataAnterior);
-
 	}
 	else if(heapMetedataSiguiente->isFree==true)
 	{
@@ -287,6 +286,8 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 			}
 		}
 		pagEncontrada->espacioDisponible += heapMetaAActualizar->size;
+		printf("\nLos bloques de memoria dinámica se liberaron correctamente\n");
+
 	}
 	else{
 		*tipoError = EXCEPCIONDEMEMORIA;
