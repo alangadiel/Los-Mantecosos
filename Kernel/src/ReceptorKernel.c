@@ -235,7 +235,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 
-						borrarArchivo(FD, PID, socketConectado);
+						borrarArchivo(FD, PID, socketConFS);
 					break;
 
 					case CERRARARCHIVO:
