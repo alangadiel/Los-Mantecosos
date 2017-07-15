@@ -118,10 +118,7 @@ void Evento_ListosRemove(){
 }
 */
 void Evento_ListosAdd(){
-	//pthread_mutex_lock(&mutexQueueListos);
-	//if(list_size(Listos->elements)==0)
-		sem_post(&semDispacherListos); //como un signal
-	//pthread_mutex_unlock(&mutexQueueListos);
+	sem_post(&semDispacherListos); //como un signal
 }
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos){
 	//Creo el pcb y lo guardo en la lista de nuevos
