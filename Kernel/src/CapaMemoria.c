@@ -295,14 +295,14 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 
 }
 
-int RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
+bool RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
 {
 	bool encontroOcupado=false;
 	uint32_t offsetOcupado=0;
 	//Recorro hasta encontrar el primer bloque ocupado
 		while(offsetOcupado<TamanioPagina-sizeof(HeapMetadata) && encontroOcupado == false){
 			//Recorro el buffer obtenido
-			HeapMetadata heapMD = *(HeapMetadata*)(datosPagina + offsetOcupado);
+			HeapMetadata* heapMD = datosPagina + offsetOcupado;
 			if(heapMD.isFree==false){
 				//Si encuentra un metadata free, freno
 				encontroOcupado = true;
