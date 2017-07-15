@@ -234,10 +234,12 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int s
 
 	pthread_mutex_unlock(&mutexQueueNuevos);
 
-	Evento_ListosAdd();
 	pthread_mutex_lock(&mutexQueueListos);
 	queue_push(Listos, pcb);
 	pthread_mutex_unlock(&mutexQueueListos);
+
+	Evento_ListosAdd();
+
 	printf("El programa %d se cargo en memoria \n",pcb->PID);
 }
 

@@ -210,7 +210,10 @@ int main(void) {
 					if(primitivaWait)
 						EnviarPCB(socketKernel, CPU, &pcb,ESPCBWAIT);
 					else
+					{
 						EnviarPCB(socketKernel, CPU, &pcb,ESPCB);
+					}
+
 					estadoActual.pcb = pcb;
 					estadoActual.ejecutando = false;
 				}
