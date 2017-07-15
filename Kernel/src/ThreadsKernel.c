@@ -147,6 +147,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 		//Analizo si el proceso tiene Memory Leaks o no
 		bool esDelPID(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}
 		t_list* pagesProcess = list_filter(PaginasPorProceso, esDelPID);
+		printf("Cant. paginas del heap : %u\n",pagesProcess->elements_count);
 		if(list_size(pagesProcess) > 0)
 		{
 			int i = 0;
@@ -159,6 +160,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 				{
 					hayEstructurasNoLiberadas = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
 				}
+				i++;
 			}
 			if(hayEstructurasNoLiberadas == true)
 			{
