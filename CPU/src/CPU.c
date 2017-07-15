@@ -167,54 +167,57 @@ int main(void) {
 
 	while(!DesconectarCPU) {
 		Paquete paquete;
-		while (RecibirPaqueteCliente(socketKernel, CPU, &paquete)<=0);
-		switch(paquete.header.tipoMensaje) {
-			/*case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
-				DesconectarCPU = true;
-				progTerminado = true;
-			break;*/
-			case ESTAEJECUTANDO: {
-				int tamDatos = sizeof(uint32_t) +sizeof(bool);
-				void* datos = malloc(tamDatos);
-				memcpy(datos,&estadoActual.ejecutando,sizeof(bool));
-				memcpy(datos+sizeof(bool),&estadoActual.pcb.PID,sizeof(uint32_t));
-				EnviarDatos(socketKernel, CPU, datos, tamDatos);
-			}
-			break;
-			case ESPCB:	{
-				RecibirPCB(&pcb, paquete.Payload,paquete.header.tamPayload, CPU);
-				estadoActual.pcb = pcb;
-				estadoActual.ejecutando = true;
-				int i=0;
-				progTerminado = false;
-				primitivaWait = false;
-				huboError = false;
-				while(!primitivaWait && !huboError && !progTerminado) {
-					if(pcb.cantidadDeRafagasAEjecutar > 0 && i >= pcb.cantidadDeRafagasAEjecutar) break;
-					sleepCpu(QuantumSleep);
-					RegIndiceCodigo* registro = list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
-					char instruccion[registro->offset];
-					obtenerLineaAEjecutar(instruccion, registro);
-					printf("Ejecutando rafaga N°: %u de PID: %u\n", pcb.cantidadDeRafagasEjecutadas, pcb.PID);
-					analizadorLinea(instruccion,&functions,&kernel_functions);
-					pcb.ProgramCounter++;
-					pcb.cantidadDeRafagasEjecutadasHistorica++;
-					pcb.cantidadDeRafagasEjecutadas++;
-					i++;
+		if(RecibirPaqueteCliente(socketKernel, CPU, &paquete)<=0){
+			socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake_DeKernel);
+		} else {
+			switch(paquete.header.tipoMensaje) {
+				/*case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
+					DesconectarCPU = true;
+					progTerminado = true;
+				break;*/
+				case ESTAEJECUTANDO: {
+					int tamDatos = sizeof(uint32_t) +sizeof(bool);
+					void* datos = malloc(tamDatos);
+					memcpy(datos,&estadoActual.ejecutando,sizeof(bool));
+					memcpy(datos+sizeof(bool),&estadoActual.pcb.PID,sizeof(uint32_t));
+					EnviarDatos(socketKernel, CPU, datos, tamDatos);
 				}
-				i=0;
-				// Avisar al kernel que terminaste de ejecutar la instruccion
-				printf("Fin de ejecucion de rafagas\n");
-				if(primitivaWait)
-					EnviarPCB(socketKernel, CPU, &pcb,ESPCBWAIT);
-				else
-					EnviarPCB(socketKernel, CPU, &pcb,ESPCB);
-				estadoActual.pcb = pcb;
-				estadoActual.ejecutando = false;
+				break;
+				case ESPCB:	{
+					RecibirPCB(&pcb, paquete.Payload,paquete.header.tamPayload, CPU);
+					estadoActual.pcb = pcb;
+					estadoActual.ejecutando = true;
+					int i=0;
+					progTerminado = false;
+					primitivaWait = false;
+					huboError = false;
+					while(!primitivaWait && !huboError && !progTerminado) {
+						if(pcb.cantidadDeRafagasAEjecutar > 0 && i >= pcb.cantidadDeRafagasAEjecutar) break;
+						sleepCpu(QuantumSleep);
+						RegIndiceCodigo* registro = list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
+						char instruccion[registro->offset];
+						obtenerLineaAEjecutar(instruccion, registro);
+						printf("Ejecutando rafaga N°: %u de PID: %u\n", pcb.cantidadDeRafagasEjecutadas, pcb.PID);
+						analizadorLinea(instruccion,&functions,&kernel_functions);
+						pcb.ProgramCounter++;
+						pcb.cantidadDeRafagasEjecutadasHistorica++;
+						pcb.cantidadDeRafagasEjecutadas++;
+						i++;
+					}
+					i=0;
+					// Avisar al kernel que terminaste de ejecutar la instruccion
+					printf("Fin de ejecucion de rafagas\n");
+					if(primitivaWait)
+						EnviarPCB(socketKernel, CPU, &pcb,ESPCBWAIT);
+					else
+						EnviarPCB(socketKernel, CPU, &pcb,ESPCB);
+					estadoActual.pcb = pcb;
+					estadoActual.ejecutando = false;
+				}
+				break;
 			}
-			break;
+			free(paquete.Payload);
 		}
-		free(paquete.Payload);
 	}
 
 	pcb_Destroy(&pcb);

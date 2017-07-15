@@ -1,10 +1,8 @@
-src/Consola.d: ../src/Consola.c \
- /home/utnso/workspace/tp-2017-1c-Los-Mantecosos/Bibliotecas/SocketsL.h \
- /home/utnso/workspace/tp-2017-1c-Los-Mantecosos/Bibliotecas/Helper.h \
- /home/utnso/workspace/tp-2017-1c-Los-Mantecosos/Bibliotecas/Helper.h
+src/Consola.d: ../src/Consola.c ../../Bibliotecas/SocketsL.h \
+ ../../Bibliotecas/Helper.h ../../Bibliotecas/Helper.h
 
-/home/utnso/workspace/tp-2017-1c-Los-Mantecosos/Bibliotecas/SocketsL.h:
+../../Bibliotecas/SocketsL.h:
 
-/home/utnso/workspace/tp-2017-1c-Los-Mantecosos/Bibliotecas/Helper.h:
+../../Bibliotecas/Helper.h:
 
-/home/utnso/workspace/tp-2017-1c-Los-Mantecosos/Bibliotecas/Helper.h:
+../../Bibliotecas/Helper.h:
