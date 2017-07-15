@@ -70,11 +70,11 @@ void programHandler(void* structProc) {
 				case ESDATOS:
 					if(strcmp(paquete.header.emisor,KERNEL)==0){
 						pid = *((uint32_t*) paquete.Payload);
-						if(pid >= 1){
+						if(pid >= 1 && pid != 0){
 							procesoActual->pid = pid;
 							printf("El pid del nuevo programa es %d \n",pid);
 						}
-						else if(pid == 200) {
+						else if(pid == 0) {
 							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",(char*)(paquete.Payload + sizeof(uint32_t)));
 						}
 					}

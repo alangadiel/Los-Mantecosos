@@ -272,7 +272,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							char* mensaje = ((char*)paquete->Payload+sizeof(uint32_t) * 4);
 							pthread_mutex_lock(&mutexConsolaFD1);
 							void* datos = malloc(sizeof(uint32_t) * (string_length(mensaje) +1));
-							((uint32_t*) datos)[0] = 200;
+							((uint32_t*) datos)[0] = 0;
 							memcpy(datos + sizeof(uint32_t), mensaje, string_length(mensaje) + 1);
 							EnviarDatos(socketConsola,KERNEL, datos, sizeof(uint32_t) * string_length(mensaje) + 1);
 							//printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
