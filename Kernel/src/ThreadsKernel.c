@@ -157,12 +157,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 				void* datosPagina = IM_LeerDatos(socketConMemoria, KERNEL, elem->pid, elem->nroPagina, 0, TamanioPagina);
 				if(datosPagina != NULL)
 				{
-					int result = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-					if(result >= 0)
-					{
-						//Hay algun metadata que no se libero
-						hayEstructurasNoLiberadas = true;
-					}
+					hayEstructurasNoLiberadas = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
 				}
 			}
 			if(hayEstructurasNoLiberadas == true)

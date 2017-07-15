@@ -303,13 +303,13 @@ bool RecorrerHastaEncontrarUnMetadataUsed(void* datosPagina)
 		while(offsetOcupado<TamanioPagina-sizeof(HeapMetadata) && encontroOcupado == false){
 			//Recorro el buffer obtenido
 			HeapMetadata* heapMD = datosPagina + offsetOcupado;
-			if(heapMD.isFree==false){
+			if(heapMD->isFree==false){
 				//Si encuentra un metadata free, freno
 				encontroOcupado = true;
 			}
 			else{
 				//Aumento el puntero de acuerdo al tamaño correspondiente al bloque existente
-				offsetOcupado+=(sizeof(HeapMetadata)+ heapMD.size);
+				offsetOcupado+=(sizeof(HeapMetadata)+ heapMD->size);
 			}
 		}
 	return encontroOcupado;
