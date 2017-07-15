@@ -329,8 +329,11 @@ void dispatcher()
 
 			cpuAUsar->isFree = false;
 			cpuAUsar->pid = PCBAMandar->PID;
+
 			pthread_mutex_lock(&mutexQueueEjecutando);
-			queue_push(Ejecutando, PCBAMandar);
+			BloqueControlProceso* bcp = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == PCBAMandar->PID;}));
+			if(bcp == NULL)
+				queue_push(Ejecutando, PCBAMandar);
 			pthread_mutex_unlock(&mutexQueueEjecutando);
 			//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
 		}
