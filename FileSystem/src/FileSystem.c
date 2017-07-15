@@ -456,16 +456,15 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 		}
 
 		reservarBloquesParaEscribir(valores);
-		char* datosAEscribir;
+		char* datosAEscribir = string_new();
 		datosAEscribir = string_duplicate(buffer);
 		//memcpy(datosActuales, buffer+offset, nuevoTamanioDeArchivo); //puede ser que deba avanzar x2
 
-		int j = 0;
-		int posicion;
 		int sizeParaRestar = size;
 		int desdeEscribir = 0;
 		int lengthEscribir = size;
-		char* nombreF;
+		char* nombreF = string_new();
+		char* substr = string_new();
 		int i = 0;
 
 		if(size > TAMANIO_BLOQUES - offset)
@@ -480,7 +479,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 
 				fseek(file, offset, SEEK_SET);
 
-				char* substr = string_new();
+				//char* substr = string_new();
 
 				if(lengthEscribir > TAMANIO_BLOQUES)
 				{
@@ -503,7 +502,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 
 				offset = 0;
 
-				free(substr);
+				//free(substr);
 
 				i++;
 			}
@@ -529,8 +528,9 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
 
-		//free(nombreF);
-		//free(datosAEscribir);
+		free(nombreF);
+		free(substr);
+		free(datosAEscribir);
 	}
 	else
 	{
