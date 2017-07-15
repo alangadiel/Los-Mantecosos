@@ -550,6 +550,12 @@ void accion(Paquete* paquete, int socketFD){
 			case VALIDAR_ARCHIVO:
 				path = string_duplicate(path);
 				armarPath(&path);
+
+				/*if(strcmp(string_substring_from(path, string_length(path) - 8), ".bin.bin") == 0)
+				{
+					path = string_substring_until(path, string_length(path) - 4);
+				}*/
+
 				validarArchivo(path, socketFD);
 			break;
 			case CREAR_ARCHIVO:
