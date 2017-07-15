@@ -10,6 +10,6 @@ ALGORITMO=RR
 GRADO_MULTIPROG=5
 SEM_IDS=[m,b,c]
 SEM_INIT=[1,1,0]
-SHARED_VARS=[!pasadas, !colas]
+SHARED_VARS=[!pasadas, !colas]
 STACK_SIZE=2
 IP_PROG=127.0.0.1

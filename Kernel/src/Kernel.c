@@ -9,7 +9,11 @@ t_list* HilosDeConexiones;
 
 void agregarIdSemaforo(char* item){
 	Semaforo* sem = malloc(sizeof(Semaforo));
-	sem->nombreSemaforo = string_duplicate(item);
+	int i ;
+	for(i=0;i<string_length(item); i++){
+		if(item[i]==']')
+			item[i]='\0';
+	}	sem->nombreSemaforo = string_duplicate(item);
 	sem->listaDeProcesos = queue_create();
 	list_add(Semaforos, sem);
 	cantNombresSemaforos++;

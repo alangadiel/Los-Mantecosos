@@ -147,6 +147,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 		//Analizo si el proceso tiene Memory Leaks o no
 		bool esDelPID(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}
 		t_list* pagesProcess = list_filter(PaginasPorProceso, esDelPID);
+		printf("Cant. paginas del heap : %u\n",pagesProcess->elements_count);
 		if(list_size(pagesProcess) > 0)
 		{
 			int i = 0;
@@ -157,13 +158,9 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 				void* datosPagina = IM_LeerDatos(socketConMemoria, KERNEL, elem->pid, elem->nroPagina, 0, TamanioPagina);
 				if(datosPagina != NULL)
 				{
-					int result = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-					if(result >= 0)
-					{
-						//Hay algun metadata que no se libero
-						hayEstructurasNoLiberadas = true;
-					}
+					hayEstructurasNoLiberadas = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
 				}
+				i++;
 			}
 			if(hayEstructurasNoLiberadas == true)
 			{
@@ -234,10 +231,12 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int s
 
 	pthread_mutex_unlock(&mutexQueueNuevos);
 
-	Evento_ListosAdd();
 	pthread_mutex_lock(&mutexQueueListos);
 	queue_push(Listos, pcb);
 	pthread_mutex_unlock(&mutexQueueListos);
+
+	Evento_ListosAdd();
+
 	printf("El programa %d se cargo en memoria \n",pcb->PID);
 }
 
@@ -327,8 +326,11 @@ void dispatcher()
 
 			cpuAUsar->isFree = false;
 			cpuAUsar->pid = PCBAMandar->PID;
+
 			pthread_mutex_lock(&mutexQueueEjecutando);
-			queue_push(Ejecutando, PCBAMandar);
+			BloqueControlProceso* bcp = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == PCBAMandar->PID;}));
+			if(bcp == NULL)
+				queue_push(Ejecutando, PCBAMandar);
 			pthread_mutex_unlock(&mutexQueueEjecutando);
 			//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
 		}
