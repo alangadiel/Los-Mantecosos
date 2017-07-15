@@ -74,6 +74,9 @@ void programHandler(void* structProc) {
 							procesoActual->pid = pid;
 							printf("El pid del nuevo programa es %d \n",pid);
 						}
+						else if(pid == 200) {
+							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",(char*)(paquete.Payload + sizeof(uint32_t)));
+						}
 					}
 				break;
 				case ESSTRING:
@@ -107,6 +110,7 @@ void programHandler(void* structProc) {
 						}
 					}
 				break;
+
 			}
 			free(paquete.Payload);
 		}

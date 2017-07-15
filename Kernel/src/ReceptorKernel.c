@@ -1,5 +1,6 @@
 #include "ReceptorKernel.h"
 Semaforo semaforoAVerificar;
+int socketConsola = -1;
 void receptorKernel(Paquete* paquete, int socketConectado){
 	int32_t valorAAsignar;
 	char* variableCompartida;
@@ -20,6 +21,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 	case ESSTRING:
 		if(strcmp(paquete->header.emisor, CONSOLA) == 0)
 		{
+			if (socketConsola == -1)
+				socketConsola = socketConectado;
 			int tamaniCodigoEnPaginas = paquete->header.tamPayload / TamanioPagina + 1;
 			int tamanioCodigoYStackEnPaginas = tamaniCodigoEnPaginas + STACK_SIZE;
 			BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
@@ -261,8 +264,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						//Si el FD es 1, hay que mostrarlo por pantalla
 						if(FD == 1)
 						{
+							char* mensaje = ((char*)paquete->Payload+sizeof(uint32_t) * 4);
 							pthread_mutex_lock(&mutexConsolaFD1);
-							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
+							void* datos = malloc(sizeof(uint32_t) * (string_length(mensaje) +1));
+							((uint32_t*) datos)[0] = 200;
+							memcpy(datos + sizeof(uint32_t), mensaje, string_length(mensaje) + 1);
+							EnviarDatos(socketConsola,KERNEL, datos, sizeof(uint32_t) * string_length(mensaje) + 1);
+							//printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
 							pthread_mutex_unlock(&mutexConsolaFD1);
 						}
 						else

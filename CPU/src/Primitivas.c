@@ -377,7 +377,7 @@ void primitiva_liberar(t_puntero puntero){
 }
 t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
 	int32_t tipoError = 0;
-
+	printf("abrir archvo %s\n", direccion);
 	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags, &tipoError);
 
 	if(fd == 0)
