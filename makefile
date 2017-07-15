@@ -1,4 +1,5 @@
 all:
+	-sudo chmod -R 755 /mnt
 	-cd Consola/bin && $(MAKE) all && cp Consola ../
 	-cd Kernel/bin && $(MAKE) all && cp Kernel ../
 	-cd CPU/bin && $(MAKE) all && cp CPU ../
