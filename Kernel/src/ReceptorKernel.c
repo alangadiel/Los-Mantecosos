@@ -66,9 +66,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 			{
 				uint32_t tipoOperacion = ((uint32_t*)paquete->Payload)[0];
 				printf("\nTipo operacion : %u\n",tipoOperacion);
-				if(*(uint32_t*)paquete->Payload==ABRIRARCHIVO){
-					printf("\nPid : %u\n",((uint32_t*)paquete->Payload)[1]);
-				}
+				printf("Pid : %u\n",((uint32_t*)paquete->Payload)[1]);
+
 				switch (tipoOperacion)
 				{
 					case PEDIRSHAREDVAR:
@@ -169,10 +168,11 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								printf("Pcb desbloqueado : %u\n",pcbDesbloqueado->PID);
 								pthread_mutex_unlock(&mutexQueueBloqueados);
 
-								Evento_ListosAdd();
 								pthread_mutex_lock(&mutexQueueListos);
 								queue_push(Listos, pcbDesbloqueado);
 								pthread_mutex_unlock(&mutexQueueListos);
+								Evento_ListosAdd();
+
 
 							}
 						}
@@ -348,6 +348,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							pthread_mutex_lock(&mutexQueueBloqueados);
 							queue_push(Bloqueados, pcb);
 							pthread_mutex_unlock(&mutexQueueBloqueados);
+							sem_post(&semDispatcherCpus);
+
 						}
 
 						else
@@ -357,11 +359,11 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							pthread_mutex_lock(&mutexQueueListos);
 							list_add_in_index(Listos->elements, 0, pcb);
 							pthread_mutex_unlock(&mutexQueueListos);
+							sem_post(&semDispatcherCpus);
 							Evento_ListosAdd();
 
 						}
 
-						sem_post(&semDispatcherCpus);
 
 						//free(semaforoAVerificar);
 					} else
@@ -386,6 +388,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						if (pcb->ExitCode<= 0)
 						{
 							FinalizarPrograma(pcb->PID,pcb->ExitCode);
+							sem_post(&semDispatcherCpus);
+
 						}
 						else
 						{
@@ -395,14 +399,15 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							}));
 							pthread_mutex_unlock(&mutexQueueEjecutando);
 							if(pcbEjecutado!=NULL){
-								Evento_ListosAdd();
 								pthread_mutex_lock(&mutexQueueListos);
 								queue_push(Listos, pcb);
 								pthread_mutex_unlock(&mutexQueueListos);
+								sem_post(&semDispatcherCpus);
+								Evento_ListosAdd();
+
 
 							}
 						}
-						sem_post(&semDispatcherCpus);
 					} else
 						printf("Error al finalizar ejecucion");
 				}
