@@ -57,10 +57,10 @@ ValoresArchivo* obtenerValoresDeArchivo(char* pathArchivo) {
 	t_config* arch = config_create(pathArchivo);
 	char** Bloques = config_get_array_value(arch, "BLOQUES");
 	valores->Tamanio = config_get_int_value(arch, "TAMANIO");
-	int cantidadBloques = ceil(valores->Tamanio/TAMANIO_BLOQUES);
+	int cantidadBloques = ceil((double)valores->Tamanio/(double)TAMANIO_BLOQUES);
 	if (cantidadBloques == 0) cantidadBloques = 1;
 	int i = 0;
-	for (i = 0; i<cantidadBloques; i++) {
+	for (i = 0; i < cantidadBloques; i++) {
 		int* bloque = malloc(sizeof(int));
 		*bloque = atoi(Bloques[i]);
 		list_add(valores->Bloques, bloque);
@@ -432,30 +432,39 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 	{
 		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, path) == 0; }));
 
-		int nuevoTamanioDeArchivo;
-
-		if (valores->Tamanio > offset)
+		if(valores == NULL)
 		{
-			nuevoTamanioDeArchivo = valores->Tamanio + size;
+			valores = obtenerValoresDeArchivo(path);
+			valores->path = string_duplicate(path);
+
+			list_add(listaValoresArchivos, valores);
 		}
 		else
 		{
-			nuevoTamanioDeArchivo = offset + size;
+			int nuevoTamanioDeArchivo;
+
+			if (valores->Tamanio > offset)
+			{
+				nuevoTamanioDeArchivo = valores->Tamanio + size;
+			}
+			else
+			{
+				nuevoTamanioDeArchivo = offset + size;
+			}
+
+			valores->Tamanio = nuevoTamanioDeArchivo;
 		}
 
-		valores->Tamanio = nuevoTamanioDeArchivo;
-
 		reservarBloquesParaEscribir(valores);
-		char* datosAEscribir;
+		char* datosAEscribir = string_new();
 		datosAEscribir = string_duplicate(buffer);
 		//memcpy(datosActuales, buffer+offset, nuevoTamanioDeArchivo); //puede ser que deba avanzar x2
 
-		int j = 0;
-		int posicion;
 		int sizeParaRestar = size;
 		int desdeEscribir = 0;
 		int lengthEscribir = size;
-		char* nombreF;
+		char* nombreF = string_new();
+		char* substr = string_new();
 		int i = 0;
 
 		if(size > TAMANIO_BLOQUES - offset)
@@ -470,7 +479,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 
 				fseek(file, offset, SEEK_SET);
 
-				char* substr = string_new();
+				//char* substr = string_new();
 
 				if(lengthEscribir > TAMANIO_BLOQUES)
 				{
@@ -493,7 +502,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 
 				offset = 0;
 
-				free(substr);
+				//free(substr);
 
 				i++;
 			}
@@ -519,8 +528,9 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
 
-		//free(nombreF);
-		//free(datosAEscribir);
+		free(nombreF);
+		free(substr);
+		free(datosAEscribir);
 	}
 	else
 	{
