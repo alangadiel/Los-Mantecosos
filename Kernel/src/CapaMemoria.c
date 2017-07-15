@@ -233,7 +233,6 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 	uint32_t offSetMetadataAActualizar = desplazamiento- sizeof(HeapMetadata);
 	//uint32_t sizeBloqueALiberar = *(uint32_t*)(datosPagina+offSetMetadataAActualizar);
 	HeapMetadata* heapMetaAActualizar = datosPagina + offSetMetadataAActualizar;
-	printf("size bloque a liberar: %u\n",heapMetaAActualizar->size);
 	HeapMetadata* heapMetedataAnterior = NULL;
 	uint32_t obtenerOffsetMetadataAnerior = ObtenerOffSetMetadataAnterior(datosPagina, desplazamiento);
 	if(obtenerOffsetMetadataAnerior<TamanioPagina){
@@ -244,14 +243,11 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 	//Me fijo el estado del siguiente Metadata(si esta Free o Used)
 	uint32_t offsetMetadataSiguiente = desplazamiento + heapMetaAActualizar->size;
 	HeapMetadata* heapMetedataSiguiente =datosPagina+offsetMetadataSiguiente;
-	printf("offsetMetadataSiguiente: %u\n", offsetMetadataSiguiente);
 
 	/*if(heapMetedataSiguiente!=NULL)
 		printf("Size bloque siguiente %u\n",heapMetedataSiguiente->size);*/
 	bool resultado;
-	printf("heapMetaAActualizar->size: %u\n", heapMetaAActualizar->size);
 	if(heapMetedataAnterior != NULL && heapMetedataAnterior->isFree==true) {
-		printf("heapMetedataAnterior->size: %u\n", heapMetedataAnterior->size);
 		//Si esta ocupado: solo actualizo el metadata del bloque que me liberaron
 		//Si esta libre: puedo compactarlos como un metadata solo
 		heapMetedataAnterior->size += heapMetaAActualizar->size + sizeof(HeapMetadata);
@@ -291,7 +287,7 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 			}
 		}
 		pagEncontrada->espacioDisponible += heapMetaAActualizar->size;
-		printf("\nLos bloques de memoria dinámica se liberaron correctamente\n");
+		printf("\nEl bloque de memoria dinámica se liberó correctamente\n");
 
 	}
 	else{
