@@ -171,10 +171,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_lock(&mutexQueueListos);
 								queue_push(Listos, pcbDesbloqueado);
 								pthread_mutex_unlock(&mutexQueueListos);
-								sem_post(&semDispatcherCpus);
-								Evento_ListosAdd();
 
 							}
+							sem_post(&semDispatcherCpus);
+							Evento_ListosAdd();
 						}
 						else
 						{
@@ -404,8 +404,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_unlock(&mutexQueueListos);
 								sem_post(&semDispatcherCpus);
 								Evento_ListosAdd();
-
-
 							}
 						}
 					} else

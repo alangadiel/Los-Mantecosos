@@ -147,6 +147,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 		//Analizo si el proceso tiene Memory Leaks o no
 		bool esDelPID(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}
 		t_list* pagesProcess = list_filter(PaginasPorProceso, esDelPID);
+		printf("Cant. paginas del heap : %u\n",pagesProcess->elements_count);
 		if(list_size(pagesProcess) > 0)
 		{
 			int i = 0;
@@ -157,13 +158,9 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 				void* datosPagina = IM_LeerDatos(socketConMemoria, KERNEL, elem->pid, elem->nroPagina, 0, TamanioPagina);
 				if(datosPagina != NULL)
 				{
-					int result = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
-					if(result >= 0)
-					{
-						//Hay algun metadata que no se libero
-						hayEstructurasNoLiberadas = true;
-					}
+					hayEstructurasNoLiberadas = RecorrerHastaEncontrarUnMetadataUsed(datosPagina);
 				}
+				i++;
 			}
 			if(hayEstructurasNoLiberadas == true)
 			{

@@ -94,7 +94,7 @@ void armarPath(char** path){
 		}
 	}
 
-	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
+	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b' && (*path)[hasta] != '\r' && (*path)[hasta] != '\a' && (*path)[hasta] != '\f' && (*path)[hasta] != '\'' && (*path)[hasta] != '\"')
 	{
 		hasta++;
 	}
@@ -127,6 +127,11 @@ void armarPath(char** path){
 	}
 
 	string_append(&pathForValidation, subsrt);
+
+	if(strcmp(string_substring_from(pathForValidation, string_length(pathForValidation) - 8), ".bin.bin") == 0)
+	{
+		path = string_substring_until(pathForValidation, string_length(pathForValidation) - 4);
+	}
 
 	free(*path);
 
@@ -550,12 +555,6 @@ void accion(Paquete* paquete, int socketFD){
 			case VALIDAR_ARCHIVO:
 				path = string_duplicate(path);
 				armarPath(&path);
-
-				/*if(strcmp(string_substring_from(path, string_length(path) - 8), ".bin.bin") == 0)
-				{
-					path = string_substring_until(path, string_length(path) - 4);
-				}*/
-
 				validarArchivo(path, socketFD);
 			break;
 			case CREAR_ARCHIVO:
