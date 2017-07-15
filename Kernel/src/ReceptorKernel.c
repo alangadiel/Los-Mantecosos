@@ -127,7 +127,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}
 						pthread_mutex_lock(&mutexSemaforos);
 						Semaforo *semaforoEncontrado = list_find(Semaforos,buscarSemaforo);
-						pthread_mutex_unlock(&mutexSemaforos);
 
 						if(semaforoEncontrado != NULL)
 						{
@@ -135,9 +134,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							//semaforoAVerificar = malloc(sizeof(Semaforo));
 							semaforoAVerificar = *semaforoEncontrado;
 							printf("Semaforo: %s\n",semaforoAVerificar.nombreSemaforo);
+							pthread_mutex_unlock(&mutexSemaforos);
+
 						}
 						else
 						{
+							pthread_mutex_unlock(&mutexSemaforos);
+
 							FinalizarPrograma(PID, ERRORSINDEFINIR);
 						}
 					break;
@@ -148,13 +151,14 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						result = NULL;
 						pthread_mutex_lock(&mutexSemaforos);
 						result = list_find(Semaforos,buscarSemaforo);
-						pthread_mutex_unlock(&mutexSemaforos);
 						if(result != NULL)
 						{
 							Semaforo* semaf = (Semaforo*)result;
 							printf("Semaforo encontrado para signal : %s\n",semaf->nombreSemaforo);
 
 							semaf->valorSemaforo++;
+							pthread_mutex_unlock(&mutexSemaforos);
+
 							printf("Valor semaforo despues de signal: %i\n",semaf->valorSemaforo);
 							printf("Cant procesos bloqueados por el semaforo: %u\n",queue_size(semaf->listaDeProcesos));
 							if (semaf->valorSemaforo >= 0 && queue_size(semaf->listaDeProcesos)>0)
@@ -166,7 +170,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == *pidDesbloqueadoDeLaColaDelSem; }));
 								//pcbDesbloqueado->ProgramCounter++;
 								pthread_mutex_unlock(&mutexQueueBloqueados);
-								printf("Pcb con %u desbloqueado \n",pcbDesbloqueado->PID);
+								printf("Pcb con PID: %u desbloqueado \n",pcbDesbloqueado->PID);
 
 								pthread_mutex_lock(&mutexQueueListos);
 								queue_push(Listos, pcbDesbloqueado);
@@ -178,6 +182,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						}
 						else
 						{
+							pthread_mutex_unlock(&mutexSemaforos);
 							FinalizarPrograma(PID, ERRORSINDEFINIR);
 						}
 
