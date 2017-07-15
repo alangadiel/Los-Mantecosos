@@ -63,50 +63,53 @@ void programHandler(void* structProc) {
 	free(procesoActual->pathCodigo);
 	Paquete paquete;
 	while(!fin && !finPrograma) {
-		while(RecibirPaqueteCliente(socketFD, CONSOLA, &paquete)<0);
-		switch (paquete.header.tipoMensaje) {
-			case ESDATOS:
-				if(strcmp(paquete.header.emisor,KERNEL)==0){
-					pid = *((uint32_t*) paquete.Payload);
-					if(pid >= 1){
-						procesoActual->pid = pid;
-						printf("El pid del nuevo programa es %d \n",pid);
+		if(RecibirPaqueteCliente(socketFD, CONSOLA, &paquete)<0){
+			socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
+		} else {
+			switch (paquete.header.tipoMensaje) {
+				case ESDATOS:
+					if(strcmp(paquete.header.emisor,KERNEL)==0){
+						pid = *((uint32_t*) paquete.Payload);
+						if(pid >= 1){
+							procesoActual->pid = pid;
+							printf("El pid del nuevo programa es %d \n",pid);
+						}
 					}
-				}
-			break;
-			case ESSTRING:
-				printf("%s\n",(char*)paquete.Payload);
-				if(strcmp(paquete.header.emisor,KERNEL)==0){
+				break;
+				case ESSTRING:
+					printf("%s\n",(char*)paquete.Payload);
+					if(strcmp(paquete.header.emisor,KERNEL)==0){
 
-					if (strcmp((char*)paquete.Payload, "KILLEADO") == 0) {
-						time_t tiempoFinalizacion = time(NULL);
-						char* sTiempoDeFin = temporal_get_string_time();
-						printf("%s\n", sTiempoDeInicio);
-						printf("%s\n", sTiempoDeFin);
-						free(sTiempoDeFin);
-						free(sTiempoDeInicio);
-						double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
-						printf("La duracion del programa en segundos es de %f\n", diferencia);
-						pthread_mutex_lock( &mutexListaProcesos );
-						list_remove_and_destroy_by_condition(listaProcesos,
-							LAMBDA(bool _(void* elem) {
-								//printf("pid: %u\n", ((structProceso*)elem)->pid);
-								return ((structProceso*)elem)->socket == socketFD;
-							}) , free);
-						pthread_mutex_unlock( &mutexListaProcesos );
+						if (strcmp((char*)paquete.Payload, "KILLEADO") == 0) {
+							time_t tiempoFinalizacion = time(NULL);
+							char* sTiempoDeFin = temporal_get_string_time();
+							printf("%s\n", sTiempoDeInicio);
+							printf("%s\n", sTiempoDeFin);
+							free(sTiempoDeFin);
+							free(sTiempoDeInicio);
+							double diferencia = difftime(tiempoFinalizacion, tiempoDeInicio);
+							printf("La duracion del programa en segundos es de %f\n", diferencia);
+							pthread_mutex_lock( &mutexListaProcesos );
+							list_remove_and_destroy_by_condition(listaProcesos,
+								LAMBDA(bool _(void* elem) {
+									//printf("pid: %u\n", ((structProceso*)elem)->pid);
+									return ((structProceso*)elem)->socket == socketFD;
+								}) , free);
+							pthread_mutex_unlock( &mutexListaProcesos );
 
-						finPrograma = true;
+							finPrograma = true;
+						}
+						else if (strcmp(string_substring_until(paquete.Payload,8),"imprimir") == 0) {
+							printf("%s\n", string_substring_from((char*)paquete.Payload,8));
+						}
+						else {
+							  printf("%s\n", (char*)paquete.Payload);
+						}
 					}
-					else if (strcmp(string_substring_until(paquete.Payload,8),"imprimir") == 0) {
-						printf("%s\n", string_substring_from((char*)paquete.Payload,8));
-					}
-					else {
-						  printf("%s\n", (char*)paquete.Payload);
-					}
-				}
-			break;
+				break;
+			}
+			free(paquete.Payload);
 		}
-		free(paquete.Payload);
 	}
 	printf("programa finalizado\n");
 
@@ -242,11 +245,11 @@ void sigintHandler(int sig_num)
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
-	int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
+	//int socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
 	listaProcesos = list_create();
 	signal(SIGINT, sigintHandler);
 	pthread_t userInterface;
-	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,&socketFD);
+	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,NULL);
 	pthread_join(userInterface, NULL);
 
 	list_destroy_and_destroy_elements(listaProcesos, LAMBDA(void _(void* elem) {

@@ -279,7 +279,7 @@ int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir) {
 	if (recibido < 0) {
 		perror("Error de Recepcion, no se pudo leer el mensaje\n");
 		close(socketFD); // ¡Hasta luego!
-		exit(1);
+		//exit(1);
 	} else if (recibido == 0) {
 		printf("Fin de Conexion en socket %d\n", socketFD);
 		close(socketFD); // ¡Hasta luego!
