@@ -2,7 +2,7 @@
 
 begin
 	variables a, b
-	alocar a 200
+	alocar a 500
 	abrir b LEC /unArchivo
 	leer b a 10
 	*a = 70
