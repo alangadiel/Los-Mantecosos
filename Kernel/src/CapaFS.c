@@ -346,11 +346,12 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 
 		if(fueBorrado == 1)
 		{
+			printf("El archivo con path %s, fue borrado\n", archivoGlob->pathArchivo);
 			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
 		}
 		else
 		{
-			printf("No se pudo borrar el archivo global con path %s\n", archivoGlob->pathArchivo);
+			printf("No se pudo borrar el archivo con path %s\n", archivoGlob->pathArchivo);
 		}
 	}
 	else

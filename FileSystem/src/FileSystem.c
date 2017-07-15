@@ -159,22 +159,18 @@ int validarArchivo(char* path, int socketFD) {
 }
 
 void cambiarValorBitmap(int posicion, int valor) {
-	if(bitmapArray[posicion] != 1)
-	{
-		bitmapArray[posicion] = valor;
-		int i;
-		FILE* bitmap = fopen(BITMAPFILE, "w+");
-		char* bitmapToWrite = string_new();
+	bitmapArray[posicion] = valor;
+	int i;
+	FILE* bitmap = fopen(BITMAPFILE, "w+");
+	char* bitmapToWrite = string_new();
 
-		for(i = 0; i < CANTIDAD_BLOQUES; i++) {
-			string_append(&bitmapToWrite, string_itoa(bitmapArray[i]));
-		}
-
-		fputs(bitmapToWrite, bitmap);
-		fclose(bitmap);
-		free(bitmapToWrite);
+	for(i = 0; i < CANTIDAD_BLOQUES; i++) {
+		string_append(&bitmapToWrite, string_itoa(bitmapArray[i]));
 	}
 
+	fputs(bitmapToWrite, bitmap);
+	fclose(bitmap);
+	free(bitmapToWrite);
 }
 
 int encontrarPrimerBloqueLibre() {
@@ -210,9 +206,9 @@ void crearBloques(t_list* bloques) {
 void eliminarBloques(t_list* bloques) {
 	int i;
 	for (i = 0; i < list_size(bloques); i++) {
-		int idBloque = (int) list_get(bloques, i);
-		cambiarValorBitmap(idBloque, 0);
-		char* pathDeBloque = obtenerPathABloque(idBloque);
+		int* idBloque = (int*) list_get(bloques, i);
+		cambiarValorBitmap(*idBloque, 0);
+		char* pathDeBloque = obtenerPathABloque(*idBloque);
 		remove(pathDeBloque);
 	}
 }
