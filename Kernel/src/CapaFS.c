@@ -42,6 +42,11 @@ void armarPath(char** path)
 
 	*path = string_duplicate(subsrt);
 
+	/*if(strcmp(string_substring_from(*path, string_length(*path) - 8), ".bin.bin") == 0)
+	{
+		*path = string_substring_until(*path, string_length(*path) - 4);
+	}*/
+
 	free(subsrt);
 }
 
