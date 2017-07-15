@@ -13,3 +13,7 @@ SEM_INIT=[0,5]
 SHARED_VARS=[!pasadas]
 STACK_SIZE=2
 IP_PROG=127.0.0.1
+
+
+
+
