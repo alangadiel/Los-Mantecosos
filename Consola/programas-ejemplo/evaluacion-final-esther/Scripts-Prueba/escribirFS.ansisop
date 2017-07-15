@@ -4,7 +4,7 @@ begin
   abrir f CE /archivo.bin
     b = a+4
     *b = 1095520072
-    borrar f
+    escribir f a 100
   signal mutexArch
   wait b
     !pasadas=!pasadas + 1
