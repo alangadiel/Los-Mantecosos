@@ -471,12 +471,13 @@ uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path) {
 	strcpy(destinoPath, path);
 
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
-	free(datos);
+
 	Paquete* paquete = malloc(sizeof(Paquete));
 	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
 	uint32_t r = *(uint32_t*) (paquete->Payload);
 	free(paquete->Payload);
 	free(paquete);
+	free(datos);
 
 	return r;
 }

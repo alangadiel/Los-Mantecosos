@@ -94,7 +94,7 @@ void armarPath(char** path){
 		}
 	}
 
-	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
+	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b' && (*path)[hasta] != '\r' && (*path)[hasta] != '\a' && (*path)[hasta] != '\f' && (*path)[hasta] != '\'' && (*path)[hasta] != '\"')
 	{
 		hasta++;
 	}
@@ -128,6 +128,11 @@ void armarPath(char** path){
 
 	string_append(&pathForValidation, subsrt);
 
+	if(strcmp(string_substring_from(pathForValidation, string_length(pathForValidation) - 8), ".bin.bin") == 0)
+	{
+		path = string_substring_until(pathForValidation, string_length(pathForValidation) - 4);
+	}
+
 	free(*path);
 
 	*path = string_duplicate(pathForValidation);
@@ -154,22 +159,18 @@ int validarArchivo(char* path, int socketFD) {
 }
 
 void cambiarValorBitmap(int posicion, int valor) {
-	if(bitmapArray[posicion] != 1)
-	{
-		bitmapArray[posicion] = valor;
-		int i;
-		FILE* bitmap = fopen(BITMAPFILE, "w+");
-		char* bitmapToWrite = string_new();
+	bitmapArray[posicion] = valor;
+	int i;
+	FILE* bitmap = fopen(BITMAPFILE, "w+");
+	char* bitmapToWrite = string_new();
 
-		for(i = 0; i < CANTIDAD_BLOQUES; i++) {
-			string_append(&bitmapToWrite, string_itoa(bitmapArray[i]));
-		}
-
-		fputs(bitmapToWrite, bitmap);
-		fclose(bitmap);
-		free(bitmapToWrite);
+	for(i = 0; i < CANTIDAD_BLOQUES; i++) {
+		string_append(&bitmapToWrite, string_itoa(bitmapArray[i]));
 	}
 
+	fputs(bitmapToWrite, bitmap);
+	fclose(bitmap);
+	free(bitmapToWrite);
 }
 
 int encontrarPrimerBloqueLibre() {
@@ -205,9 +206,9 @@ void crearBloques(t_list* bloques) {
 void eliminarBloques(t_list* bloques) {
 	int i;
 	for (i = 0; i < list_size(bloques); i++) {
-		int idBloque = (int) list_get(bloques, i);
-		cambiarValorBitmap(idBloque, 0);
-		char* pathDeBloque = obtenerPathABloque(idBloque);
+		int* idBloque = (int*) list_get(bloques, i);
+		cambiarValorBitmap(*idBloque, 0);
+		char* pathDeBloque = obtenerPathABloque(*idBloque);
 		remove(pathDeBloque);
 	}
 }
@@ -329,9 +330,20 @@ void crearArchivo(char* path,int socketFD) {
 void borrarArchivo(char* pathArchivo , int socketFD) {
 	uint32_t r = 0;
 	if (validarArchivo(pathArchivo, 0)) {
-		ValoresArchivo* valores = obtenerValoresDeArchivo(pathArchivo);
+		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, pathArchivo) == 0; }));
+
+		if(valores == NULL)
+		{
+			valores = obtenerValoresDeArchivo(pathArchivo);
+			valores->path = string_duplicate(pathArchivo);
+
+			list_add(listaValoresArchivos, valores);
+		}
+
 		eliminarBloques(valores->Bloques);
+
 		int removeFile = remove(pathArchivo);
+
 		if (removeFile >= 0 && socketFD != 0) {
 			r = 1;
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
@@ -339,7 +351,8 @@ void borrarArchivo(char* pathArchivo , int socketFD) {
 		else {
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
-		free(valores);
+
+		list_remove_and_destroy_by_condition(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, pathArchivo) == 0; }), free);
 	}
 	else
 	{
