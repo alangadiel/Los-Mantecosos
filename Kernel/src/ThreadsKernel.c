@@ -24,6 +24,7 @@ BloqueControlProceso* removerPidDeListas(int pid, int* indice)
 		if (pcb != NULL)
 		{
 			*indice = INDEX_EJECUTANDO;
+			sem_post(&semDispatcherCpus);
 			pthread_mutex_unlock(&mutexQueueEjecutando);
 			return pcb;
 		}
@@ -307,7 +308,8 @@ void dispatcher()
 		pthread_mutex_lock(&mutexQueueListos);
 		BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
 		pthread_mutex_unlock(&mutexQueueListos);
-		if(PCBAMandar!=NULL){
+		if(PCBAMandar!=NULL)
+		{
 			pthread_mutex_lock(&mutexCPUsConectadas);
 			DatosCPU* cpuAUsar = (DatosCPU*) list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
 			pthread_mutex_unlock(&mutexCPUsConectadas);
@@ -333,6 +335,8 @@ void dispatcher()
 				queue_push(Ejecutando, PCBAMandar);
 			pthread_mutex_unlock(&mutexQueueEjecutando);
 			//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
+
+
 		}
 	}
 }

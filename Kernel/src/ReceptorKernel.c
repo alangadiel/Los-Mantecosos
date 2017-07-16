@@ -175,7 +175,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_lock(&mutexQueueListos);
 								queue_push(Listos, pcbDesbloqueado);
 								pthread_mutex_unlock(&mutexQueueListos);
-								sem_post(&semDispatcherCpus);
 								Evento_ListosAdd();
 							}
 
@@ -339,7 +338,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						if (semaforoAVerificar.valorSemaforo < 0)
 						{ //se bloquea
 							printf("Se va a bloquear el proceso\n");
-
+							pcb->ProgramCounter++;
 							pthread_mutex_lock(&mutexSemaforos);
 							uint32_t* pid = malloc(sizeof(uint32_t));
 							*pid=pcb->PID;
@@ -360,7 +359,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						else
 						{
 							//si hay un wait, se mete otra vez en la cola de listos
-							//pcb->ProgramCounter++;
+							//
 							pthread_mutex_lock(&mutexQueueListos);
 							list_add_in_index(Listos->elements, 0, pcb);
 							pthread_mutex_unlock(&mutexQueueListos);
