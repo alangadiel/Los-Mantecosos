@@ -304,7 +304,10 @@ void dispatcher()
 	while (!planificacion_detenida)
 	{
 		sem_wait(&semDispacherListos);
+		printf("\nPaso el semaforo DISPATCHER_LISTOS\n");
 		sem_wait(&semDispatcherCpus);
+		printf("\nPaso el semaforo DISPATCHER_CPUS\n");
+
 		pthread_mutex_lock(&mutexQueueListos);
 		BloqueControlProceso* PCBAMandar = (BloqueControlProceso*)queue_pop(Listos);
 		pthread_mutex_unlock(&mutexQueueListos);
@@ -336,7 +339,9 @@ void dispatcher()
 			pthread_mutex_unlock(&mutexQueueEjecutando);
 			//cuando se hace el pcb_receive, cpuAUsar->isFree se cambia a true.
 
-
+		}
+		else{
+			sem_post(&semDispatcherCpus);
 		}
 	}
 }

@@ -122,7 +122,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						nombreSem = string_duplicate(paquete->Payload + sizeof(uint32_t)*2);
 
-						result = NULL;
 
 						bool buscarSemaforo(void* item){
 							Semaforo *sem = item;
@@ -136,8 +135,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							semaforoEncontrado->valorSemaforo--;
 							//semaforoAVerificar = malloc(sizeof(Semaforo));
 							semaforoAVerificar = *semaforoEncontrado;
-							printf("Semaforo: %s\n",semaforoAVerificar.nombreSemaforo);
+							printf("Semaforo encontrado para wait: %s\n",semaforoAVerificar.nombreSemaforo);
 							pthread_mutex_unlock(&mutexSemaforos);
+							//El unlock se hace mas abajo, en ESPCBWAIT
 
 						}
 						else
@@ -160,10 +160,11 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							printf("Semaforo encontrado para signal : %s\n",semaf->nombreSemaforo);
 
 							semaf->valorSemaforo++;
-							pthread_mutex_unlock(&mutexSemaforos);
 
 							printf("Valor semaforo despues de signal: %i\n",semaf->valorSemaforo);
-							printf("Cant procesos bloqueados por el semaforo: %u\n",queue_size(semaf->listaDeProcesos));
+							printf("Cant procesos que estan siendo bloqueados por el semaforo: %u\n",queue_size(semaf->listaDeProcesos));
+							pthread_mutex_unlock(&mutexSemaforos);
+
 							if (semaf->valorSemaforo >= 0 && queue_size(semaf->listaDeProcesos)>0)
 							{
 								pthread_mutex_lock(&mutexSemaforos);
@@ -173,7 +174,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == *pidDesbloqueadoDeLaColaDelSem; }));
 								//pcbDesbloqueado->ProgramCounter++;
 								pthread_mutex_unlock(&mutexQueueBloqueados);
-								printf("Pcb con PID: %u desbloqueado \n",pcbDesbloqueado->PID);
+								printf("Se desbloqueo el proceso N° %u\n",pcbDesbloqueado->PID);
 
 								pthread_mutex_lock(&mutexQueueListos);
 								queue_push(Listos, pcbDesbloqueado);
@@ -333,53 +334,60 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 			case ESPCBWAIT:
 				if(strcmp(paquete->header.emisor, CPU) == 0)
 				{
-					pthread_mutex_lock(&mutexCPUsConectadas);
-					DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
-					cpuActual->isFree = true;
-					pthread_mutex_unlock(&mutexCPUsConectadas);
+
+					BloqueControlProceso* pcbRecibir = malloc(sizeof(BloqueControlProceso));
+					RecibirPCB(pcbRecibir, paquete->Payload, paquete->header.tamPayload,KERNEL);
 					pthread_mutex_lock(&mutexQueueEjecutando);
-					BloqueControlProceso* pcb = list_find(Ejecutando->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == cpuActual->pid; }));
+
+					list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
+						return ((BloqueControlProceso*)item)->PID == pcbRecibir->PID;
+					}));
+
 					pthread_mutex_unlock(&mutexQueueEjecutando);
-					if(pcb!=NULL){
-						RecibirPCB(pcb, paquete->Payload, paquete->header.tamPayload,KERNEL);
-						printf("Valor semaforo dsps de decrementar %i\n",semaforoAVerificar.valorSemaforo);
-						if (semaforoAVerificar.valorSemaforo < 0)
-						{ //se bloquea
-							printf("Se va a bloquear el proceso\n");
-							pcb->ProgramCounter++;
-							pthread_mutex_lock(&mutexSemaforos);
-							uint32_t* pid = malloc(sizeof(uint32_t));
-							*pid=pcb->PID;
-							queue_push(semaforoAVerificar.listaDeProcesos, pid);
-							pthread_mutex_unlock(&mutexSemaforos);
-							pthread_mutex_lock(&mutexQueueEjecutando);
-							list_remove_by_condition(Ejecutando->elements,  LAMBDA(bool _(void* item) {
-								return ((BloqueControlProceso*)item)->PID == pcb->PID;
-							}));
-							pthread_mutex_unlock(&mutexQueueEjecutando);
-							pthread_mutex_lock(&mutexQueueBloqueados);
-							queue_push(Bloqueados, pcb);
-							pthread_mutex_unlock(&mutexQueueBloqueados);
-							sem_post(&semDispatcherCpus);
 
-						}
+					printf("Valor semaforo dsps de decrementar %i\n",semaforoAVerificar.valorSemaforo);
+					if (semaforoAVerificar.valorSemaforo < 0)
+					{ //se bloquea
+						printf("Se va a bloquear el proceso N° %u\n",pcbRecibir->PID);
+						//pcb->ProgramCounter++;
 
-						else
-						{
-							//si hay un wait, se mete otra vez en la cola de listos
-							//
-							pthread_mutex_lock(&mutexQueueListos);
-							list_add_in_index(Listos->elements, 0, pcb);
-							pthread_mutex_unlock(&mutexQueueListos);
-							sem_post(&semDispatcherCpus);
-							Evento_ListosAdd();
-
-						}
+						//pthread_mutex_lock(&mutexSemaforos);
+						uint32_t* pid = malloc(sizeof(uint32_t));
+						*pid=pcbRecibir->PID;
+						queue_push(semaforoAVerificar.listaDeProcesos, pid);
+						pthread_mutex_unlock(&mutexSemaforos);
 
 
-						//free(semaforoAVerificar);
-					} else
-						printf("Error al finalizar ejecucion");
+
+						pthread_mutex_lock(&mutexQueueBloqueados);
+						queue_push(Bloqueados, pcbRecibir);
+						pthread_mutex_unlock(&mutexQueueBloqueados);
+
+						printf("Despues de bloquearse, el program counter del proceso N° %u es %u/n",pcbRecibir->PID,pcbRecibir->ProgramCounter);
+						pthread_mutex_lock(&mutexCPUsConectadas);
+						DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
+						cpuActual->isFree = true;
+						pthread_mutex_unlock(&mutexCPUsConectadas);
+						sem_post(&semDispatcherCpus);
+						//Evento_ListosAdd();
+
+					}
+					else
+					{
+						//si hay un wait, se mete otra vez en la cola de listos
+						pthread_mutex_unlock(&mutexSemaforos);
+						pthread_mutex_lock(&mutexCPUsConectadas);
+						DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
+						cpuActual->isFree = true;
+						pthread_mutex_unlock(&mutexCPUsConectadas);
+
+						pthread_mutex_lock(&mutexQueueListos);
+						list_add_in_index(Listos->elements, 0, pcbRecibir);
+						pthread_mutex_unlock(&mutexQueueListos);
+						sem_post(&semDispatcherCpus);
+						Evento_ListosAdd();
+					}
+
 				}
 			break;
 
@@ -401,7 +409,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						if (pcb->ExitCode<= 0)
 						{
 							FinalizarPrograma(pcb->PID,pcb->ExitCode);
-							sem_post(&semDispatcherCpus);
+							//sem_post(&semDispatcherCpus);
 						}
 						else
 						{
@@ -414,8 +422,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_lock(&mutexQueueListos);
 								queue_push(Listos, pcb);
 								pthread_mutex_unlock(&mutexQueueListos);
-								sem_post(&semDispatcherCpus);
 								Evento_ListosAdd();
+								sem_post(&semDispatcherCpus);
 							}
 						}
 					} else
