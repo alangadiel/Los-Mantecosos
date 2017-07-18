@@ -107,6 +107,7 @@ extern pthread_mutex_t mutexSemaforos;
 extern pthread_mutex_t mutexVariablesCompartidas;
 extern pthread_mutex_t mutexPaginasPorProceso;
 extern pthread_mutex_t mutexConsolaFD1;
+extern pthread_mutex_t mutexIndiceSemaforoWait;
 
 void CrearListasEstados();
 void CrearNuevoProceso(BloqueControlProceso* pcb,int* ultimoPid,t_queue* nuevos);
