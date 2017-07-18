@@ -367,7 +367,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 						pthread_mutex_unlock(&mutexQueueEjecutando);
 						//pthread_mutex_lock(&mutexSemaforos);
-						//pthread_mutex_lock(&mutexSemaforos);
 
 						printf("Valor semaforo dsps de decrementar %i\n",semaforoEncontrado->valorSemaforo);
 						if (semaforoEncontrado->valorSemaforo < 0)
@@ -388,6 +387,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							pthread_mutex_unlock(&mutexQueueBloqueados);
 
 							printf("Despues de bloquearse, el program counter del proceso N° %u es %u\n",pcbRecibir->PID,pcbRecibir->ProgramCounter);
+
 							pthread_mutex_lock(&mutexCPUsConectadas);
 							DatosCPU* cpuActual = list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*) item)->socketCPU == socketConectado; }));
 							cpuActual->isFree = true;
