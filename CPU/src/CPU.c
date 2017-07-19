@@ -207,8 +207,10 @@ int main(void) {
 					i=0;
 					// Avisar al kernel que terminaste de ejecutar la instruccion
 					printf("Fin de ejecucion de rafagas\n");
-					if(primitivaWait)
+					if(primitivaWait) {
+						printf("program counter: %u\n",pcb.ProgramCounter);
 						EnviarPCB(socketKernel, CPU, &pcb,ESPCBWAIT);
+					}
 					else
 					{
 						EnviarPCB(socketKernel, CPU, &pcb,ESPCB);

@@ -37,6 +37,7 @@ pthread_mutex_t mutexSemaforos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexVariablesCompartidas = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexPaginasPorProceso = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexConsolaFD1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexIndiceSemaforoWait = PTHREAD_MUTEX_INITIALIZER;
 
 //Variables archivo de configuracion
 char* IP_PROG;
@@ -108,6 +109,8 @@ void LiberarVariablesYListas() {
 	pthread_mutex_destroy(&mutexSemaforos);
 	pthread_mutex_destroy(&mutexVariablesCompartidas);
 	pthread_mutex_destroy(&mutexPaginasPorProceso);
+	pthread_mutex_destroy(&mutexIndiceSemaforoWait);
+
 }
 /*
 void Evento_ListosRemove(){
