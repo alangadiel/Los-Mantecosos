@@ -346,6 +346,36 @@ void dispatcher()
 	}
 }
 
+void sem_signal(Semaforo* semaf){
+
+	pthread_mutex_lock(&mutexSemaforos);
+
+	uint32_t* pidDesbloqueadoDeLaColaDelSem = queue_pop(semaf->listaDeProcesos);
+	printf("pid desbloqueado de la cola del semaforo: %u\n",*pidDesbloqueadoDeLaColaDelSem);
+	//pthread_mutex_unlock(&mutexSemaforos);
+
+	pthread_mutex_lock(&mutexQueueBloqueados);
+	printf("Tamanio de la cola de bloqueados: %u\n",queue_size(Bloqueados));
+	BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == *pidDesbloqueadoDeLaColaDelSem; }));
+	pthread_mutex_unlock(&mutexQueueBloqueados);
+
+	free(pidDesbloqueadoDeLaColaDelSem);
+
+	printf("Se desbloqueo el proceso N° %u\n",pcbDesbloqueado->PID);
+
+	pthread_mutex_lock(&mutexQueueListos);
+	queue_push(Listos, pcbDesbloqueado);
+	pthread_mutex_unlock(&mutexQueueListos);
+
+	Evento_ListosAdd();
+
+	/*else{
+		//El signal no desbloqueo ningun proceso
+		pthread_mutex_unlock(&mutexSemaforos);
+	}*/
+
+	pthread_mutex_unlock(&mutexSemaforos);
+}
 
 void AgregarAListadePidsPorSocket(uint32_t PID, int socket)
 {
@@ -363,9 +393,12 @@ void accion(void* socket)
 	int socketConectado = *(int*)socket;
 	Paquete paquete;
 
+	bool entroSignal = false;
+	Semaforo* semSignal = NULL;
+
 	while (RecibirPaqueteServidorKernel(socketConectado, KERNEL, &paquete) > 0)
 	{
-		receptorKernel(&paquete, socketConectado);
+		receptorKernel(&paquete, socketConectado, &entroSignal, &semSignal);
 		if(paquete.Payload!=NULL) free(paquete.Payload);
 	}
 

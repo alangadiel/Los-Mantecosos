@@ -50,6 +50,12 @@ typedef struct {
 	int32_t espacioDisponible;
 } PaginaDelProceso;
 
+typedef struct {
+	char* nombreSemaforo;
+	int32_t valorSemaforo;
+	t_queue* listaDeProcesos;
+} Semaforo;
+
 extern t_list* ArchivosGlobales;
 extern t_list* ArchivosProcesos;
 extern t_list* PIDsPorSocketConsola;

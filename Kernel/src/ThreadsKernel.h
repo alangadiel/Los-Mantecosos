@@ -22,5 +22,6 @@ void AgregarAListadePidsPorSocket(uint32_t PID, int socket);
 void CargarInformacionDelCodigoDelPrograma(BloqueControlProceso* pcb,Paquete* paquete);
 void GuardarCodigoDelProgramaEnLaMemoria(BloqueControlProceso* bcp, Paquete* paquete);
 void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int socketFD, double tamanioTotalPaginas);
+void sem_signal(Semaforo* semaf);
 
 #endif /* THREADSKERNEL_H_ */
