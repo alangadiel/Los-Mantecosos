@@ -112,7 +112,7 @@ void programHandler(void* structProc) {
 				break;
 
 			}
-			free(paquete);
+			free(paquete->Payload);
 		}
 	}
 	printf("programa finalizado\n");
