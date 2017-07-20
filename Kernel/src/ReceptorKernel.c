@@ -122,10 +122,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					case WAITSEM:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						nombreSemaforoWait = string_duplicate(paquete->Payload + sizeof(uint32_t)*2);
-						bool buscarSemaforo(void* item){
-							Semaforo *sem = item;
-							return strcmp(sem->nombreSemaforo,nombreSemaforoWait)==0;
-						}
+
 						Semaforo* sem;
 						pthread_mutex_lock(&mutexIndiceSemaforoWait);
 						index_semaforo_wait = 0;
@@ -144,6 +141,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						char * nombreSemaf = string_duplicate(paquete->Payload + sizeof(uint32_t)*2);
 						result = NULL;
+						bool despertar = false;
+						uint32_t* pidDesbloqueadoDeLaColaDelSem;
+						BloqueControlProceso* pcbDesbloqueado;
 						bool searchSemaforo(void* item){
 							Semaforo *sem = item;
 							return strcmp(sem->nombreSemaforo,nombreSemaf)==0;
@@ -153,31 +153,22 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						{
 
 							Semaforo* semaf = (Semaforo*)result;
-
-
 							pthread_mutex_lock(&mutexSemaforos);
 
 							if (semaf->valorSemaforo < 0 && queue_size(semaf->listaDeProcesos)>0)
 							{
 								//pthread_mutex_lock(&mutexSemaforos);
-								uint32_t* pidDesbloqueadoDeLaColaDelSem = queue_pop(semaf->listaDeProcesos);
+								pidDesbloqueadoDeLaColaDelSem = queue_pop(semaf->listaDeProcesos);
 								printf("pid desbloqueado de la cola del semaforo: %u\n",*pidDesbloqueadoDeLaColaDelSem);
-								pthread_mutex_unlock(&mutexSemaforos);
+								//pthread_mutex_unlock(&mutexSemaforos);
 
 								pthread_mutex_lock(&mutexQueueBloqueados);
 								printf("Tamanio de la cola de bloqueados: %u",queue_size(Bloqueados));
-								BloqueControlProceso* pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == *pidDesbloqueadoDeLaColaDelSem; }));
+								pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == *pidDesbloqueadoDeLaColaDelSem; }));
 								pthread_mutex_unlock(&mutexQueueBloqueados);
 
 								free(pidDesbloqueadoDeLaColaDelSem);
-
-								printf("Se desbloqueo el proceso N° %u\n",pcbDesbloqueado->PID);
-
-								pthread_mutex_lock(&mutexQueueListos);
-								queue_push(Listos, pcbDesbloqueado);
-								pthread_mutex_unlock(&mutexQueueListos);
-
-								Evento_ListosAdd();
+								despertar = true;
 
 							}
 
@@ -186,7 +177,15 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_unlock(&mutexSemaforos);
 							}*/
 							semaf->valorSemaforo++;
+							printf("Valor semaforo despues de hacer signal es %i; ejecutado por pid: %u\n",semaf->valorSemaforo,PID);
 							pthread_mutex_unlock(&mutexSemaforos);
+							if(despertar==true){
+								pthread_mutex_lock(&mutexQueueListos);
+								queue_push(Listos, pcbDesbloqueado);
+								pthread_mutex_unlock(&mutexQueueListos);
+								printf("Se desbloqueo el proceso N° %u\n",pcbDesbloqueado->PID);
+								Evento_ListosAdd();
+							}
 
 						}
 						else
