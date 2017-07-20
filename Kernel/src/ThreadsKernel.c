@@ -169,9 +169,13 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 			}
 			else
 			{
-				printf("El proceso %d liberó todas las estructuras de memoria dinamica\n", PID);
+				printf("El proceso %d liberó todas las estructuras de memoria dinamica. NO hay memory leaks.\n", PID);
 			}
 		}
+		else{
+			printf("El proceso %d nunca solicitó reservar bloques de memoria dinámica, por lo tanto, NO hay memory leaks.\n",PID);
+		}
+
 		if(IM_FinalizarPrograma(socketConMemoria, KERNEL, PID) == false)
 		{
 			pcbRemovido->ExitCode = EXCEPCIONDEMEMORIA;
