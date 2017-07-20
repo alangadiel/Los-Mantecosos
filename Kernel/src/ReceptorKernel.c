@@ -22,8 +22,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 	case ESSTRING:
 		if(strcmp(paquete->header.emisor, CONSOLA) == 0)
 		{
-			if (socketConsola == -1)
-				socketConsola = socketConectado;
 			int tamaniCodigoEnPaginas = paquete->header.tamPayload / TamanioPagina + 1;
 			int tamanioCodigoYStackEnPaginas = tamaniCodigoEnPaginas + STACK_SIZE;
 			BloqueControlProceso* pcb = malloc(sizeof(BloqueControlProceso));
@@ -31,7 +29,8 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 			CrearNuevoProceso(pcb,&ultimoPID,Nuevos);
 
-			AgregarAListadePidsPorSocket(pcb->PID, socketConectado);
+			if (list_find(PIDsPorSocketConsola, LAMBDA(bool _(void* item){	return ((PIDporSocketConsola*)item)->PID == pcb->PID;})) == NULL)
+				AgregarAListadePidsPorSocket(pcb->PID, socketConectado);
 
 			//Manejo la multiprogramacion
 			if(GRADO_MULTIPROG - queue_size(Ejecutando) - queue_size(Listos) > 0 && queue_size(Nuevos) >= 1)
@@ -70,7 +69,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 			{
 				uint32_t tipoOperacion = ((uint32_t*)paquete->Payload)[0];
 				printf("\nTipo operacion : %u\n",tipoOperacion);
-				printf("Pid : %u\n",((uint32_t*)paquete->Payload)[1]);
+				printf("Pid : %u\n", ((uint32_t*)paquete->Payload)[1]);
 
 				switch (tipoOperacion)
 				{
@@ -280,7 +279,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							void* datos = malloc(sizeof(uint32_t) * (string_length(mensaje) +1));
 							((uint32_t*) datos)[0] = 0;
 							memcpy(datos + sizeof(uint32_t), mensaje, string_length(mensaje) + 1);
-							EnviarDatos(socketConsola,KERNEL, datos, sizeof(uint32_t) * string_length(mensaje) + 1);
+
+							PIDporSocketConsola* PIDxSocket = list_find(PIDsPorSocketConsola, LAMBDA(bool _(void* item){	return ((PIDporSocketConsola*)item)->PID == ((uint32_t*)paquete->Payload)[1];}));
+
+							EnviarDatos(PIDxSocket->socketConsola, KERNEL, datos, sizeof(uint32_t) * string_length(mensaje) + 1);
 							//printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
 							pthread_mutex_unlock(&mutexConsolaFD1);
 						}
