@@ -80,22 +80,28 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 						//Busco la variable compartida
 						result = NULL;
-						pthread_mutex_lock(&mutexVariablesCompartidas);
 						bool buscarSharedVar(void *item){
 							VariableCompartida* var = item;
 							char* nombreVarEnCuestion = string_substring_from(var->nombreVariableGlobal,1);
 							return strcmp(nombreVarEnCuestion, variableCompartida) == 0;
 						}
 						VariableCompartida* sharedVar = list_find(VariablesCompartidas,buscarSharedVar);
-						pthread_mutex_unlock(&mutexVariablesCompartidas);
-						printf("Variable compartida encontrada: %s y su valor es: %i \n",sharedVar->nombreVariableGlobal,sharedVar->valorVariableGlobal);
+						if(sharedVar!=NULL){
+							pthread_mutex_lock(&mutexVariablesCompartidas);
+							printf("Variable compartida encontrada: %s y su valor es: %i \n",sharedVar->nombreVariableGlobal,sharedVar->valorVariableGlobal);
+							//Devuelvo a la cpu el valor de la variable compartida
+							tamDatos = sizeof(int32_t);
+							datos = malloc(tamDatos);
+							((int32_t*) datos)[0] = sharedVar->valorVariableGlobal;
+							pthread_mutex_unlock(&mutexVariablesCompartidas);
 
-						//Devuelvo a la cpu el valor de la variable compartida
-						tamDatos = sizeof(int32_t);
-						datos = malloc(tamDatos);
-						((int32_t*) datos)[0] = sharedVar->valorVariableGlobal;
-						EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-						free(datos);
+							EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+							free(datos);
+						}
+						else{
+							FinalizarPrograma(PID,ERRORSINDEFINIR);
+						}
+
 					break;
 
 					case ASIGNARSHAREDVAR:
@@ -104,18 +110,20 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						variableCompartida =string_duplicate(paquete->Payload + sizeof(uint32_t) * 3);
 						//Busco la variable compartida
 						result = NULL;
-						pthread_mutex_lock(&mutexVariablesCompartidas);
 						VariableCompartida* sharedvar = list_find(VariablesCompartidas,buscarSharedVar);
-						sharedvar->valorVariableGlobal = valorAAsignar;
-						printf("Se le asigno a %s el valor %u\n", sharedvar->nombreVariableGlobal, sharedvar->valorVariableGlobal);
-						pthread_mutex_unlock(&mutexVariablesCompartidas);
+						if(sharedVar!=NULL){
+							pthread_mutex_lock(&mutexVariablesCompartidas);
+							sharedvar->valorVariableGlobal = valorAAsignar;
+							printf("Se le asigno a %s el valor %u\n", sharedvar->nombreVariableGlobal, sharedvar->valorVariableGlobal);
+							//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
+							tamDatos = sizeof(int32_t);
+							datos = malloc(tamDatos);
+							((int32_t*) datos)[0] = sharedvar->valorVariableGlobal;
+							pthread_mutex_unlock(&mutexVariablesCompartidas);
+							EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
+							free(datos);
+						}
 
-						//Devuelvo a la cpu el valor de la variable compartida, el cual asigne
-						tamDatos = sizeof(int32_t);
-						datos = malloc(tamDatos);
-						((int32_t*) datos)[0] = sharedvar->valorVariableGlobal;
-						EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
-						free(datos);
 					break;
 
 					case WAITSEM:
@@ -275,6 +283,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						if(FD == 1)
 						{
 							char* mensaje = ((char*)paquete->Payload+sizeof(uint32_t) * 4);
+							printf("mensaje a mandar a la consola %s",mensaje);
 							pthread_mutex_lock(&mutexConsolaFD1);
 							void* datos = malloc(sizeof(uint32_t) * (string_length(mensaje) +1));
 							((uint32_t*) datos)[0] = 0;
@@ -329,7 +338,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 					if(finalizadoConExito == true)
 					{
-						printf("El programa %d fue finalizado\n", pidAFinalizar);
+						printf("El programa %d fue finalizado con exito\n", pidAFinalizar);
 						EnviarMensaje(socketConectado,"KILLEADO",KERNEL);
 					}
 					else
