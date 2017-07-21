@@ -74,7 +74,7 @@ void obtenerLinea(char* instruccion, uint32_t* registro){
 	}
 	free(datos);
 }
-void obtenerLineaAEjecutar(char *instruccion,RegIndiceCodigo*registro){
+char* obtenerLineaAEjecutar(RegIndiceCodigo* registro){
 	/*Suponiendo que una instruccion nunca nos va a ocupar mas de 2 paginas
 	TODO: puede pasar que una instruccion ocupe mas de 2 paginas?
 	Si es asi, habria que hacer otra funcion */
@@ -82,27 +82,19 @@ void obtenerLineaAEjecutar(char *instruccion,RegIndiceCodigo*registro){
 	uint32_t offsetPaginaInicial = registro->start%TamanioPaginaMemoria;
 	uint32_t cantTotalALeer = registro->offset;
 	uint32_t cantPaginasALeer;
-
-	if(offsetPaginaInicial + cantTotalALeer > TamanioPaginaMemoria)
-	{
+	char* linea = NULL;
+	if(offsetPaginaInicial + cantTotalALeer > TamanioPaginaMemoria) {
 		cantPaginasALeer = 1 + ceil((cantTotalALeer - (TamanioPaginaMemoria - offsetPaginaInicial)) / TamanioPaginaMemoria); //El 1 es por la primer pagina
 	}
-	else
-	{
+	else {
 		cantPaginasALeer = 1;
 	}
 
-
-	char* datos = string_new();
-
 	uint32_t offsetPaginaALeer = offsetPaginaInicial;
 	int i;
-	for(i = 0; i < cantPaginasALeer; i++)
-	{
+	for(i = 0; i < cantPaginasALeer; i++) {
 		uint32_t cantALeerEnPagina;
-
-		if(cantPaginasALeer > 1)
-		{
+		if(cantPaginasALeer > 1) {
 			if(i == 0) //Es la primer pagina
 			{
 				cantALeerEnPagina = TamanioPaginaMemoria - offsetPaginaALeer;
@@ -123,17 +115,12 @@ void obtenerLineaAEjecutar(char *instruccion,RegIndiceCodigo*registro){
 		{
 			cantALeerEnPagina = cantTotalALeer;
 		}
-		char* linea = IM_LeerDatos(socketMemoria, CPU, pcb.PID, paginaInicial + i, offsetPaginaALeer, cantALeerEnPagina);
-		string_append(&datos,linea);
-
+		linea = IM_LeerDatos(socketMemoria, CPU, pcb.PID, paginaInicial + i, offsetPaginaALeer, cantALeerEnPagina);
+		limpiar_string(&linea);
 		cantTotalALeer -= cantALeerEnPagina;
-
 		offsetPaginaALeer = 0;
 	}
-
-	strcpy(instruccion, datos);
-
-	free(datos);
+	return linea;
 }
 
 bool terminoElPrograma(void){
@@ -171,10 +158,6 @@ int main(void) {
 			socketKernel = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CPU, RecibirHandshake_DeKernel);
 		} else {
 			switch(paquete.header.tipoMensaje) {
-				/*case KILLPROGRAM: //reemplazar KILLPROGRAM por algo acorde, es la señal SIGUSR1 para deconectar la CPU
-					DesconectarCPU = true;
-					progTerminado = true;
-				break;*/
 				case ESTAEJECUTANDO: {
 					int tamDatos = sizeof(uint32_t) +sizeof(bool);
 					void* datos = malloc(tamDatos);
@@ -187,24 +170,26 @@ int main(void) {
 					RecibirPCB(&pcb, paquete.Payload,paquete.header.tamPayload, CPU);
 					estadoActual.pcb = pcb;
 					estadoActual.ejecutando = true;
-					int i=0;
+					int cantRafagasActualesEjecutadas=0;
 					progTerminado = false;
 					primitivaWait = false;
 					huboError = false;
 					while(!primitivaWait && !huboError && !progTerminado) {
-						if(pcb.cantidadDeRafagasAEjecutar > 0 && i >= pcb.cantidadDeRafagasAEjecutar) break;
+						if(pcb.cantidadDeRafagasAEjecutar > 0 && cantRafagasActualesEjecutadas >= pcb.cantidadDeRafagasAEjecutar) break;
 						sleepCpu(QuantumSleep);
 						RegIndiceCodigo* registro = list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
-						char instruccion[registro->offset];
-						obtenerLineaAEjecutar(instruccion, registro);
-						printf("Ejecutando rafaga N°: %u de PID: %u\n", pcb.cantidadDeRafagasEjecutadas, pcb.PID);
-						analizadorLinea(instruccion,&functions,&kernel_functions);
-						pcb.ProgramCounter++;
-						pcb.cantidadDeRafagasEjecutadasHistorica++;
-						pcb.cantidadDeRafagasEjecutadas++;
-						i++;
+						char* instruccion = obtenerLineaAEjecutar(registro);
+						if (instruccion != NULL) {
+							printf("Ejecutando rafaga N°: %u de PID: %u\n", pcb.cantidadDeRafagasEjecutadas, pcb.PID);
+							analizadorLinea(instruccion,&functions,&kernel_functions);
+							free(instruccion);
+							pcb.ProgramCounter++;
+							pcb.cantidadDeRafagasEjecutadasHistorica++;
+							pcb.cantidadDeRafagasEjecutadas++;
+						}
+						cantRafagasActualesEjecutadas++;
 					}
-					i=0;
+					cantRafagasActualesEjecutadas=0;
 					// Avisar al kernel que terminaste de ejecutar la instruccion
 					printf("Fin de ejecucion de rafagas\n");
 					if(primitivaWait) {
@@ -221,13 +206,15 @@ int main(void) {
 				}
 				break;
 			}
-			free(paquete.Payload);
+			if (paquete.Payload != NULL)
+				free(paquete.Payload);
 		}
 	}
 
 	pcb_Destroy(&pcb);
 	pthread_join(consola, NULL);
-	free(IP_KERNEL); free(IP_MEMORIA);
+	free(IP_KERNEL);
+	free(IP_MEMORIA);
 
 	return 0;
 }

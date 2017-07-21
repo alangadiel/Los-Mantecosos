@@ -38,6 +38,6 @@ int32_t ultimoOffSetVariablesStack;
 
 	//Otras
 	PosicionDeMemoria NewPosicionDeMemoriaVacia();
-
+	void limpiar_string(char** string);
 
 #endif

@@ -262,7 +262,7 @@ void FinalizarPrograma(uint32_t pid, int socketFD) {
 }
 
 int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
-	paquete->Payload = malloc(1);
+	paquete->Payload = NULL;
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0) { //si no hubo error
 		if (paquete->header.tipoMensaje == ESHANDSHAKE) { //vemos si es un handshake y le respondemos con el tam de pag
@@ -276,7 +276,7 @@ int RecibirPaqueteMemoria (int socketFD, char receptor[11], Paquete* paquete) {
 				EnviarPaquete(socketFD, &paquete);
 			}
 		} else { //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
-			paquete->Payload = realloc(paquete->Payload, paquete->header.tamPayload);
+			paquete->Payload = malloc(paquete->header.tamPayload);
 			resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 		}
 	}
@@ -310,7 +310,8 @@ void accion(void* socket){
 			break;
 			}
 		}
-		free(paquete.Payload);
+		if (paquete.Payload != NULL)
+			free(paquete.Payload);
 	}
 	close(socketFD);
 }

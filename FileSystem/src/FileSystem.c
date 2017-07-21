@@ -712,7 +712,7 @@ void LiberarVariables() {
 }
 
 int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete) {
-	paquete->Payload = malloc(1);
+	paquete->Payload = NULL;
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0) { //si no hubo error
 		if (paquete->header.tipoMensaje == ESHANDSHAKE) {
@@ -725,11 +725,9 @@ int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete)
 				EnviarDatosTipo(socketFD, FS, &r,sizeof(uint32_t) , ESERROR);
 			}
 		} else {
-			if (strcmp(paquete->header.emisor, KERNEL) == 0) {
-				paquete->Payload = realloc(paquete->Payload,
-						paquete->header.tamPayload);
-				resul = RecibirDatos(paquete->Payload, socketFD,
-						paquete->header.tamPayload);
+			if (strcmp(paquete->header.emisor, KERNEL) == 0 && paquete->header.tamPayload > 0) {
+				paquete->Payload = malloc(paquete->header.tamPayload);
+				resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 			}
 		}
 	}

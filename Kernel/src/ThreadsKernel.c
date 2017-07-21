@@ -248,19 +248,15 @@ void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int s
 int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paquete)
 {
 	paquete->Payload = NULL;
-
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
-
 	if (resul > 0)
 	{ //si no hubo error
 		if (paquete->header.tipoMensaje == ESHANDSHAKE)
 		{ //vemos si es un handshake
 			printf("Se establecio conexion con %s\n", paquete->header.emisor);
-
 			if(strcmp(paquete->header.emisor, CPU) == 0)
 			{
 				DatosCPU* disp = malloc(sizeof(DatosCPU));
-
 				disp->isFree = true;
 				disp->socketCPU = socketFD;
 				pthread_mutex_lock(&mutexCPUsConectadas);
@@ -272,35 +268,28 @@ int RecibirPaqueteServidorKernel(int socketFD, char receptor[11], Paquete* paque
 				paquete.header.tipoMensaje = ESHANDSHAKE;
 				paquete.header.tamPayload = sizeof(uint32_t)*2;
 				strcpy(paquete.header.emisor, KERNEL);
-				//((uint32_t*) paquete.Payload)[0] = STACK_SIZE;
-				//((uint32_t*) paquete.Payload)[1] = QUANTUM_SLEEP;
-				void* data = malloc(paquete.header.tamPayload);
+				void* data = alloca(paquete.header.tamPayload);
 				((uint32_t*) data)[0] = STACK_SIZE;
 				((uint32_t*) data)[1] = QUANTUM_SLEEP;
 				paquete.Payload=data;
-				//paquete.Payload=&STACK_SIZE;
 				EnviarPaquete(socketFD, &paquete);
-				free(data);
 			}
 			else{
 				EnviarHandshake(socketFD, receptor); // paquete->header.emisor
 			}
-
 		}
-		else
+		else if (paquete->header.tamPayload > 0)
 		{ //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
-			paquete->Payload = realloc(paquete->Payload, paquete->header.tamPayload);
-
+			paquete->Payload = malloc(paquete->header.tamPayload);
 			resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 		}
 	}
-
 	return resul;
 }
+
 bool hayCPUsLibres(){
 	return list_any_satisfy(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
 }
-
 
 void dispatcher()
 {
@@ -369,9 +358,8 @@ void accion(void* socket)
 	while (RecibirPaqueteServidorKernel(socketConectado, KERNEL, &paquete) > 0)
 	{
 		receptorKernel(&paquete, socketConectado);
-		if(paquete.Payload!=NULL) free(paquete.Payload);
+		if(paquete.Payload!=NULL)
+			free(paquete.Payload);
 	}
-
 	close(socketConectado);
-
 }

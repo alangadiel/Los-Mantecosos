@@ -46,7 +46,8 @@ void Servidor(char* ip, int puerto, char nombre[11],
 						accion(&paquete, i); //>>>>Esto hace el servidor cuando recibe algo<<<<
 					else
 						FD_CLR(i, &master); // eliminar del conjunto maestro si falla
-					free(paquete.Payload); //Y finalmente, no puede faltar hacer el free
+					if (paquete.Payload != NULL)
+						free(paquete.Payload); //Y finalmente, no puede faltar hacer el free
 				}
 			}
 		}
@@ -207,70 +208,63 @@ void EnviarDatos(int socketFD, char emisor[11], void* datos, int tamDatos) {
 }
 
 void RecibirHandshake(int socketFD, char emisor[11]) {
-	Header* header = malloc(TAMANIOHEADER);
-	int resul = RecibirDatos(header, socketFD, TAMANIOHEADER);
+	Header header;
+	int resul = RecibirDatos(&header, socketFD, TAMANIOHEADER);
 	if (resul > 0) { // si no hubo error en la recepcion
-		if (strcmp(header->emisor, emisor) == 0) {
-			if (header->tipoMensaje == ESHANDSHAKE)
+		if (strcmp(header.emisor, emisor) == 0) {
+			if (header.tipoMensaje == ESHANDSHAKE)
 				printf("\nConectado con el servidor %s\n", emisor);
 			else
 				perror("Error de Conexion, no se recibio un handshake\n");
 		} else
 			perror("Error, no se recibio un handshake del servidor esperado\n");
 	}
-	free(header);
 }
 
 void RecibirHandshake_DeMemoria(int socketFD, char emisor[11]){
-	Paquete* paquete =  malloc(sizeof(Paquete));
-	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
-	if (resul > 0 && paquete->header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
-		if (strcmp(paquete->header.emisor, emisor) == 0) {
+	Paquete paquete;
+	int resul = RecibirDatos(&(paquete.header), socketFD, TAMANIOHEADER);
+	if (resul > 0 && paquete.header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
+		if (strcmp(paquete.header.emisor, emisor) == 0) {
 				printf("\nConectado con el servidor Memoria\n");
-				if(strcmp(paquete->header.emisor, MEMORIA) == 0){
-					paquete->Payload = malloc(paquete->header.tamPayload);
-					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
-					TamanioPaginaMemoria = *((uint32_t*)paquete->Payload);
-					free(paquete->Payload);
+				if(strcmp(paquete.header.emisor, MEMORIA) == 0 && paquete.header.tamPayload > 0){
+					paquete.Payload = malloc(paquete.header.tamPayload);
+					resul = RecibirDatos(paquete.Payload, socketFD, paquete.header.tamPayload);
+					TamanioPaginaMemoria = *((uint32_t*)paquete.Payload);
+					free(paquete.Payload);
 				}
 		} else
 			perror("Error, no se recibio un handshake del servidor esperado\n");
 	} else
 		perror("Error de Conexion, no se recibio un handshake\n");
-
-	free(paquete);
 }
+
 void RecibirHandshake_DeKernel(int socketFD, char emisor[11]){
-	Paquete* paquete =  malloc(sizeof(Paquete));
-	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
-	if (resul > 0 && paquete->header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
-		if (strcmp(paquete->header.emisor, emisor) == 0) {
+	Paquete paquete;
+	int resul = RecibirDatos(&(paquete.header), socketFD, TAMANIOHEADER);
+	if (resul > 0 && paquete.header.tipoMensaje == ESHANDSHAKE) { //si no hubo error y es un handshake
+		if (strcmp(paquete.header.emisor, emisor) == 0) {
 				printf("\nConectado con el servidor Kernel\n");
-				if(strcmp(paquete->header.emisor, KERNEL) == 0){
-					paquete->Payload = malloc(paquete->header.tamPayload);
-					resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
-					StackSizeEnPaginas = ((uint32_t*)paquete->Payload)[0];
-					QuantumSleep = ((uint32_t*)paquete->Payload)[1];
-					free(paquete->Payload);
+				if(strcmp(paquete.header.emisor, KERNEL) == 0 && paquete.header.tamPayload > 0){
+					paquete.Payload = malloc(paquete.header.tamPayload);
+					resul = RecibirDatos(paquete.Payload, socketFD, paquete.header.tamPayload);
+					StackSizeEnPaginas = ((uint32_t*)paquete.Payload)[0];
+					QuantumSleep = ((uint32_t*)paquete.Payload)[1];
+					free(paquete.Payload);
 				}
 		} else
 			perror("Error, no se recibio un handshake del servidor esperado\n");
 	} else
 		perror("Error de Conexion, no se recibio un handshake\n");
-
-	free(paquete);
 }
 
 int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir) {
 	void* datos = malloc(cantARecibir);
-	//char* punteroMsg = paquete;
 	int recibido = 0;
 	int totalRecibido = 0;
 
 	do {
-		recibido = recv(socketFD, datos + totalRecibido,
-				cantARecibir - totalRecibido, 0);
-		//send(socketCliente,punteroMsg+totalEnviado,cantAEnviar-totalEnviado,0);
+		recibido = recv(socketFD, datos + totalRecibido, cantARecibir - totalRecibido, 0);
 		totalRecibido += recibido;
 	} while (totalRecibido != cantARecibir && recibido > 0);
 	memcpy(paquete, datos, cantARecibir);
@@ -289,33 +283,27 @@ int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir) {
 }
 
 int RecibirPaqueteServidor(int socketFD, char receptor[11], Paquete* paquete) {
-	paquete->Payload = malloc(1);
+	paquete->Payload = NULL;
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
 	if (resul > 0) { //si no hubo error
 		if (paquete->header.tipoMensaje == ESHANDSHAKE) { //vemos si es un handshake
 			printf("Se establecio conexion con %s\n", paquete->header.emisor);
 			EnviarHandshake(socketFD, receptor); // paquete->header.emisor
-		} else { //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
-			paquete->Payload = realloc(paquete->Payload,
-					paquete->header.tamPayload);
-			resul = RecibirDatos(paquete->Payload, socketFD,
-					paquete->header.tamPayload);
+		} else if (paquete->header.tamPayload > 0){ //recibimos un payload y lo procesamos (por ej, puede mostrarlo)
+			paquete->Payload = malloc(paquete->header.tamPayload);
+			resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 		}
 	}
-
 	return resul;
 }
 
 int RecibirPaqueteCliente(int socketFD, char receptor[11], Paquete* paquete) {
-	paquete->Payload = malloc(1);
+	paquete->Payload = NULL;
 	int resul = RecibirDatos(&(paquete->header), socketFD, TAMANIOHEADER);
-	if (resul > 0 && paquete->header.tipoMensaje >= 0) { //si no hubo error ni es un handshake
-		paquete->Payload = realloc(paquete->Payload,
-				paquete->header.tamPayload);
-		resul = RecibirDatos(paquete->Payload, socketFD,
-				paquete->header.tamPayload);
+	if (resul > 0 && paquete->header.tipoMensaje >= 0 && paquete->header.tamPayload > 0) { //si no hubo error ni es un handshake
+		paquete->Payload = malloc(paquete->header.tamPayload);
+		resul = RecibirDatos(paquete->Payload, socketFD, paquete->header.tamPayload);
 	}
-
 	return resul;
 }
 
@@ -323,36 +311,42 @@ int RecibirPaqueteCliente(int socketFD, char receptor[11], Paquete* paquete) {
 bool IM_InicializarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog,
 		uint32_t CantPag) { //Solicitar paginas para un programa nuevo
 	int tamDatos = sizeof(uint32_t) * 3;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = INIC_PROG;
 	((uint32_t*) datos)[1] = ID_Prog;
 	((uint32_t*) datos)[2] = CantPag;
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
-	free(datos);
+	//free(datos);
 	Paquete paquete;
 	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
 	printf("\nEl programa con PID %u se inicializo en Memoria.\n", ID_Prog);
 	bool r = true;
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
-	free(paquete.Payload);
+	if (paquete.Payload != NULL)
+		free(paquete.Payload);
 	return r;
 }
 void* IM_LeerDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 		uint32_t PagNum, uint32_t offset, uint32_t cantBytes) { //Devuelve los datos de una pagina, ¡Recordar hacer free(puntero) cuando los terminamos de usar!
 	int tamDatos = sizeof(uint32_t) * 5;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = SOL_BYTES;
 	((uint32_t*) datos)[1] = ID_Prog;
 	((uint32_t*) datos)[2] = PagNum;
 	((uint32_t*) datos)[3] = offset;
 	((uint32_t*) datos)[4] = cantBytes;
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
-	free(datos);
+	//free(datos);
 	Paquete paquete;
 	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
 	void* r;
 	if(paquete.header.tipoMensaje == ESERROR)
+	{
+		if (paquete.Payload != NULL) {
+			free(paquete.Payload);
+		}
 		r = NULL;
+	}
 	else if(paquete.header.tipoMensaje == ESDATOS)
 		r = paquete.Payload;
 	return r;
@@ -360,7 +354,7 @@ void* IM_LeerDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 bool IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 		uint32_t PagNum, uint32_t offset, uint32_t cantBytes, void* buffer) {
 	int tamDatos = sizeof(uint32_t) * 5 + cantBytes;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = ALM_BYTES;
 	((uint32_t*) datos)[1] = ID_Prog;
 	((uint32_t*) datos)[2] = PagNum;
@@ -368,58 +362,62 @@ bool IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 	((uint32_t*) datos)[4] = cantBytes;
 	memcpy(datos+sizeof(uint32_t) * 5, buffer, cantBytes);
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
-	free(datos);
+	//free(datos);
 	Paquete paquete;
 	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
 	bool r = true;
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
-	free(paquete.Payload);
+	if (paquete.Payload != NULL)
+		free(paquete.Payload);
 	return r;
 }
 bool IM_AsignarPaginas(int socketFD, char emisor[11], uint32_t ID_Prog,
 		uint32_t CantPag) { //Devuelve la cant de paginas que pudo asignar
 	int tamDatos = sizeof(uint32_t) * 3;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = ASIG_PAG;
 	((uint32_t*) datos)[1] = ID_Prog;
 	((uint32_t*) datos)[2] = CantPag;
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
-	free(datos);
+	//free(datos);
 	Paquete paquete;
 	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
 	bool r = true;
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
-	free(paquete.Payload);
+	if (paquete.Payload != NULL)
+		free(paquete.Payload);
 	return r;
 }
 bool IM_LiberarPagina(int socketFD, char emisor[11], uint32_t ID_Prog, uint32_t NumPag) {//Agregado en el Fe de Erratas, responde 0 si hubo error y 1 si libero la pag.
 	int tamDatos = sizeof(uint32_t) * 3;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = LIBE_PAG;
 	((uint32_t*) datos)[1] = ID_Prog;
 	((uint32_t*) datos)[2] = NumPag;
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
-	free(datos);
+	//free(datos);
 	Paquete paquete;
 	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
 	bool r = true;
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
-	free(paquete.Payload);
+	if (paquete.Payload != NULL)
+		free(paquete.Payload);
 	return r;
 }
 
 bool IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog) { //Borra las paginas de ese programa.
 	int tamDatos = sizeof(uint32_t) * 2;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = FIN_PROG;
 	((uint32_t*) datos)[1] = ID_Prog;
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
-	free(datos);
+	//free(datos);
 	Paquete paquete;
 	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
 	bool r = true;
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
-	free(paquete.Payload);
+	if (paquete.Payload != NULL)
+		free(paquete.Payload);
 	return r;
 }
 
@@ -427,44 +425,44 @@ bool IM_FinalizarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog) { //B
 
 uint32_t FS_ValidarPrograma(int socketFD, char emisor[11], char* path) {
 	int tamDatos = sizeof(uint32_t) + string_length(path) + 1;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = VALIDAR_ARCHIVO;
 
 	memcpy(datos + sizeof(uint32_t), path, string_length(path)+1);
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, KERNEL, paquete) <= 0);
-	uint32_t r = *(uint32_t*) (paquete->Payload);
+	Paquete paquete;
+	while (RecibirPaqueteCliente(socketFD, KERNEL, &paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete.Payload);
 
-	free(paquete->Payload);
-	free(paquete);
-	free(datos);
+	if (paquete.Payload != NULL)
+		free(paquete.Payload);
+	//free(datos);
 
 	return r;
 }
 uint32_t FS_CrearPrograma(int socketFD, char emisor[11], char* path) {
 	int tamDatos = sizeof(uint32_t) + sizeof(char) * string_length(path) + 1;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = CREAR_ARCHIVO;
 
 	char* destinoPath = datos + sizeof(uint32_t);
 	strcpy(destinoPath, path);
 
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
-	free(datos);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
-	uint32_t r = *(uint32_t*) (paquete->Payload);
-	free(paquete->Payload);
-	free(paquete);
+	//free(datos);
+	Paquete paquete;
+	while (RecibirPaqueteCliente(socketFD, FS, &paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete.Payload);
+	if (paquete.Payload != NULL)
+		free(paquete.Payload);
 
 	return r;
 
 }
 uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path) {
 	int tamDatos = sizeof(uint32_t) + sizeof(char) * string_length(path) + 1;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = BORRAR_ARCHIVO;
 
 	char* destinoPath = datos + sizeof(uint32_t);
@@ -472,18 +470,17 @@ uint32_t FS_BorrarArchivo(int socketFD, char emisor[11], char* path) {
 
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
-	uint32_t r = *(uint32_t*) (paquete->Payload);
-	free(paquete->Payload);
-	free(paquete);
-	free(datos);
-
+	Paquete paquete;
+	while (RecibirPaqueteCliente(socketFD, FS, &paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete.Payload);
+	if (paquete.Payload != NULL)
+		free(paquete.Payload);
+	//free(datos);
 	return r;
 }
 void* FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset, uint32_t size) {
 	int tamDatos = sizeof(uint32_t) * 3 + sizeof(char) * string_length(path) + 1;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = OBTENER_DATOS;
 	((uint32_t*) datos)[1] = offset;
 	((uint32_t*) datos)[2] = size;
@@ -492,21 +489,24 @@ void* FS_ObtenerDatos(int socketFD, char emisor[11], char* path, uint32_t offset
 	strcpy(destinoPath, path);
 
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
-	free(datos);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
+	//free(datos);
+	Paquete paquete;
+	while (RecibirPaqueteCliente(socketFD, FS, &paquete) <= 0);
 	void* r;
-	if(paquete->header.tipoMensaje == ESERROR)
+	if(paquete.header.tipoMensaje == ESERROR)
+	{
+		if (paquete.Payload != NULL) {
+			free(paquete.Payload);
+		}
 		r = NULL;
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = paquete->Payload;
-	free(paquete);
-
+	}
+	else if(paquete.header.tipoMensaje == ESDATOS)
+		r = paquete.Payload;
 	return r;
 }
 uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, int size, void* buffer) {//Agregado en el Fe de Erratas, responde 0 si hubo error y 1 si libero la pag.
 	int tamDatos = sizeof(uint32_t) * 3 + string_length(path) + 1 + size;
-	void* datos = malloc(tamDatos);
+	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = GUARDAR_DATOS;
 	((uint32_t*) datos)[1] = offset;
 	((uint32_t*) datos)[2] = size;
@@ -519,13 +519,13 @@ uint32_t FS_GuardarDatos(int socketFD, char emisor[11], char* path, int offset, 
 
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketFD, FS, paquete) <= 0);
-	uint32_t r = *(uint32_t*) (paquete->Payload);
+	Paquete paquete;
+	while (RecibirPaqueteCliente(socketFD, FS, &paquete) <= 0);
+	uint32_t r = *(uint32_t*) (paquete.Payload);
 
-	free(datos);
-	free(paquete->Payload);
-	free(paquete);
+	//free(datos);
+	if (paquete.Payload != NULL)
+		free(paquete.Payload);
 
 	return r;
 }
@@ -679,4 +679,3 @@ void RecibirPCB(BloqueControlProceso* pecebe, void* payload, uint32_t tamPayload
 		}
 	}
 }
-

@@ -61,29 +61,29 @@ void programHandler(void* structProc) {
 	uint32_t pid;
 	sendSignalOpenFile(procesoActual->pathCodigo, socketFD);
 	free(procesoActual->pathCodigo);
-	Paquete* paquete = malloc(sizeof(Paquete));
+	Paquete paquete;
 	while(!fin && !finPrograma) {
-		if(RecibirPaqueteCliente(socketFD, CONSOLA, paquete)<0){
+		if(RecibirPaqueteCliente(socketFD, CONSOLA, &paquete)<0){
 			socketFD = ConectarAServidor(PUERTO_KERNEL, IP_KERNEL, KERNEL, CONSOLA, RecibirHandshake);
 		} else {
-			switch (paquete->header.tipoMensaje) {
+			switch (paquete.header.tipoMensaje) {
 				case ESDATOS:
-					if(strcmp(paquete->header.emisor,KERNEL)==0){
-						pid = *((uint32_t*) paquete->Payload);
+					if(strcmp(paquete.header.emisor,KERNEL)==0){
+						pid = *((uint32_t*) paquete.Payload);
 						if(pid >= 1){
 							procesoActual->pid = pid;
 							printf("El pid del nuevo programa es %d \n",pid);
 						}
 						else if(pid == 0) {
-							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload + sizeof(uint32_t)));
+							printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete.Payload + sizeof(uint32_t)));
 						}
 					}
 				break;
 				case ESSTRING:
-					printf("%s\n",(char*)paquete->Payload);
-					if(strcmp(paquete->header.emisor,KERNEL)==0){
+					printf("%s\n",(char*)paquete.Payload);
+					if(strcmp(paquete.header.emisor,KERNEL)==0){
 
-						if (strcmp((char*)paquete->Payload, "KILLEADO") == 0) {
+						if (strcmp((char*)paquete.Payload, "KILLEADO") == 0) {
 							time_t tiempoFinalizacion = time(NULL);
 							char* sTiempoDeFin = temporal_get_string_time();
 							printf("%s\n", sTiempoDeInicio);
@@ -102,17 +102,18 @@ void programHandler(void* structProc) {
 
 							finPrograma = true;
 						}
-						else if (strcmp(string_substring_until(paquete->Payload,8),"imprimir") == 0) {
-							printf("%s\n", string_substring_from((char*)paquete->Payload,8));
+						else if (strcmp(string_substring_until(paquete.Payload,8),"imprimir") == 0) {
+							printf("%s\n", string_substring_from((char*)paquete.Payload,8));
 						}
 						else {
-							  printf("%s\n", (char*)paquete->Payload);
+							  printf("%s\n", (char*)paquete.Payload);
 						}
 					}
 				break;
 
 			}
-			free(paquete->Payload);
+			if (paquete.Payload != NULL)
+				free(paquete.Payload);
 		}
 	}
 	printf("programa finalizado\n");
