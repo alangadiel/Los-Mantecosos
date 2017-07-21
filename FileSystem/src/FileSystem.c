@@ -376,11 +376,11 @@ char* leerTodoElArchivo(char* fileToScan) {
 char* obtenerTodosLosDatosDeBloques(ValoresArchivo* valores) {
 	char* datos = string_new();
 	int i;
-
-	for (i = 0; i < list_size(valores->Bloques); i++) {
-		string_append(&datos, leerTodoElArchivo(obtenerPathABloque(i)));
+	if (valores != NULL){
+		for (i = 0; i < list_size(valores->Bloques); i++) {
+			string_append(&datos, leerTodoElArchivo(obtenerPathABloque(i)));
+		}
 	}
-
 	return datos;
 }
 
