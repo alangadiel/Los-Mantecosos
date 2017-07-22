@@ -467,21 +467,13 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 
 			list_add(listaValoresArchivos, valores);
 		}
-		/*else
+		else
 		{
-			int nuevoTamanioDeArchivo;
-
-			if (valores->Tamanio > offset)
+			if (size > valores->Tamanio)
 			{
-				nuevoTamanioDeArchivo = valores->Tamanio + size;
+				valores->Tamanio = size;
 			}
-			else
-			{
-				nuevoTamanioDeArchivo = offset + size;
-			}
-
-			valores->Tamanio = nuevoTamanioDeArchivo;
-		}*/
+		}
 
 		reservarBloquesParaEscribir(valores);
 		char* datosAEscribir = string_new();
