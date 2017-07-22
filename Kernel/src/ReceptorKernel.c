@@ -170,7 +170,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								//pthread_mutex_unlock(&mutexSemaforos);
 
 								pthread_mutex_lock(&mutexQueueBloqueados);
-								printf("Tamanio de la cola de bloqueados: %u",queue_size(Bloqueados));
+								printf("Tamanio de la cola de bloqueados: %u\n",queue_size(Bloqueados));
 								pcbDesbloqueado = list_remove_by_condition(Bloqueados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*) item)->PID == *pidDesbloqueadoDeLaColaDelSem; }));
 								pthread_mutex_unlock(&mutexQueueBloqueados);
 
@@ -283,7 +283,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						if(FD == 1)
 						{
 							char* mensaje = ((char*)paquete->Payload+sizeof(uint32_t) * 4);
-							printf("mensaje a mandar a la consola %s",mensaje);
+							printf("mensaje a mandar a la consola %s\n",mensaje);
 							pthread_mutex_lock(&mutexConsolaFD1);
 							void* datos = malloc(sizeof(uint32_t) * (string_length(mensaje) +1));
 							((uint32_t*) datos)[0] = 0;
@@ -311,7 +311,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 						void* datosLeidos = leerArchivo(FD, PID, tamanioArchivo, punteroArchivo);
 
-						printf("Se leyo %s", datosLeidos);
+						printf("Se leyo %s\n", datosLeidos);
 					break;
 					/*
 					case FINEJECUCIONPROGRAMA:

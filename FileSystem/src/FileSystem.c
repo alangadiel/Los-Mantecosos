@@ -42,6 +42,7 @@ char* obtenerPathABloque(int num) {
 	string_append(&pathAEscribir, "/");
 	string_append(&pathAEscribir, string_itoa(num));
 	string_append(&pathAEscribir, ".bin");
+
 	return pathAEscribir;
 }
 
@@ -146,6 +147,16 @@ int validarArchivo(char* path, int socketFD) {
 	bool esValido = archivoEsValido(path);
 	bool existe = existeArchivo(path);
 	if(esValido && existe) {
+		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, path) == 0; }));
+
+		if(valores == NULL)
+		{
+			valores = obtenerValoresDeArchivo(path);
+			valores->path = string_duplicate(path);
+
+			list_add(listaValoresArchivos, valores);
+		}
+
 		r=1;
 		if(socketFD>0)
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
@@ -370,17 +381,21 @@ char* leerTodoElArchivo(char* fileToScan) {
 	buffer = malloc((size + 1) * sizeof(*buffer));
 	fread(buffer, size, 1, fp);
 	buffer[size] = '\0';
+
 	return buffer;
 }
 
 char* obtenerTodosLosDatosDeBloques(ValoresArchivo* valores) {
 	char* datos = string_new();
 	int i;
+
 	if (valores != NULL){
 		for (i = 0; i < list_size(valores->Bloques); i++) {
-			string_append(&datos, leerTodoElArchivo(obtenerPathABloque(i)));
+			int* numBloque = list_get(valores->Bloques, i);
+			string_append(&datos, leerTodoElArchivo(obtenerPathABloque(*numBloque)));
 		}
 	}
+
 	return datos;
 }
 
@@ -441,7 +456,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 	//string_append(&pathAEscribir, ARCHIVOSPATH);
 	//string_append(&pathAEscribir, path);
 
-	if (validarArchivo(path, 0))
+	if (validarArchivoSinEnviarAKernel(path))
 	{
 		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, path) == 0; }));
 
@@ -452,7 +467,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 
 			list_add(listaValoresArchivos, valores);
 		}
-		else
+		/*else
 		{
 			int nuevoTamanioDeArchivo;
 
@@ -466,7 +481,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 			}
 
 			valores->Tamanio = nuevoTamanioDeArchivo;
-		}
+		}*/
 
 		reservarBloquesParaEscribir(valores);
 		char* datosAEscribir = string_new();
