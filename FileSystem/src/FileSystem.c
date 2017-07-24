@@ -151,6 +151,8 @@ int validarArchivo(char* path, int socketFD) {
 
 		if(valores == NULL)
 		{
+			valores = malloc(sizeof(ValoresArchivo));
+
 			valores = obtenerValoresDeArchivo(path);
 			valores->path = string_duplicate(path);
 
@@ -407,7 +409,6 @@ void obtenerDatos(char* pathAObtener, uint32_t offset, uint32_t size, int socket
 		EnviarDatos(socketFD, FS, datosAEnviar, sizeof(char) * string_length(datosAEnviar) + 1);
 
 		free(datosAEnviar);
-		free(valores);
 	}
 	else {
 		uint32_t r = 0;
