@@ -152,6 +152,8 @@ int validarArchivo(char* path, int socketFD) {
 		if(valores == NULL)
 		{
 			valores = malloc(sizeof(ValoresArchivo));
+			valores->Bloques = list_create();
+			valores->path = string_new();
 
 			valores = obtenerValoresDeArchivo(path);
 			valores->path = string_duplicate(path);
@@ -342,30 +344,30 @@ void crearArchivo(char* path,int socketFD) {
 
 void borrarArchivo(char* pathArchivo , int socketFD) {
 	uint32_t r = 0;
+
 	if (validarArchivo(pathArchivo, 0)) {
 		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, pathArchivo) == 0; }));
 
-		if(valores == NULL)
+		if(valores != NULL)
 		{
-			valores = obtenerValoresDeArchivo(pathArchivo);
-			valores->path = string_duplicate(pathArchivo);
+			eliminarBloques(valores->Bloques);
 
-			list_add(listaValoresArchivos, valores);
+			int removeFile = remove(pathArchivo);
+
+			if (removeFile >= 0 && socketFD != 0) {
+				r = 1;
+				EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
+
+				list_remove_and_destroy_by_condition(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, pathArchivo) == 0; }), free);
+			}
+			else {
+				EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
+			}
 		}
-
-		eliminarBloques(valores->Bloques);
-
-		int removeFile = remove(pathArchivo);
-
-		if (removeFile >= 0 && socketFD != 0) {
-			r = 1;
+		else
+		{
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
-		else {
-			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
-		}
-
-		list_remove_and_destroy_by_condition(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, pathArchivo) == 0; }), free);
 	}
 	else
 	{
@@ -404,11 +406,20 @@ char* obtenerTodosLosDatosDeBloques(ValoresArchivo* valores) {
 void obtenerDatos(char* pathAObtener, uint32_t offset, uint32_t size, int socketFD) {
 	if (validarArchivoSinEnviarAKernel(pathAObtener)) {
 		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, pathAObtener) == 0; }));
-		char* datosAEnviar = string_substring(obtenerTodosLosDatosDeBloques(valores), offset, size);
 
-		EnviarDatos(socketFD, FS, datosAEnviar, sizeof(char) * string_length(datosAEnviar) + 1);
+		if(valores != NULL)
+		{
+			char* datosAEnviar = string_substring(obtenerTodosLosDatosDeBloques(valores), offset, size);
 
-		free(datosAEnviar);
+			EnviarDatos(socketFD, FS, datosAEnviar, sizeof(char) * string_length(datosAEnviar) + 1);
+
+			free(datosAEnviar);
+		}
+		else
+		{
+			uint32_t r = 0;
+			EnviarDatosTipo(socketFD, FS, &r, sizeof(uint32_t), ESERROR);
+		}
 	}
 	else {
 		uint32_t r = 0;
@@ -461,97 +472,95 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 	{
 		ValoresArchivo* valores = (ValoresArchivo*)list_find(listaValoresArchivos, LAMBDA(bool _(void* item) { return strcmp(((ValoresArchivo*) item)->path, path) == 0; }));
 
-		if(valores == NULL)
-		{
-			valores = obtenerValoresDeArchivo(path);
-			valores->path = string_duplicate(path);
-
-			list_add(listaValoresArchivos, valores);
-		}
-		else
+		if(valores != NULL)
 		{
 			if (size > valores->Tamanio)
 			{
 				valores->Tamanio = size;
 			}
-		}
 
-		reservarBloquesParaEscribir(valores);
-		char* datosAEscribir = string_new();
-		datosAEscribir = string_duplicate(buffer);
-		//memcpy(datosActuales, buffer+offset, nuevoTamanioDeArchivo); //puede ser que deba avanzar x2
+			reservarBloquesParaEscribir(valores);
+			char* datosAEscribir = string_new();
+			datosAEscribir = string_duplicate(buffer);
+			//memcpy(datosActuales, buffer+offset, nuevoTamanioDeArchivo); //puede ser que deba avanzar x2
 
-		int sizeParaRestar = size;
-		int desdeEscribir = 0;
-		int lengthEscribir = size;
-		char* nombreF = string_new();
-		char* substr = string_new();
-		int i = 0;
+			int sizeParaRestar = size;
+			int desdeEscribir = 0;
+			int lengthEscribir = size;
+			char* nombreF = string_new();
+			char* substr = string_new();
+			int i = 0;
 
-		if(size > TAMANIO_BLOQUES - offset)
-		{
-			while(sizeParaRestar > 0)
+			if(size > TAMANIO_BLOQUES - offset)
 			{
-				int* bloqueAEscribir = list_get(valores->Bloques, i);
+				while(sizeParaRestar > 0)
+				{
+					int* bloqueAEscribir = list_get(valores->Bloques, i);
 
-				nombreF = string_duplicate(obtenerPathABloque(*bloqueAEscribir));
+					nombreF = string_duplicate(obtenerPathABloque(*bloqueAEscribir));
+
+					FILE* file = fopen(nombreF, "w+");
+
+					fseek(file, offset, SEEK_SET);
+
+					//char* substr = string_new();
+
+					if(lengthEscribir > TAMANIO_BLOQUES)
+					{
+						substr = string_substring(datosAEscribir, desdeEscribir, TAMANIO_BLOQUES);
+
+						sizeParaRestar -= TAMANIO_BLOQUES;
+						desdeEscribir = TAMANIO_BLOQUES - offset;
+						lengthEscribir -= TAMANIO_BLOQUES;
+					}
+					else
+					{
+						substr = string_substring(datosAEscribir, desdeEscribir, lengthEscribir);
+
+						sizeParaRestar -= lengthEscribir;
+					}
+
+					fputs(substr, file);
+
+					fclose(file);
+
+					offset = 0;
+
+					//free(substr);
+
+					i++;
+				}
+			}
+			else
+			{
+				int* bloqueAEscribir = list_get(valores->Bloques, 0);
+
+				nombreF = obtenerPathABloque(*bloqueAEscribir);
 
 				FILE* file = fopen(nombreF, "w+");
 
 				fseek(file, offset, SEEK_SET);
 
-				//char* substr = string_new();
-
-				if(lengthEscribir > TAMANIO_BLOQUES)
-				{
-					substr = string_substring(datosAEscribir, desdeEscribir, TAMANIO_BLOQUES);
-
-					sizeParaRestar -= TAMANIO_BLOQUES;
-					desdeEscribir = TAMANIO_BLOQUES - offset;
-					lengthEscribir -= TAMANIO_BLOQUES;
-				}
-				else
-				{
-					substr = string_substring(datosAEscribir, desdeEscribir, lengthEscribir);
-
-					sizeParaRestar -= lengthEscribir;
-				}
-
-				fputs(substr, file);
+				fputs(datosAEscribir, file);
 
 				fclose(file);
-
-				offset = 0;
-
-				//free(substr);
-
-				i++;
 			}
+
+			if (socketFD != 0)
+			{
+				uint32_t r = 1;
+				EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
+			}
+
+			free(nombreF);
+			free(substr);
+			free(datosAEscribir);
 		}
 		else
 		{
-			int* bloqueAEscribir = list_get(valores->Bloques, 0);
-
-			nombreF = obtenerPathABloque(*bloqueAEscribir);
-
-			FILE* file = fopen(nombreF, "w+");
-
-			fseek(file, offset, SEEK_SET);
-
-			fputs(datosAEscribir, file);
-
-			fclose(file);
-		}
-
-		if (socketFD != 0)
-		{
-			uint32_t r = 1;
+			uint32_t r = 0;
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
-
-		free(nombreF);
-		free(substr);
-		free(datosAEscribir);
 	}
 	else
 	{
