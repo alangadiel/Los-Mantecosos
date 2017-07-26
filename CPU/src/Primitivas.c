@@ -2,14 +2,20 @@
 
 void* EnviarAServidorYEsperarRecepcion(void* datos,int tamDatos){
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	Paquete paquete;
+	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
 	void* r;
-	if(paquete->header.tipoMensaje == ESERROR)
+	if(paquete.header.tipoMensaje == ESERROR)
 		r = NULL;
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = paquete->Payload;
-	free(paquete);
+	else if(paquete.header.tipoMensaje == ESDATOS)
+		r = paquete.Payload;
+
+	if(paquete.Payload != NULL)
+	{
+		free(paquete.Payload);
+	}
+
+	//free(paquete);
 	return r;
 }
 
@@ -35,26 +41,32 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	memcpy(datos + sizeof(uint32_t) * 2 + sizeof(BanderasPermisos), path, string_length(direccion)+1);
 
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+	free(bandera);
+	free(path);
+	Paquete paquete;
 
-	Paquete* paquete = malloc(sizeof(Paquete));
-
-	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
 
 	free(datos);
-	//free(path);
-	free(bandera);
+
+
 
 	t_descriptor_archivo r;
 
-	if(paquete->header.tipoMensaje == ESERROR)
+	if(paquete.header.tipoMensaje == ESERROR)
 	{
-		*tipoError = ((int32_t*)paquete->Payload)[0];
+		*tipoError = ((int32_t*)paquete.Payload)[0];
 		r = 0;
 	}
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = *((t_descriptor_archivo*)paquete->Payload);
+	else if(paquete.header.tipoMensaje == ESDATOS)
+		r = *((t_descriptor_archivo*)paquete.Payload);
 
-	free(paquete);
+	if(paquete.Payload != NULL)
+	{
+		free(paquete.Payload);
+	}
+
+	//free(paquete);
 
 	return r;
 }
@@ -187,16 +199,22 @@ t_valor_variable primitiva_obtenerValorCompartida(t_nombre_compartida variable){
 	//t_valor_variable result = *(t_valor_variable*)EnviarAServidorYEsperarRecepcion(datos,tamDatos);
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(nombreAMandar);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	Paquete paquete;
+	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
 	int32_t r;
-	if(paquete->header.tipoMensaje == ESERROR){
+	if(paquete.header.tipoMensaje == ESERROR){
 		huboError = true;
-		pcb.ExitCode = ((int32_t*)paquete->Payload)[0];
+		pcb.ExitCode = ((int32_t*)paquete.Payload)[0];
 	}
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = *(int32_t*)paquete->Payload;
-	free(paquete);
+	else if(paquete.header.tipoMensaje == ESDATOS)
+		r = *(int32_t*)paquete.Payload;
+
+	if(paquete.Payload != NULL)
+	{
+		free(paquete.Payload);
+	}
+
+	//free(paquete);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
 	return r;
@@ -214,16 +232,22 @@ t_valor_variable primitiva_asignarValorCompartida(t_nombre_compartida variable, 
 	memcpy(datos+sizeof(uint32_t)*3, nombreAMandar, string_length(nombreAMandar)+1);
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(nombreAMandar);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	Paquete paquete;
+	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
 	int32_t r;
-	if(paquete->header.tipoMensaje == ESERROR){
+	if(paquete.header.tipoMensaje == ESERROR){
 		huboError = true;
-		pcb.ExitCode = ((int32_t*)paquete->Payload)[0];
+		pcb.ExitCode = ((int32_t*)paquete.Payload)[0];
 	}
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = *(int32_t*)paquete->Payload;
-	free(paquete);
+	else if(paquete.header.tipoMensaje == ESDATOS)
+		r = *(int32_t*)paquete.Payload;
+
+	if(paquete.Payload != NULL)
+	{
+		free(paquete.Payload);
+	}
+
+	//free(paquete);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
 	return r;
@@ -330,16 +354,22 @@ uint32_t ReservarBloqueMemoriaDinamica(t_valor_variable espacio,int32_t *tipoErr
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = espacio;
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	Paquete* paquete = malloc(sizeof(Paquete));
-	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);
+	Paquete paquete;
+	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
 	uint32_t r = 0;
-	if(paquete->header.tipoMensaje == ESERROR){
+	if(paquete.header.tipoMensaje == ESERROR){
 		huboError = true;
-		*tipoError = ((int32_t*)paquete->Payload)[0];
+		*tipoError = ((int32_t*)paquete.Payload)[0];
 	}
-	else if(paquete->header.tipoMensaje == ESDATOS)
-		r = *((uint32_t*)paquete->Payload);
-	free(paquete);
+	else if(paquete.header.tipoMensaje == ESDATOS)
+		r = *((uint32_t*)paquete.Payload);
+
+	if(paquete.Payload != NULL)
+	{
+		free(paquete.Payload);
+	}
+
+	//free(paquete);
 	free(datos);
 	printf("Puntero donde se aloco: %u\n",r);
 	return r;
@@ -377,7 +407,6 @@ void primitiva_liberar(t_puntero puntero){
 }
 t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
 	int32_t tipoError = 0;
-	printf("abrir archvo %s\n", direccion);
 	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags, &tipoError);
 
 	if(fd == 0)
