@@ -6,6 +6,7 @@
 #define ESCRIBIRARCHIVOSINPERMISO -4
 #define CREARARCHIVOSINPERMISOS -10
 
+int ultimoGlobalFD = 0;
 
 typedef struct {
 	t_list* listaArchivo;
@@ -64,12 +65,15 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 
 	if(result == NULL) //No hay un archivo global con ese path
 	{
-		archivoGlob = malloc(sizeof(uint32_t) + string_length(path) + 1); //El free se hace en limpiar listas
+		archivoGlob = malloc(sizeof(uint32_t) * 2 + string_length(path) + 1); //El free se hace en limpiar listas
 
 		archivoGlob->pathArchivo = string_new();
 
 		string_append(&archivoGlob->pathArchivo, path);
 		archivoGlob->cantAperturas = 1;
+		archivoGlob->globalFD = ultimoGlobalFD;
+
+		ultimoGlobalFD++;
 
 		list_add(ArchivosGlobales, archivoGlob);
 	}
@@ -78,25 +82,13 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 		archivoGlob = (archivoGlobal*)result;
 
 		archivoGlob->cantAperturas++;
-
 	}
 
 	ListaArchivosProceso* lista = NULL;
 
 	lista = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
 
-	int indice;
-	int j;
-
-	for(j = 0; j < list_size(ArchivosGlobales); j++)
-	{
-		archivoGlobal* arch = list_get(ArchivosGlobales, j);
-
-		if(strcmp(arch->pathArchivo, path) == 0)
-		{
-			indice = j;
-		}
-	}
+	archivoGlobal* archGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, path) == 0; }));
 
 	if(lista == NULL) //No hay ninguna lista de archivos para ese proceso porque no habia abierto ningun archivo todavia
 	{
@@ -105,7 +97,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 		archivoProc->FD = 3;
 		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
-		archivoProc->globalFD = indice;
+		archivoProc->globalFD = archGlob->globalFD;
 
 		ListaArchivosProceso* listaArchivoProceso;
 		listaArchivoProceso = malloc(sizeof(listaArchivoProceso));
@@ -120,15 +112,15 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 	}
 	else //Hay una lista para ese proceso, entonces solo agrego un archivo
 	{
-		archivoProceso* arch = list_get(lista->listaArchivo, list_size(lista->listaArchivo)-1);
+		archivoProceso* archProc = list_get(lista->listaArchivo, list_size(lista->listaArchivo)-1);
 
 		archivoProc = malloc(sizeof(archivoProceso)); //El free se hace en limpiar listas
 
 		archivoProc->PID = PID;
-		archivoProc->FD = arch->FD+1;
+		archivoProc->FD = archProc->FD+1;
 		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
-		archivoProc->globalFD = indice;
+		archivoProc->globalFD = archGlob->globalFD;
 
 		ListaArchivosProceso* listaArchivoProceso = lista;
 
@@ -166,7 +158,7 @@ void finalizarProgramaCapaFS(int PID)
 		{
 			archivoProceso* archivoProc = (archivoProceso*)list_get(listaProcesoAFinalizar->listaArchivo, j);
 
-			archivoGlobal* archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
+			archivoGlobal* archivoGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->globalFD == archivoProc->globalFD; }));
 
 			archivoGlob->cantAperturas--;
 
@@ -190,8 +182,6 @@ uint32_t abrirArchivo(char* path, uint32_t PID, BanderasPermisos permisos, int s
 	if(archivoEstaCreado == 1)
 	{
 		FD = cargarEnTablasArchivos(path, PID, permisos);
-
-		printf("Se cargo el FD %d y su path es %s", FD, path);
 
 		EnviarDatos(socketConectado, KERNEL, &FD, sizeof(uint32_t));
 	}
@@ -228,7 +218,7 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 	{
 		if(archivoProc->flags.lectura == true)
 		{
-			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
+			archivoGlobal* archGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->globalFD == archivoProc->globalFD; }));
 
 			void* dato = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo);
 
@@ -261,7 +251,7 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* 
 	{
 		if(archivoProc->flags.escritura == true)
 		{
-			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
+			archivoGlobal* archGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->globalFD == archivoProc->globalFD; }));
 
 			uint32_t archivoFueEscrito = FS_GuardarDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo, datosAGrabar);
 
@@ -285,7 +275,7 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* 
 }
 
 
-uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
+void cerrarArchivo(uint32_t FD, uint32_t PID)
 {
 	archivoProceso* archivoProcesoACerrar = NULL;
 	ListaArchivosProceso* listaProcesoACerrar = NULL;
@@ -296,7 +286,7 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 
 	if(archivoProcesoACerrar != NULL)
 	{
-		archivoGlobal* archivoGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProcesoACerrar->globalFD);
+		archivoGlobal* archivoGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->globalFD == archivoProcesoACerrar->globalFD; }));
 
 		list_remove_and_destroy_by_condition(listaProcesoACerrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
@@ -320,7 +310,7 @@ uint32_t cerrarArchivo(uint32_t FD, uint32_t PID)
 }
 
 
-uint32_t borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
+void borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 {
 	ListaArchivosProceso* listaProcesoABorrar = NULL;
 
@@ -330,7 +320,7 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 	{
 		archivoProceso* archivoProcesoABorrar = list_find(listaProcesoABorrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
 
-		archivoGlobal* archivoGlob = list_get(ArchivosGlobales, archivoProcesoABorrar->globalFD);
+		archivoGlobal* archivoGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->globalFD == archivoProcesoABorrar->globalFD; }));
 
 		list_remove_and_destroy_by_condition(listaProcesoABorrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
@@ -339,6 +329,7 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 		if(fueBorrado == 1)
 		{
 			printf("El archivo con path %s, fue borrado\n", archivoGlob->pathArchivo);
+
 			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
 		}
 		else
@@ -353,7 +344,7 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 }
 
 
-uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
+void moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 {
 	ListaArchivosProceso* listaProceso = NULL;
 	archivoProceso* archivoProc = NULL;
@@ -365,6 +356,8 @@ uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 	if(archivoProc != NULL)
 	{
 		archivoProc->offsetArchivo = posicion;
+
+		printf("El archivo fue movido a la posicion %d\n", posicion);
 	}
 	else
 	{
@@ -375,20 +368,11 @@ uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 
 t_list* obtenerTablaArchivosDeUnProceso(uint32_t PID)
 {
-	int i = 0;
-	void* result = NULL;
-	t_list* tablaArchivosProceso = NULL;
+	ListaArchivosProceso* listaArchivosProceso = NULL;
 
-	while(i < list_size(ArchivosProcesos) && result == NULL)
-	{
-		tablaArchivosProceso = list_get(ArchivosProcesos, i);
+	listaArchivosProceso = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
 
-		result = (archivoProceso*) list_find(tablaArchivosProceso, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
-
-		i++;
-	}
-
-	return tablaArchivosProceso;
+	return listaArchivosProceso->listaArchivo;
 }
 
 

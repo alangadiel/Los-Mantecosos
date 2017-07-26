@@ -166,20 +166,25 @@ void userInterfaceHandler(uint32_t* socketFD) {
 			if (pidConsulta != 0 && pidConsulta <= (2^32)){
 				t_list* tablaProceso = list_create();
 				tablaProceso = obtenerTablaArchivosDeUnProceso(pidConsulta);
+
 				if(tablaProceso != NULL)
 				{
-					printf("\nProceso %d:\n", pidConsulta);
 					int i;
+
+					printf("\nProceso %d:\n", pidConsulta);
+
 					for(i = 0; i < list_size(tablaProceso); i++)
 					{
 						archivoProceso* archProceso = malloc(sizeof(archivoProceso));
 						archProceso = list_get(tablaProceso, i);
+
 						printf("FD %d:\n", archProceso->FD);
 						printf("Flag Creacion %d:\n", archProceso->flags.creacion);
 						printf("Flag Escritura %d:\n", archProceso->flags.escritura);
 						printf("Flag Lectura %d:\n", archProceso->flags.lectura);
 						printf("FD Global %d:\n", archProceso->globalFD);
 						printf("Offset del archivo %d:\n", archProceso->offsetArchivo);
+
 						free(archProceso);
 					}
 				}
@@ -198,6 +203,7 @@ void userInterfaceHandler(uint32_t* socketFD) {
 			if(tablaGlobal != NULL)
 			{
 				int i;
+
 				for(i = 0; i < list_size(tablaGlobal); i++)
 				{
 					archivoGlobal* archGlobal = malloc(sizeof(archivoGlobal));

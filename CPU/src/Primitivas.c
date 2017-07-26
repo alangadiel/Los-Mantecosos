@@ -26,23 +26,23 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	int tamDatos = sizeof(uint32_t) * 2 + sizeof(BanderasPermisos) + string_length(direccion)+1;
 	void* datos = malloc(tamDatos);
 
-	BanderasPermisos* bandera;// = malloc(sizeof(BanderasPermisos));
+	BanderasPermisos bandera;// = malloc(sizeof(BanderasPermisos));
 
 	char* path = string_new();
 	strcpy(path, direccion);
 
-	bandera->creacion = flags.creacion;
-	bandera->escritura = flags.escritura;
-	bandera->lectura = flags.lectura;
+	bandera.creacion = flags.creacion;
+	bandera.escritura = flags.escritura;
+	bandera.lectura = flags.lectura;
 
 	((uint32_t*)datos)[0] = ABRIRARCHIVO;
 	((uint32_t*)datos)[1] = pcb.PID;
-	memcpy(datos + sizeof(uint32_t) * 2, bandera, sizeof(BanderasPermisos));
+	memcpy(datos + sizeof(uint32_t) * 2, &bandera, sizeof(BanderasPermisos));
 	memcpy(datos + sizeof(uint32_t) * 2 + sizeof(BanderasPermisos), path, string_length(direccion)+1);
 
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	//free(bandera);
-	free(path);
+
 	Paquete paquete;
 
 	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
