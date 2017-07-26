@@ -81,19 +81,9 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 
 	}
 
-	int i = 0;
-
 	ListaArchivosProceso* lista = NULL;
 
-	while(i < list_size(ArchivosProcesos))
-	{
-		lista = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
-
-		//if(lista->listaArchivo != NULL)
-			//result = (archivoProceso*)list_find(lista->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID; }));
-
-		i++;
-	}
+	lista = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
 
 	int indice;
 	int j;
@@ -200,6 +190,8 @@ uint32_t abrirArchivo(char* path, uint32_t PID, BanderasPermisos permisos, int s
 	if(archivoEstaCreado == 1)
 	{
 		FD = cargarEnTablasArchivos(path, PID, permisos);
+
+		printf("Se cargo el FD %d y su path es %s", FD, path);
 
 		EnviarDatos(socketConectado, KERNEL, &FD, sizeof(uint32_t));
 	}
