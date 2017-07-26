@@ -238,7 +238,7 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 		{
 			archivoGlobal* archGlob = (archivoGlobal*)list_get(ArchivosGlobales, archivoProc->globalFD);
 
-			void* dato = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, 0, sizeArchivo);
+			void* dato = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo);
 
 			return dato;
 		}
@@ -273,7 +273,7 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* 
 
 			uint32_t archivoFueEscrito = FS_GuardarDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo, datosAGrabar);
 
-			archivoProc->offsetArchivo += sizeArchivo;
+			//archivoProc->offsetArchivo += sizeArchivo;
 
 			return archivoFueEscrito;
 		}
@@ -332,7 +332,7 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 {
 	ListaArchivosProceso* listaProcesoABorrar = NULL;
 
-	listaProcesoABorrar = list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
+	listaProcesoABorrar = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
 
 	if(listaProcesoABorrar != NULL)
 	{
@@ -363,30 +363,16 @@ uint32_t borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 
 uint32_t moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 {
-	void* result = NULL;
-	int i = 0;
-	t_list* listaProceso;
+	ListaArchivosProceso* listaProceso = NULL;
+	archivoProceso* archivoProc = NULL;
 
-	while(i < list_size(ArchivosProcesos) && result == NULL)
+	listaProceso = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
+
+	archivoProc = (archivoProceso*)list_find(listaProceso->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
+
+	if(archivoProc != NULL)
 	{
-		listaProceso = list_get(ArchivosProcesos, i);
-
-		result = (archivoProceso*) list_find(listaProceso, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
-
-		i++;
-	}
-
-	if(result != NULL)
-	{
-		archivoProceso* archivoProc = malloc(sizeof(archivoProceso));
-
-		archivoProc = (archivoProceso*)result;
-
 		archivoProc->offsetArchivo = posicion;
-
-		list_replace(listaProceso, FD-3, archivoProc); //El -3 es porque los FD empiezan desde el 3
-
-		free(archivoProc);
 	}
 	else
 	{

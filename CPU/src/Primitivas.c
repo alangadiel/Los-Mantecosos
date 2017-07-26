@@ -26,7 +26,7 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	int tamDatos = sizeof(uint32_t) * 2 + sizeof(BanderasPermisos) + string_length(direccion)+1;
 	void* datos = malloc(tamDatos);
 
-	BanderasPermisos* bandera = malloc(sizeof(BanderasPermisos));
+	BanderasPermisos* bandera;// = malloc(sizeof(BanderasPermisos));
 
 	char* path = string_new();
 	strcpy(path, direccion);
@@ -41,15 +41,11 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	memcpy(datos + sizeof(uint32_t) * 2 + sizeof(BanderasPermisos), path, string_length(direccion)+1);
 
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-	free(bandera);
+	//free(bandera);
 	free(path);
 	Paquete paquete;
 
 	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
-
-	free(datos);
-
-
 
 	t_descriptor_archivo r;
 
@@ -66,6 +62,7 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 		free(paquete.Payload);
 	}
 
+	free(datos);
 	//free(paquete);
 
 	return r;
