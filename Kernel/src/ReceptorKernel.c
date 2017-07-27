@@ -314,28 +314,24 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						char* datosLeidos = leerArchivo(FD, PID, tamanioArchivo, punteroArchivo);
 
 						printf("Se leyo %s\n", datosLeidos);
-
-						printf("El puntero es %d\n", punteroArchivo);
-
 						uint32_t pagAGuardar = punteroArchivo/TamanioPagina;
 						uint32_t offsetAGuardar = punteroArchivo % TamanioPagina;
+
 						if(string_length(datosLeidos) < tamanioArchivo)
-						{
+						{	/*
 							int i;
 
 							for(i = string_length(datosLeidos); i < (tamanioArchivo); i++)
 							{
 								datosLeidos[i]=' ';
-							}
+							}*/
 
 							datosLeidos[string_length(datosLeidos)]='\0';
 						}
-						//char *datosAGuardar = string_duplicate(datosLeidos);
-						//free(datosLeidos);
 
-						printf("Los datos leidos son %s", datosLeidos);
 						//Guardo los datos leidos en el puntero que me piden
 						IM_GuardarDatos(socketConMemoria,KERNEL,PID,pagAGuardar,offsetAGuardar,tamanioArchivo,datosLeidos);
+
 					break;
 					/*
 					case FINEJECUCIONPROGRAMA:
