@@ -14,41 +14,51 @@ typedef struct {
 } ListaArchivosProceso;
 
 
-void armarPath(char** path)
+char* armarPath(char* path)
 {
 	int desde = 0;
 	int hasta = 0;
 	char* subsrt;
 
-	while(desde < string_length(*path) && (*path)[desde] != '/')
+	while(desde < string_length(path) && path[desde] != '/')
 	{
 		desde++;
 	}
 
-	string_trim(path);
-
-	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b')
+	while(hasta < string_length(path) && path[hasta] != '\n' && path[hasta] != '\t' && path[hasta] != '\b' && path[hasta] != '\r' && path[hasta] != '\a' && path[hasta] != '\f' && path[hasta] != '\'' && path[hasta] != '\"')
 	{
 		hasta++;
 	}
 
-	subsrt = string_substring(*path, desde, hasta - desde);
+	subsrt = string_substring(path, desde, hasta - desde);
 
-	if(strcmp(string_substring(subsrt, string_length(subsrt) - 4, 4), ".bin") != 0)
+	char* ultimosCuatro = string_substring(subsrt, string_length(subsrt) - 4, 5);
+
+	if(ultimosCuatro[4] != '\0')
+	{
+		string_append(&ultimosCuatro, "");
+		printf("no hay barra cero");
+		//ultimosCuatro[4] = '\0';
+	}
+
+	if(strcmp(ultimosCuatro, ".bin") != 0)
 	{
 		string_append(&subsrt, ".bin");
 	}
 
-	free(*path);
+	free(ultimosCuatro);
 
-	*path = string_duplicate(subsrt);
+	//free(*path);
 
-	if(strcmp(string_substring_from(*path, string_length(*path) - 8), ".bin.bin") == 0)
+	return subsrt;
+	//*path = string_duplicate(subsrt);
+
+	/*if(strcmp(string_substring_from(*path, string_length(*path) - 8), ".bin.bin") == 0)
 	{
-		*path = string_substring_until(*path, string_length(*path) - 4);
-	}
+		*path = string_duplicate(string_substring_until(*path, string_length(*path) - 4));
+	}*/
 
-	free(subsrt);
+	//free(subsrt);
 }
 
 
@@ -56,20 +66,20 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 {
 	void* result = NULL;
 
-	armarPath(&path);
+	char* pathLimpio = armarPath(path);
 
-	result = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, path) == 0; }));
+	free(path);
+
+	result = (archivoGlobal*) list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, pathLimpio) == 0; }));
 
 	archivoGlobal* archivoGlob;
 	archivoProceso* archivoProc;
 
 	if(result == NULL) //No hay un archivo global con ese path
 	{
-		archivoGlob = malloc(sizeof(uint32_t) * 2 + string_length(path) + 1); //El free se hace en limpiar listas
+		archivoGlob = malloc(sizeof(uint32_t) * 2 + string_length(pathLimpio) + 1); //El free se hace en limpiar listas
 
-		archivoGlob->pathArchivo = string_new();
-
-		string_append(&archivoGlob->pathArchivo, path);
+		archivoGlob->pathArchivo = pathLimpio;
 		archivoGlob->cantAperturas = 1;
 		archivoGlob->globalFD = ultimoGlobalFD;
 
@@ -88,7 +98,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 
 	lista = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
 
-	archivoGlobal* archGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, path) == 0; }));
+	archivoGlobal* archGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, pathLimpio) == 0; }));
 
 	if(lista == NULL) //No hay ninguna lista de archivos para ese proceso porque no habia abierto ningun archivo todavia
 	{
@@ -164,7 +174,9 @@ void finalizarProgramaCapaFS(int PID)
 
 			if(archivoGlob->cantAperturas == 0)
 			{
-				list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }), free);
+				list_remove_and_destroy_by_condition(ArchivosGlobales,
+						LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),
+						LAMBDA(void* _(void* item) { free(((archivoGlobal*) item)->pathArchivo); free(item); }));
 			}
 		}
 

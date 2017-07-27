@@ -3,7 +3,7 @@
 begin
 	variables a, b
 	alocar a 200
-	abrir b LEC /unArchivo
+	abrir b LEC /unArchivo.bin
 	leer b a 10
 	*a = 70
 	escribir b a 10

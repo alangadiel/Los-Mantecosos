@@ -80,39 +80,50 @@ void obtenerValoresArchivoConfiguracion() {
 bool archivoEsValido(char* pathForValidation) {
 	return string_ends_with(pathForValidation, ".bin");
 }
-void armarPath(char** path){
+
+char* armarPath(char* path){
 	char* pathForValidation = string_duplicate(ARCHIVOSPATH);
 
 	int desde = 0;
 	int hasta = 0;
 	char* subsrt;
 
-	if((*path)[0] != '/')
+	if(path[0] != '/')
 	{
-		while(desde < string_length(*path) && (*path)[desde] != '/')
+		while(desde < string_length(path) && path[desde] != '/')
 		{
 			desde++;
 		}
 	}
 
-	while(hasta < string_length(*path) && (*path)[hasta] != '\n' && (*path)[hasta] != '\t' && (*path)[hasta] != '\b' && (*path)[hasta] != '\r' && (*path)[hasta] != '\a' && (*path)[hasta] != '\f' && (*path)[hasta] != '\'' && (*path)[hasta] != '\"')
+	while(hasta < string_length(path) && path[hasta] != '\n' && path[hasta] != '\t' && path[hasta] != '\b' && path[hasta] != '\r' && path[hasta] != '\a' && path[hasta] != '\f' && path[hasta] != '\'' && path[hasta] != '\"')
 	{
 		hasta++;
 	}
 
-	if(desde != string_length(*path))
+	if(desde != string_length(path))
 	{
-		subsrt = string_substring(*path, desde, hasta - desde);
+		subsrt = string_substring(path, desde, hasta - desde);
 	}
 	else
 	{
-		subsrt = string_substring_until(*path, hasta);
+		subsrt = string_substring_until(path, hasta);
 	}
 
-	if(strcmp(string_substring(subsrt, string_length(subsrt) - 4, 4), ".bin") != 0)
+	char* ultimosCuatro = string_substring(subsrt, string_length(subsrt) - 4, 5);
+
+	if(ultimosCuatro[4] != '\0')
+	{
+		string_append(&ultimosCuatro, "");
+		//ultimosCuatro[4] = '\0';
+	}
+
+	if(strcmp(ultimosCuatro, ".bin") != 0)
 	{
 		string_append(&subsrt, ".bin");
 	}
+
+	free(ultimosCuatro);
 
 	if(subsrt[0] != '/')
 	{
@@ -122,24 +133,22 @@ void armarPath(char** path){
 
 		string_append(&a, subsrt);
 
-		subsrt = string_duplicate(a);
+		free(subsrt);
 
-		free(a);
+		subsrt = a;
 	}
 
 	string_append(&pathForValidation, subsrt);
 
-	if(strcmp(string_substring_from(pathForValidation, string_length(pathForValidation) - 8), ".bin.bin") == 0)
+	/*if(strcmp(string_substring_from(pathForValidation, string_length(pathForValidation) - 8), ".bin.bin") == 0)
 	{
-		path = string_substring_until(pathForValidation, string_length(pathForValidation) - 4);
-	}
+		*path = string_substring_until(pathForValidation, string_length(pathForValidation) - 4);
+	}*/
 
-	free(*path);
-
-	*path = string_duplicate(pathForValidation);
-
-	free(pathForValidation);
+	//free(pathForValidation);
 	free(subsrt);
+
+	return pathForValidation;
 }
 
 int validarArchivo(char* path, int socketFD) {
@@ -574,39 +583,57 @@ void accion(Paquete* paquete, int socketFD){
 
 	if(paquete->header.tipoMensaje == ESDATOS)
 	{
+		char* pathLimpio;
+
 		uint32_t* datos = paquete->Payload;
 		char* path = paquete->Payload+sizeof(uint32_t);
 		switch (*datos){
 			case VALIDAR_ARCHIVO:
 				path = string_duplicate(path);
-				armarPath(&path);
-				validarArchivo(path, socketFD);
+				pathLimpio = armarPath(path);
+
+				free(path);
+
+				validarArchivo(pathLimpio, socketFD);
 			break;
 			case CREAR_ARCHIVO:
 				path = string_duplicate(path);
-				armarPath(&path);
-				crearArchivo(path, socketFD);
+				pathLimpio = armarPath(path);
+
+				free(path);
+
+				crearArchivo(pathLimpio, socketFD);
 			break;
 			case BORRAR_ARCHIVO:
 				path = string_duplicate(path);
-				armarPath(&path);
-				borrarArchivo(path, socketFD);
+				pathLimpio = armarPath(path);
+
+				free(path);
+
+				borrarArchivo(pathLimpio, socketFD);
 			break;
 			case OBTENER_DATOS:
 				path = paquete->Payload+sizeof(uint32_t)*3;
 				path = string_duplicate(path);
-				armarPath(&path);
-				obtenerDatos(path, datos[1], datos[2], socketFD);
+				pathLimpio = armarPath(path);
+
+				free(path);
+
+				obtenerDatos(pathLimpio, datos[1], datos[2], socketFD);
 			break;
 			case GUARDAR_DATOS:
 				path = paquete->Payload+sizeof(uint32_t)*3;
 				path = string_duplicate(path);
 				void* buffer = paquete->Payload+sizeof(uint32_t)*3 + string_length(path) + 1;
-				armarPath(&path);
-				guardarDatos(path, datos[1], datos[2], buffer, socketFD);
+				pathLimpio = armarPath(path);
+
+				free(path);
+
+				guardarDatos(pathLimpio, datos[1], datos[2], buffer, socketFD);
 			break;
 		}
-		free(path);
+
+		//free(path);
 	}
 }
 

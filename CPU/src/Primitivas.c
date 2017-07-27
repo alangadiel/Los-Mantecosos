@@ -24,21 +24,22 @@ se ocupe de solicitar la eliminación de las estructuras utilizadas por el siste
 
 t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_banderas flags, int32_t *tipoError){
 	int tamDatos = sizeof(uint32_t) * 2 + sizeof(BanderasPermisos) + string_length(direccion)+1;
-	void* datos = malloc(tamDatos);
 
 	BanderasPermisos bandera;// = malloc(sizeof(BanderasPermisos));
 
-	char* path = string_new();
-	strcpy(path, direccion);
+	//char* path = string_duplicate(direccion);
+	//strcpy(path, direccion);
 
 	bandera.creacion = flags.creacion;
 	bandera.escritura = flags.escritura;
 	bandera.lectura = flags.lectura;
 
+	void* datos = malloc(tamDatos);
+
 	((uint32_t*)datos)[0] = ABRIRARCHIVO;
 	((uint32_t*)datos)[1] = pcb.PID;
 	memcpy(datos + sizeof(uint32_t) * 2, &bandera, sizeof(BanderasPermisos));
-	memcpy(datos + sizeof(uint32_t) * 2 + sizeof(BanderasPermisos), path, string_length(direccion)+1);
+	memcpy(datos + sizeof(uint32_t) * 2 + sizeof(BanderasPermisos), direccion, string_length(direccion)+1);
 
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	//free(bandera);
@@ -63,6 +64,7 @@ t_descriptor_archivo SolicitarAbrirArchivo(t_direccion_archivo direccion, t_band
 	}
 
 	free(datos);
+	//free(path);
 	//free(paquete);
 
 	return r;
@@ -296,9 +298,12 @@ void primitiva_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_reto
 //TODAS LAS FUNCIONES RETORNAR UN VALOR, NO EXISTE EL CONCEPTO DE PROCEDIMIENTO: LO DICE EL TP
 void primitiva_finalizar(void){
 	list_remove_and_destroy_element(pcb.IndiceDelStack,list_size(pcb.IndiceDelStack)-1,free);
+
 	if(list_size(pcb.IndiceDelStack)==0)
+	{
 		progTerminado=true;
 		pcb.ExitCode=0;
+	}
 }
 
 void primitiva_retornar(t_valor_variable retorno){
@@ -404,6 +409,7 @@ void primitiva_liberar(t_puntero puntero){
 }
 t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
 	int32_t tipoError = 0;
+
 	t_descriptor_archivo fd = SolicitarAbrirArchivo(direccion,flags, &tipoError);
 
 	if(fd == 0)

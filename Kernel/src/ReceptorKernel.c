@@ -238,7 +238,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 						BanderasPermisos* bandera = paquete->Payload + sizeof(uint32_t) * 2;
 
-						path = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2 + sizeof(BanderasPermisos));
+						path = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2 + sizeof(BanderasPermisos)); //no libero path xq esta en una lista
+
+						string_trim(&path);
 
 						abrir = abrirArchivo(path, PID, *bandera, socketConectado, &tipoError);
 
