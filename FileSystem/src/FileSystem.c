@@ -422,7 +422,7 @@ void obtenerDatos(char* pathAObtener, uint32_t offset, uint32_t size, int socket
 
 			EnviarDatos(socketFD, FS, datosAEnviar, sizeof(char) * string_length(datosAEnviar) + 1);
 
-			free(datosAEnviar);
+			//free(datosAEnviar);
 		}
 		else
 		{
