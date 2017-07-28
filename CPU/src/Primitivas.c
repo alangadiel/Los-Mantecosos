@@ -407,6 +407,24 @@ void primitiva_liberar(t_puntero puntero){
 	pcb.cantidadSyscallEjecutadas++;
 	//pcb.ProgramCounter++;
 }
+
+void recibirDatosFS()
+{
+	Paquete paquete;
+
+	while (RecibirPaqueteCliente(socketKernel, CPU, &paquete) <= 0);
+
+	if(paquete.header.tipoMensaje == ESERROR){
+		huboError = true;
+		pcb.ExitCode = ((int32_t*)paquete.Payload)[0];
+	}
+
+	if(paquete.Payload != NULL)
+	{
+		free(paquete.Payload);
+	}
+}
+
 t_descriptor_archivo primitiva_abrir(t_direccion_archivo direccion, t_banderas flags){
 	int32_t tipoError = 0;
 
@@ -428,8 +446,13 @@ void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
 	((uint32_t*) datos)[0] = BORRARARCHIVO;
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = descriptor_archivo;
+
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+
+	recibirDatosFS();
+
 	free(datos);
+
 	pcb.cantidadSyscallEjecutadas++;
 }
 void primitiva_cerrar(t_descriptor_archivo descriptor_archivo){
@@ -438,22 +461,32 @@ void primitiva_cerrar(t_descriptor_archivo descriptor_archivo){
 	((uint32_t*) datos)[0] = CERRARARCHIVO;
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = descriptor_archivo;
+
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+
+	recibirDatosFS();
+
 	free(datos);
+
 	pcb.cantidadSyscallEjecutadas++;
 	//pcb.ProgramCounter++;
 
 }
 void primitiva_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion){
-	int tamDatos = sizeof(uint32_t)*3;
+	int tamDatos = sizeof(uint32_t)*4;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = MOVERCURSOSARCHIVO;
 	((uint32_t*) datos)[1] = pcb.PID;
 	((uint32_t*) datos)[2] = descriptor_archivo;
 	//Posicion a donde mover el cursor
 	((uint32_t*) datos)[3] = posicion;
+
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+
+	recibirDatosFS();
+
 	free(datos);
+
 	pcb.cantidadSyscallEjecutadas++;
 }
 void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
@@ -466,7 +499,11 @@ void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informaci
 	memcpy(datos+sizeof(uint32_t)*4,informacion,tamanio);
 
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+
+	recibirDatosFS();
+
 	free(datos);
+
 	pcb.cantidadSyscallEjecutadas++;
 }
 
@@ -478,8 +515,13 @@ void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informaci
 	((uint32_t*) datos)[2] = descriptor_archivo;
 	((uint32_t*) datos)[3] = tamanio;
 	((uint32_t*) datos)[4] = informacion;
+
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
+
+	recibirDatosFS();
+
 	free(datos);
+
 	pcb.cantidadSyscallEjecutadas++;
 	//pcb.ProgramCounter++;
 }

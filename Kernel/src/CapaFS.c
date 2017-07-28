@@ -5,6 +5,7 @@
 #define LEERARCHIVOSINPERMISOS -3
 #define ESCRIBIRARCHIVOSINPERMISO -4
 #define CREARARCHIVOSINPERMISOS -10
+#define NOHAYBLOQUESDISPONIBLES -21
 
 int ultimoGlobalFD = 0;
 
@@ -217,7 +218,7 @@ uint32_t abrirArchivo(char* path, uint32_t PID, BanderasPermisos permisos, int s
 }
 
 
-void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punteroArchivo)
+void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punteroArchivo, int* tipoError)
 {
 	archivoProceso* archivoProc = NULL;
 	ListaArchivosProceso* listaArchivos = NULL;
@@ -238,20 +239,24 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 		}
 		else
 		{
-			FinalizarPrograma(PID, LEERARCHIVOSINPERMISOS);
+			*tipoError = LEERARCHIVOSINPERMISOS;
+
 			return NULL;
 		}
 	}
 	else
 	{
-		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
+		*tipoError = ACCEDERAARCHVIOQUENOEXISTE;
+
 		return NULL;
 	}
 }
 
 
-uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* datosAGrabar)
+int escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* datosAGrabar)
 {
+	int tipoError = 0;
+
 	archivoProceso* archivoProc = NULL;
 	ListaArchivosProceso* listaArchivos = NULL;
 
@@ -267,28 +272,35 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* 
 
 			uint32_t archivoFueEscrito = FS_GuardarDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo, datosAGrabar);
 
-			//archivoProc->offsetArchivo += sizeArchivo;
+			if(archivoFueEscrito != 0)
+			{
+				printf("El archivo fue escrito con %s \n", (char*)datosAGrabar);
+			}
+			else
+			{
+				tipoError = NOHAYBLOQUESDISPONIBLES;
+			}
 
-			return archivoFueEscrito;
+			//archivoProc->offsetArchivo += sizeArchivo;
 		}
 		else
 		{
-			FinalizarPrograma(PID, ESCRIBIRARCHIVOSINPERMISO);
-
-			return 0;
+			tipoError = ESCRIBIRARCHIVOSINPERMISO;
 		}
 	}
 	else
 	{
-		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
-
-		return 0;
+		tipoError = ACCEDERAARCHVIOQUENOEXISTE;
 	}
+
+	return tipoError;
 }
 
 
-void cerrarArchivo(uint32_t FD, uint32_t PID)
+int cerrarArchivo(uint32_t FD, uint32_t PID)
 {
+	int tipoError = 0;
+
 	archivoProceso* archivoProcesoACerrar = NULL;
 	ListaArchivosProceso* listaProcesoACerrar = NULL;
 
@@ -317,13 +329,17 @@ void cerrarArchivo(uint32_t FD, uint32_t PID)
 	}
 	else
 	{
-		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
+		tipoError = ACCEDERAARCHVIOQUENOEXISTE;
 	}
+
+	return tipoError;
 }
 
 
-void borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
+int borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 {
+	int tipoError = 0;
+
 	ListaArchivosProceso* listaProcesoABorrar = NULL;
 
 	listaProcesoABorrar = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
@@ -351,13 +367,18 @@ void borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 	}
 	else
 	{
-		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
+
+		tipoError = ACCEDERAARCHVIOQUENOEXISTE;
 	}
+
+	return tipoError;
 }
 
 
-void moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
+int moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 {
+	int tipoError = 0;
+
 	ListaArchivosProceso* listaProceso = NULL;
 	archivoProceso* archivoProc = NULL;
 
@@ -373,8 +394,10 @@ void moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 	}
 	else
 	{
-		FinalizarPrograma(PID, ACCEDERAARCHVIOQUENOEXISTE);
+		tipoError = ACCEDERAARCHVIOQUENOEXISTE;
 	}
+
+	return tipoError;
 }
 
 

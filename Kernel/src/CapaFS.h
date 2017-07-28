@@ -24,13 +24,13 @@ typedef struct {
 	uint32_t archivoGlobalFD;
 } archivoGlobal;
 
-void cerrarArchivo(uint32_t FD, uint32_t PID);
-uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* datosAGrabar);
+int cerrarArchivo(uint32_t FD, uint32_t PID);
+int escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* datosAGrabar);
 uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permisos);
 uint32_t abrirArchivo(char* path, uint32_t PID, BanderasPermisos permisos, int socketConectado, int32_t* tipoError);
-void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punteroArchivo);
-void moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion);
-void borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado);
+void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punteroArchivo, int* tipoError);
+int moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion);
+int borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado);
 void finalizarProgramaCapaFS(int PID);
 t_list* obtenerTablaArchivosDeUnProceso(uint32_t PID);
 t_list* obtenerTablaArchivosGlobales();
