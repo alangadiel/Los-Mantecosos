@@ -164,41 +164,33 @@ void userInterfaceHandler(uint32_t* socketFD) {
 			scanf("%s", command);
 			pidConsulta = strtol(command, NULL, 10);
 			if (pidConsulta != 0 && pidConsulta <= (2^32)){
-				t_list* tablaProceso = list_create();
-				tablaProceso = obtenerTablaArchivosDeUnProceso(pidConsulta);
+				ListaArchivosProceso* tablaProceso = obtenerTablaArchivosDeUnProceso(pidConsulta);
 
 				if(tablaProceso != NULL)
 				{
 					int i;
 
-					printf("\nProceso %d:\n", pidConsulta);
+					printf("\nProceso: %d\n", pidConsulta);
 
-					for(i = 0; i < list_size(tablaProceso); i++)
+					for(i = 0; i < list_size(tablaProceso->listaArchivo); i++)
 					{
-						archivoProceso* archProceso = malloc(sizeof(archivoProceso));
-						archProceso = list_get(tablaProceso, i);
+						archivoProceso* archProceso = list_get(tablaProceso->listaArchivo, i);
 
-						printf("FD %d:\n", archProceso->FD);
-						printf("Flag Creacion %d:\n", archProceso->flags.creacion);
-						printf("Flag Escritura %d:\n", archProceso->flags.escritura);
-						printf("Flag Lectura %d:\n", archProceso->flags.lectura);
-						printf("FD Global %d:\n", archProceso->globalFD);
-						printf("Offset del archivo %d:\n", archProceso->offsetArchivo);
-
-						free(archProceso);
+						printf("FD: %d\n", archProceso->FD);
+						printf("Flag Creacion: %d\n", archProceso->flags.creacion);
+						printf("Flag Escritura: %d\n", archProceso->flags.escritura);
+						printf("Flag Lectura: %d\n", archProceso->flags.lectura);
+						printf("FD Global: %d\n", archProceso->globalFD);
+						printf("Offset del archivo: %d\n", archProceso->offsetArchivo);
 					}
 				}
 				else
 					printf("El proceso %d no tiene archivos abiertos\n", pidConsulta);
-
-				list_destroy(tablaProceso);
 			} else
 				printf("Numero invalido\n");
 		}
 		else if (strcmp(command, "mostrar_tabla_de_archivos_global") == 0) {
-			t_list* tablaGlobal = list_create();
-
-			tablaGlobal = obtenerTablaArchivosGlobales();
+			t_list* tablaGlobal = obtenerTablaArchivosGlobales();
 
 			if(tablaGlobal != NULL)
 			{
@@ -206,14 +198,10 @@ void userInterfaceHandler(uint32_t* socketFD) {
 
 				for(i = 0; i < list_size(tablaGlobal); i++)
 				{
-					archivoGlobal* archGlobal = malloc(sizeof(archivoGlobal));
+					archivoGlobal* archGlobal = list_get(tablaGlobal, i);
 
-					archGlobal = list_get(tablaGlobal, i);
-
-					printf("\nPath %s:\n", archGlobal->pathArchivo);
-					printf("Cantidad de aperturas %d:\n", archGlobal->cantAperturas);
-
-					free(archGlobal);
+					printf("\nPath: %s\n", archGlobal->pathArchivo);
+					printf("Cantidad de aperturas: %d\n", archGlobal->cantAperturas);
 				}
 			}
 			else

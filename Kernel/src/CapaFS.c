@@ -9,11 +9,6 @@
 
 int ultimoGlobalFD = 0;
 
-typedef struct {
-	t_list* listaArchivo;
-	uint32_t PID;
-} ListaArchivosProceso;
-
 
 char* armarPath(char* path)
 {
@@ -401,13 +396,13 @@ int moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion)
 }
 
 
-t_list* obtenerTablaArchivosDeUnProceso(uint32_t PID)
+ListaArchivosProceso* obtenerTablaArchivosDeUnProceso(uint32_t PID)
 {
 	ListaArchivosProceso* listaArchivosProceso = NULL;
 
 	listaArchivosProceso = (ListaArchivosProceso*)list_find(ArchivosProcesos, LAMBDA(bool _(void* item) { return ((ListaArchivosProceso*) item)->PID == PID; }));
 
-	return listaArchivosProceso->listaArchivo;
+	return listaArchivosProceso;
 }
 
 
