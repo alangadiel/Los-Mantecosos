@@ -248,6 +248,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						{
 							printf("El archivo no pudo ser abierto por falta de permisos de creacion\n");
 						}
+						else if(abrir == 1)
+						{
+							printf("El archivo no pudo ser abierto por falta de bloques disponibles\n");
+						}
 						else
 						{
 							printf("El archivo fue abierto\n");

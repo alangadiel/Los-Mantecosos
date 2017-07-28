@@ -264,10 +264,8 @@ void modificarValoresDeArchivo(ValoresArchivo* valoresNuevos) {
 	fclose(newFile);
 }
 
-void reservarBloques(char* path, int tamanioNecesitado, ValoresArchivo* valoresNuevos) {
-	int cantidadDeBloquesAReservar = calcularCantidadDeBloques(tamanioNecesitado);// - list_size(valoresViejos->Bloques);
-	/*t_list* bloquesViejos = valoresViejos->Bloques;
-	t_list* bloquesNuevos = list_create();*/
+int reservarBloques(char* path, int tamanioNecesitado, ValoresArchivo* valoresNuevos) {
+	int cantidadDeBloquesAReservar = calcularCantidadDeBloques(tamanioNecesitado);
 
 	int i;
 
@@ -282,18 +280,20 @@ void reservarBloques(char* path, int tamanioNecesitado, ValoresArchivo* valoresN
 			valoresNuevos->Tamanio = tamanioNecesitado;
 			valoresNuevos->path = string_duplicate(path);
 		}
+		else
+		{
+			free(posicion);
+
+			return -1;
+		}
 	}
 
 	list_add(listaValoresArchivos, valoresNuevos);
 
-	//list_add_all(bloquesTotales, bloquesViejos);
-	//list_add_all(bloquesTotales, bloquesNuevos);
 	crearBloques(valoresNuevos->Bloques);
-	//ValoresArchivo* valoresNuevos = malloc(sizeof(ValoresArchivo));
-	//valoresNuevos->Bloques = bloquesTotales;
-	//valoresNuevos->Tamanio = tamanioNecesitado;
 	modificarValoresDeArchivo(valoresNuevos);
-	//return valoresNuevos;
+
+	return 0;
 }
 
 bool validarArchivoSinEnviarAKernel(char* path)
@@ -320,29 +320,32 @@ void crearArchivo(char* path,int socketFD) {
 			i++;
 		}
 
-		/*if (!existeDirectorio(nuevoPath)) {
-			crearDirectorio(nuevoPath);
-		}*/
-
 		string_append(&nuevoPath, "/");
 		string_append(&nuevoPath, pathArray[i]);
-
-		//REVISAR ESTO, HICE CUALQUIER COSA PARA PODER SEGUIR EJECUTANDO
-		/*ValoresArchivo* valoresViejos = malloc(sizeof(ValoresArchivo));
-		valoresViejos->Bloques = list_create();
-		valoresViejos->Tamanio = 0;*/
 
 		ValoresArchivo* nuevosValores = malloc(sizeof(ValoresArchivo));
 		nuevosValores->Bloques = list_create();
 		nuevosValores->path = string_new();
 
-		reservarBloques(nuevoPath, 0, nuevosValores);
+		int ret = reservarBloques(nuevoPath, 0, nuevosValores);
 
-		if (nuevosValores != NULL) {
-			uint32_t r = 1;
-			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
+		if(ret != -1)
+		{
+			if (nuevosValores != NULL) {
+				uint32_t r = 1;
+				EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
+			}
+			else {
+				uint32_t r = 0;
+				EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
+			}
 		}
-		else {
+		else
+		{
+			free(nuevosValores);
+			free(nuevosValores->Bloques);
+			free(nuevosValores->path);
+
 			uint32_t r = 0;
 			EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 		}
@@ -480,7 +483,7 @@ int reservarBloquesParaEscribir(ValoresArchivo* valoresNuevos) {
 	return 0;
 }
 
-void reservarUnBloque(ValoresArchivo* valoresNuevos)
+int reservarUnBloque(ValoresArchivo* valoresNuevos)
 {
 	int* posicion = malloc(sizeof(int));
 
@@ -493,10 +496,14 @@ void reservarUnBloque(ValoresArchivo* valoresNuevos)
 	else
 	{
 		free(posicion);
+
+		return -1;
 	}
 
 	crearBloques(valoresNuevos->Bloques);
 	modificarValoresDeArchivo(valoresNuevos);
+
+	return 0;
 }
 
 
@@ -538,6 +545,8 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 
 				if(size > TAMANIO_BLOQUES - offsetBloque)
 				{
+					int sePudoReservar = 0;
+
 					while(sizeParaRestar > 0)
 					{
 						int* bloqueAEscribir;
@@ -548,50 +557,61 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 						}
 						else
 						{
-							reservarUnBloque(valores);
+							sePudoReservar = reservarUnBloque(valores);
 
-							bloqueAEscribir = list_get(valores->Bloques, bloque+i);
+							if(sePudoReservar != -1)
+							{
+								bloqueAEscribir = list_get(valores->Bloques, bloque+i);
+							}
 						}
 
-						nombreF = string_duplicate(obtenerPathABloque(*bloqueAEscribir));
-
-						FILE* file = fopen(nombreF, "w+");
-
-						int j = 0;
-
-						for(j = 0; j < offsetBloque; j++)
+						if(sePudoReservar != -1)
 						{
-							fputs(" ", file);
-						}
+							nombreF = string_duplicate(obtenerPathABloque(*bloqueAEscribir));
 
-						fseek(file, offsetBloque, SEEK_SET);
+							FILE* file = fopen(nombreF, "w+");
 
-						//char* substr = string_new();
+							int j = 0;
 
-						if(lengthEscribir > TAMANIO_BLOQUES)
-						{
-							substr = string_substring(datosAEscribir, desdeEscribir, TAMANIO_BLOQUES);
+							for(j = 0; j < offsetBloque; j++)
+							{
+								fputs(" ", file);
+							}
 
-							sizeParaRestar -= TAMANIO_BLOQUES;
-							desdeEscribir = TAMANIO_BLOQUES - offsetBloque;
-							lengthEscribir -= TAMANIO_BLOQUES;
+							fseek(file, offsetBloque, SEEK_SET);
+
+							//char* substr = string_new();
+
+							if(lengthEscribir > TAMANIO_BLOQUES)
+							{
+								substr = string_substring(datosAEscribir, desdeEscribir, TAMANIO_BLOQUES);
+
+								sizeParaRestar -= TAMANIO_BLOQUES;
+								desdeEscribir = TAMANIO_BLOQUES - offsetBloque;
+								lengthEscribir -= TAMANIO_BLOQUES;
+							}
+							else
+							{
+								substr = string_substring(datosAEscribir, desdeEscribir, lengthEscribir);
+
+								sizeParaRestar -= lengthEscribir;
+							}
+
+							fputs(substr, file);
+
+							fclose(file);
+
+							offsetBloque = 0;
+
+							//free(substr);
+
+							i++;
 						}
 						else
 						{
-							substr = string_substring(datosAEscribir, desdeEscribir, lengthEscribir);
-
-							sizeParaRestar -= lengthEscribir;
+							uint32_t r = 0;
+							EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 						}
-
-						fputs(substr, file);
-
-						fclose(file);
-
-						offsetBloque = 0;
-
-						//free(substr);
-
-						i++;
 					}
 				}
 				else
@@ -846,12 +866,68 @@ int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete)
 	return resul;
 }
 
+void imprimirBitmap()
+{
+	int i = 0;
+
+	for(i = 0; i < CANTIDAD_BLOQUES; i++)
+	{
+		printf("%d", bitmapArray[i]);
+	}
+}
+
+void imprimirCantidadDeBloquesDisponibles()
+{
+	int cantBloquesLibres;
+	int i = 0;
+
+	for(i = 0; i < CANTIDAD_BLOQUES; i++)
+	{
+		if(bitmapArray[i] == 0)
+		{
+			cantBloquesLibres++;
+		}
+	}
+
+	printf("Hay %d bloques libres", cantBloquesLibres);
+}
+
+void userInterfaceHandler() {
+	char command[100];
+
+	while (true) {
+
+		printf("\nIngrese una orden: \n");
+		scanf("%s", command);
+		if (strcmp(command, "imprimir_bitmap") == 0) {
+			imprimirBitmap();
+		} else if (strcmp(command, "existe_directorio") == 0) {
+			char parametro[500]; //= string_new();
+			scanf("%s", parametro);
+			bool existe = existeDirectorio(parametro);
+			if (existe) {
+				printf("existe el directorio\n");
+			} else {
+				printf("no existe el directorio\n");
+			}
+		} else if (strcmp(command, "bloques_disponibles") == 0) {
+			imprimirCantidadDeBloquesDisponibles();
+		} else {
+			printf("No se conoce el comando: %s\n", command);
+		}
+
+	}
+}
+
 int main(void) {
 	obtenerValoresArchivoConfiguracion();
 	imprimirArchivoConfiguracion();
 	crearEstructurasDeCarpetas();
 	archivoMetadata();
 	archivoBitmap();
+	pthread_t userInterface;
+		pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,NULL);
+		pthread_join(userInterface, NULL);
 	Servidor(IP, PUERTO, FS, accion, RecibirPaqueteFileSystem);
 	LiberarVariables();
 	return 0;
