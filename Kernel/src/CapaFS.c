@@ -189,6 +189,8 @@ uint32_t abrirArchivo(char* path, uint32_t PID, BanderasPermisos permisos, int s
 
 	if(archivoEstaCreado == 1)
 	{
+		archivoEstaCreado++;
+
 		FD = cargarEnTablasArchivos(path, PID, permisos);
 
 		EnviarDatos(socketConectado, KERNEL, &FD, sizeof(uint32_t));
@@ -198,6 +200,8 @@ uint32_t abrirArchivo(char* path, uint32_t PID, BanderasPermisos permisos, int s
 		if(permisos.creacion == true)
 		{
 			archivoEstaCreado = FS_CrearPrograma(socketConFS, KERNEL, path);
+			archivoEstaCreado++;
+
 			FD = cargarEnTablasArchivos(path, PID, permisos);
 
 			EnviarDatos(socketConectado, KERNEL, &FD, sizeof(uint32_t));
@@ -275,8 +279,6 @@ int escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* datos
 			{
 				tipoError = NOHAYBLOQUESDISPONIBLES;
 			}
-
-			//archivoProc->offsetArchivo += sizeArchivo;
 		}
 		else
 		{
@@ -345,7 +347,7 @@ int borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 
 		archivoGlobal* archivoGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->archivoGlobalFD == archivoProcesoABorrar->globalFD; }));
 
-		list_remove_and_destroy_by_condition(listaProcesoABorrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
+		//list_remove_and_destroy_by_condition(listaProcesoABorrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
 		uint32_t fueBorrado = FS_BorrarArchivo(socketConectado, KERNEL, archivoGlob->pathArchivo);
 
@@ -353,7 +355,7 @@ int borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 		{
 			printf("El archivo con path %s, fue borrado\n", archivoGlob->pathArchivo);
 
-			list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
+			//list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
 		}
 		else
 		{

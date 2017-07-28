@@ -221,6 +221,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							free(data);
 						}
 						else{
+							printf("Hubo un error al reservar heap\n");
 							EnviarDatosTipo(socketConectado,KERNEL,&tipoError,sizeof(int32_t),ESERROR);
 
 						}
@@ -247,6 +248,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						if(abrir == 0)
 						{
 							printf("El archivo no pudo ser abierto por falta de permisos de creacion\n");
+						}
+						else if(abrir == 1)
+						{
+							printf("El archivo no pudo ser abierto por falta de bloques disponibles\n");
 						}
 						else
 						{

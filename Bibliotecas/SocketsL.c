@@ -363,9 +363,14 @@ bool IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 	memcpy(datos+sizeof(uint32_t) * 5, buffer, cantBytes);
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	//free(datos);
+	printf("antes del recibirpaquete");
 	Paquete paquete;
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
 	bool r = true;
+	if (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete)<=0){
+		r = false;
+	}
+	printf("despues del recibirpaquete");
+
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
 	if (paquete.Payload != NULL)
 		free(paquete.Payload);
