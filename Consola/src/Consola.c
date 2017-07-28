@@ -80,7 +80,7 @@ void programHandler(void* structProc) {
 					}
 				break;
 				case ESSTRING:
-					printf("%s\n",(char*)paquete.Payload);
+
 					if(strcmp(paquete.header.emisor,KERNEL)==0){
 
 						if (strcmp((char*)paquete.Payload, "KILLEADO") == 0) {
@@ -173,7 +173,7 @@ void killAllPrograms() {
 	int i;
 	pthread_mutex_lock( &mutexListaProcesos );
 	for (i = 0; i < list_size(listaProcesos); i++) {
-		structProceso* proceso = (structProceso*) list_get(listaProcesos, i);
+		structProceso* proceso = list_remove(listaProcesos, i);
 		endProgram(proceso);
 		free(proceso);
 	}

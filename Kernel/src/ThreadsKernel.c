@@ -140,7 +140,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 					uint32_t* pid=item;
 					return *pid==pcbRemovido->PID;
 				}
-				list_remove_by_condition(sem->listaDeProcesos->elements,buscarProcesoBloqueadoEnSemaforo);
+				list_remove_by_condition(sem->listaDeProcesos->elements,buscarProcesoBloqueadoEnSemaforo); //TODO: destruir elemento (free)
 			}
 		}
 
@@ -179,11 +179,18 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 		{
 			pcbRemovido->ExitCode = EXCEPCIONDEMEMORIA;
 		}
-		list_remove_by_condition(PaginasPorProceso, esDelPID);
-		list_destroy_and_destroy_elements(pagesProcess,free);
-		PIDporSocketConsola* PIDxSocket = list_find(PIDsPorSocketConsola, LAMBDA(bool _(void* item) { return ((PIDporSocketConsola*)item)->PID == pcbRemovido->PID ;}));
-		EnviarMensaje(PIDxSocket->socketConsola,"KILLEADO",KERNEL);
 
+		list_remove_and_destroy_by_condition(PaginasPorProceso, esDelPID, free);
+
+
+		list_destroy_and_destroy_elements(pagesProcess,free);
+
+		pthread_mutex_lock(&mutexConsolasConectadas);
+		PIDporSocketConsola* PIDxSocket = list_find(PIDsPorSocketConsola, LAMBDA(bool _(void* item) { return ((PIDporSocketConsola*)item)->PID == pcbRemovido->PID ;}));
+		if(PIDxSocket != NULL && PIDxSocket->socketConsola > 0)
+			EnviarMensaje(PIDxSocket->socketConsola,"KILLEADO",KERNEL);
+		list_remove_and_destroy_by_condition(PIDsPorSocketConsola, LAMBDA(bool _(void* item){ return ((PIDporSocketConsola*)item)->PID == pcbRemovido->PID; }), free);
+		pthread_mutex_unlock(&mutexConsolasConectadas);
 	}
 	pthread_mutex_unlock(&mutexFinalizarPrograma);
 	return pcbRemovido;
@@ -347,7 +354,6 @@ void AgregarAListadePidsPorSocket(uint32_t PID, int socket)
 	list_add(PIDsPorSocketConsola, PIDxSocket);
 }
 
-
 void accion(void* socket)
 {
 	int socketConectado = *(int*)socket;
@@ -356,8 +362,47 @@ void accion(void* socket)
 	while (RecibirPaqueteServidorKernel(socketConectado, KERNEL, &paquete) > 0)
 	{
 		receptorKernel(&paquete, socketConectado);
-		if(paquete.Payload!=NULL)
+		if(paquete.Payload != NULL)
 			free(paquete.Payload);
 	}
+	//Desconexion
+	//Si se desconecta una CPU:
+	pthread_mutex_lock(&mutexCPUsConectadas);
+
+	list_remove_and_destroy_by_condition(PIDsPorSocketConsola,
+		LAMBDA(bool _(void* p){ return ((DatosCPU*)p)->socketCPU == socketConectado; }),
+		LAMBDA(void _(void* p)
+		{
+			DatosCPU* item = p;
+			item->socketCPU =-1;
+			if(!item->isFree)
+				FinalizarPrograma(item->pid, DESCONEXIONDECPU);
+			free(item);
+		}));
+
+	pthread_mutex_unlock(&mutexCPUsConectadas);
+
+	//Si se desconecta una Consola:
+	pthread_mutex_lock(&mutexConsolasConectadas);
+
+	list_iterate(PIDsPorSocketConsola, LAMBDA(void _(void* p)
+	{
+		PIDporSocketConsola* item = p;
+		if(item->socketConsola == socketConectado){
+			item->socketConsola = -1;
+			FinalizarPrograma(item->PID, DESCONEXIONDECONSOLA);
+		}
+
+	}));
+
+	list_remove_and_destroy_by_condition(PIDsPorSocketConsola, LAMBDA(bool _(void* p)
+	{
+		PIDporSocketConsola* item = p;
+		return item->socketConsola == socketConectado;
+
+	}), free);
+
+	pthread_mutex_unlock(&mutexConsolasConectadas);
+
 	close(socketConectado);
 }

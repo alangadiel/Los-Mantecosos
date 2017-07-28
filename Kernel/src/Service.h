@@ -22,6 +22,7 @@
 #define SOLICITUDMASGRANDEQUETAMANIOPAGINA -8
 #define NOSEPUEDENASIGNARMASPAGINAS -9
 #define STACKOVERFLOW -10
+#define DESCONEXIONDECPU -11
 #define ERRORSINDEFINIR -20
 
 #define INDEX_NUEVOS 0
@@ -102,6 +103,7 @@ extern pthread_mutex_t mutexQueueBloqueados;
 extern pthread_mutex_t mutexQueueFinalizados;
 extern pthread_mutex_t mutexFinalizarPrograma;
 extern pthread_mutex_t mutexQueuesProcesos;
+extern pthread_mutex_t mutexConsolasConectadas;
 extern pthread_mutex_t mutexCPUsConectadas;
 extern pthread_mutex_t mutexSemaforos;
 extern pthread_mutex_t mutexVariablesCompartidas;

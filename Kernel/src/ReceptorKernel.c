@@ -345,9 +345,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 			break;
 			case ESDESCONEXIONCPU:
 				pthread_mutex_lock(&mutexCPUsConectadas);
-				list_remove_by_condition(CPUsConectadas,LAMBDA(bool _(void* item){
-					return ((DatosCPU*)item)->socketCPU==socketConectado;}
-				));
+				list_remove_and_destroy_by_condition(CPUsConectadas,LAMBDA(bool _(void* item){
+					return ((DatosCPU*)item)->socketCPU==socketConectado;
+				}), free);
 				pthread_mutex_unlock(&mutexCPUsConectadas);
 				break;
 			case KILLPROGRAM:
@@ -411,11 +411,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							*pid=pcbRecibir->PID;
 							queue_push(semaforoEncontrado->listaDeProcesos, pid);
 
-							//Lo meto en la cola de bloqueados
-							pthread_mutex_lock(&mutexQueueBloqueados);
-							if(pcbEliminadoDeEjecutando!=NULL)
+							if(pcbEliminadoDeEjecutando!=NULL) {
+								//Lo meto en la cola de bloqueados
+								pthread_mutex_lock(&mutexQueueBloqueados);
 								queue_push(Bloqueados, pcbRecibir);
-							pthread_mutex_unlock(&mutexQueueBloqueados);
+								pcb_Destroy(pcbEliminadoDeEjecutando);
+								pthread_mutex_unlock(&mutexQueueBloqueados);
+							}
 
 							printf("Despues de bloquearse, el program counter del proceso N° %u es %u\n",pcbRecibir->PID,pcbRecibir->ProgramCounter);
 							pthread_mutex_unlock(&mutexSemaforos);
@@ -480,7 +482,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_unlock(&mutexQueueListos);
 								sem_post(&semDispatcherCpus);
 								Evento_ListosAdd();
-
+								pcb_Destroy(pcbEjecutado);
 							}
 						}
 					} else

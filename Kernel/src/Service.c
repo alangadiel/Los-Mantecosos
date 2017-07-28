@@ -32,6 +32,7 @@ pthread_mutex_t mutexQueueBloqueados = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueFinalizados = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexFinalizarPrograma = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueuesProcesos = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexConsolasConectadas = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexCPUsConectadas = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexSemaforos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexVariablesCompartidas = PTHREAD_MUTEX_INITIALIZER;
@@ -105,6 +106,7 @@ void LiberarVariablesYListas() {
 	pthread_mutex_destroy(&mutexQueueFinalizados);
 	pthread_mutex_destroy(&mutexFinalizarPrograma);
 	pthread_mutex_destroy(&mutexQueuesProcesos);
+	pthread_mutex_destroy(&mutexConsolasConectadas);
 	pthread_mutex_destroy(&mutexCPUsConectadas);
 	pthread_mutex_destroy(&mutexSemaforos);
 	pthread_mutex_destroy(&mutexVariablesCompartidas);
@@ -162,6 +164,10 @@ void obtenerError(int exitCode){
 
 		case DESCONEXIONDECONSOLA:
 			printf(" (Finalizado a través de desconexión de consola)\n");
+		break;
+
+		case DESCONEXIONDECPU:
+			printf(" (Finalizado a través de desconexión de cpu)\n");
 		break;
 
 		case DESCONECTADODESDECOMANDOCONSOLA:
