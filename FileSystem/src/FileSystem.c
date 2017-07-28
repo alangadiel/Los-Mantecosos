@@ -474,15 +474,29 @@ int reservarBloquesParaEscribir(ValoresArchivo* valoresNuevos) {
 		}
 	}
 
-	//list_add_all(bloquesTotales, bloquesViejos);
-	//list_add_all(bloquesTotales, bloquesNuevos);
 	crearBloques(valoresNuevos->Bloques);
-	//ValoresArchivo* valoresNuevos = malloc(sizeof(ValoresArchivo));
-	//valoresNuevos->Bloques = bloquesTotales;
-	//valoresNuevos->Tamanio = tamanioNecesitado;
 	modificarValoresDeArchivo(valoresNuevos);
-	//return valoresNuevos;
+
 	return 0;
+}
+
+void reservarUnBloque(ValoresArchivo* valoresNuevos)
+{
+	int* posicion = malloc(sizeof(int));
+
+	*posicion = encontrarPrimerBloqueLibre();
+
+	if (*posicion >= 0)
+	{
+		list_add(valoresNuevos->Bloques, posicion);
+	}
+	else
+	{
+		free(posicion);
+	}
+
+	crearBloques(valoresNuevos->Bloques);
+	modificarValoresDeArchivo(valoresNuevos);
 }
 
 
@@ -516,19 +530,41 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 				int lengthEscribir = size;
 				char* nombreF = string_new();
 				char* substr = string_new();
-				int i = 0;
+				int i;
+				i = 0;
 
-				if(size > TAMANIO_BLOQUES - offset)
+				int bloque = offset / TAMANIO_BLOQUES;
+				int offsetBloque = offset % TAMANIO_BLOQUES;
+
+				if(size > TAMANIO_BLOQUES - offsetBloque)
 				{
 					while(sizeParaRestar > 0)
 					{
-						int* bloqueAEscribir = list_get(valores->Bloques, i);
+						int* bloqueAEscribir;
+
+						if(bloque+i < list_size(valores->Bloques))
+						{
+							bloqueAEscribir = list_get(valores->Bloques, bloque+i);
+						}
+						else
+						{
+							reservarUnBloque(valores);
+
+							bloqueAEscribir = list_get(valores->Bloques, bloque+i);
+						}
 
 						nombreF = string_duplicate(obtenerPathABloque(*bloqueAEscribir));
 
 						FILE* file = fopen(nombreF, "w+");
 
-						fseek(file, offset, SEEK_SET);
+						int j = 0;
+
+						for(j = 0; j < offsetBloque; j++)
+						{
+							fputs(" ", file);
+						}
+
+						fseek(file, offsetBloque, SEEK_SET);
 
 						//char* substr = string_new();
 
@@ -537,7 +573,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 							substr = string_substring(datosAEscribir, desdeEscribir, TAMANIO_BLOQUES);
 
 							sizeParaRestar -= TAMANIO_BLOQUES;
-							desdeEscribir = TAMANIO_BLOQUES - offset;
+							desdeEscribir = TAMANIO_BLOQUES - offsetBloque;
 							lengthEscribir -= TAMANIO_BLOQUES;
 						}
 						else
@@ -551,7 +587,7 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 
 						fclose(file);
 
-						offset = 0;
+						offsetBloque = 0;
 
 						//free(substr);
 
@@ -565,6 +601,13 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 					nombreF = obtenerPathABloque(*bloqueAEscribir);
 
 					FILE* file = fopen(nombreF, "w+");
+
+					int i = 0;
+
+					for(i = 0; i < offset; i++)
+					{
+						fputs(" ", file);
+					}
 
 					fseek(file, offset, SEEK_SET);
 
