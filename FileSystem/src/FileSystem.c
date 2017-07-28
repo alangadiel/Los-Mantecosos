@@ -405,7 +405,11 @@ char* obtenerTodosLosDatosDeBloques(ValoresArchivo* valores) {
 	if (valores != NULL){
 		for (i = 0; i < list_size(valores->Bloques); i++) {
 			int* numBloque = list_get(valores->Bloques, i);
-			string_append(&datos, leerTodoElArchivo(obtenerPathABloque(*numBloque)));
+			char* obtenido = obtenerPathABloque(*numBloque);
+			char* leido = leerTodoElArchivo(obtenido);
+			string_append(&datos, leido);
+			free(leido);
+			free(obtenido);
 		}
 	}
 
@@ -418,8 +422,9 @@ void obtenerDatos(char* pathAObtener, uint32_t offset, uint32_t size, int socket
 
 		if(valores != NULL)
 		{
-			char* datosAEnviar = string_substring(obtenerTodosLosDatosDeBloques(valores), offset, size);
-
+			char *obtenido = obtenerTodosLosDatosDeBloques(valores);
+			char* datosAEnviar = string_substring(obtenido, offset, size);
+			free(obtenido);
 			EnviarDatos(socketFD, FS, datosAEnviar, sizeof(char) * string_length(datosAEnviar) + 1);
 
 			free(datosAEnviar);

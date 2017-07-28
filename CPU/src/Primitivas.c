@@ -464,6 +464,7 @@ void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informaci
 	((uint32_t*) datos)[2] = descriptor_archivo;
 	((uint32_t*) datos)[3] = tamanio;
 	memcpy(datos+sizeof(uint32_t)*4,informacion,tamanio);
+
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
