@@ -74,7 +74,7 @@ void obtenerLinea(char* instruccion, uint32_t* registro){
 	}
 	free(datos);
 }
-char* obtenerLineaAEjecutar(RegIndiceCodigo* registro, char** linea){
+char* obtenerLineaAEjecutar(RegIndiceCodigo* registro){
 	/*Suponiendo que una instruccion nunca nos va a ocupar mas de 2 paginas
 	TODO: puede pasar que una instruccion ocupe mas de 2 paginas?
 	Si es asi, habria que hacer otra funcion */
@@ -82,7 +82,7 @@ char* obtenerLineaAEjecutar(RegIndiceCodigo* registro, char** linea){
 	uint32_t offsetPaginaInicial = registro->start%TamanioPaginaMemoria;
 	uint32_t cantTotalALeer = registro->offset;
 	uint32_t cantPaginasALeer;
-	//char* linea = NULL;
+	char* linea = NULL;
 	if(offsetPaginaInicial + cantTotalALeer > TamanioPaginaMemoria) {
 		cantPaginasALeer = 1 + ceil((cantTotalALeer - (TamanioPaginaMemoria - offsetPaginaInicial)) / TamanioPaginaMemoria); //El 1 es por la primer pagina
 	}
@@ -115,12 +115,11 @@ char* obtenerLineaAEjecutar(RegIndiceCodigo* registro, char** linea){
 		{
 			cantALeerEnPagina = cantTotalALeer;
 		}
-		*linea = IM_LeerDatos(socketMemoria, CPU, pcb.PID, paginaInicial + i, offsetPaginaALeer, cantALeerEnPagina);
-		limpiar_string(linea);
+		linea = IM_LeerDatos(socketMemoria, CPU, pcb.PID, paginaInicial + i, offsetPaginaALeer, cantALeerEnPagina);
 		cantTotalALeer -= cantALeerEnPagina;
 		offsetPaginaALeer = 0;
 	}
-	//return linea;
+	return linea;
 }
 
 bool terminoElPrograma(void){
@@ -178,10 +177,10 @@ int main(void) {
 						if(pcb.cantidadDeRafagasAEjecutar > 0 && cantRafagasActualesEjecutadas >= pcb.cantidadDeRafagasAEjecutar) break;
 						sleepCpu(QuantumSleep);
 						RegIndiceCodigo* registro = list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
-						char* instruccion = string_new();
-						obtenerLineaAEjecutar(registro, &instruccion);
+						char* instruccion = obtenerLineaAEjecutar(registro);
 						if (instruccion != NULL) {
-							printf("Ejecutando rafaga N°: %u de PID: %u\n", pcb.cantidadDeRafagasEjecutadas, pcb.PID);
+							limpiar_string(&instruccion);
+							printf("Ejecutando rafaga N°: %u de PID: %u, Instruccion: %s\n", pcb.cantidadDeRafagasEjecutadas, pcb.PID, instruccion);
 							analizadorLinea(instruccion,&functions,&kernel_functions);
 							free(instruccion);
 							pcb.ProgramCounter++;

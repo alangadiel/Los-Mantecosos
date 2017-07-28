@@ -16,6 +16,7 @@ begin
   i=i-1
   # adelanto 64 bytes, al byte anterior al siguiente bloque
   p=p+64
+  prints n p
   buscar f p
   # loopeo
   jnz i escribeotro

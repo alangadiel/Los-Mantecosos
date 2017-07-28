@@ -116,6 +116,7 @@ void programHandler(void* structProc) {
 				free(paquete.Payload);
 		}
 	}
+	close(socketFD);
 	printf("programa finalizado\n");
 
 }
@@ -193,7 +194,7 @@ void killConsole() {
 	liberarMemoria();
 }
 
-void userInterfaceHandler(uint32_t* socketGeneral) {
+void userInterfaceHandler() {
 	char command[100];
 
 	while (!fin) {
@@ -237,6 +238,7 @@ void userInterfaceHandler(uint32_t* socketGeneral) {
 		}
 
 	}
+
 	printf("consola finalizada \n");
 }
 

@@ -81,7 +81,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 
 		archivoGlob->pathArchivo = pathLimpio;
 		archivoGlob->cantAperturas = 1;
-		archivoGlob->globalFD = ultimoGlobalFD;
+		archivoGlob->archivoGlobalFD = ultimoGlobalFD;
 
 		ultimoGlobalFD++;
 
@@ -107,7 +107,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 		archivoProc->FD = 3;
 		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
-		archivoProc->globalFD = archGlob->globalFD;
+		archivoProc->globalFD = archGlob->archivoGlobalFD;
 
 		ListaArchivosProceso* listaArchivoProceso;
 		listaArchivoProceso = malloc(sizeof(listaArchivoProceso));
@@ -130,7 +130,7 @@ uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permi
 		archivoProc->FD = archProc->FD+1;
 		archivoProc->flags = permisos;
 		archivoProc->offsetArchivo = 0;
-		archivoProc->globalFD = archGlob->globalFD;
+		archivoProc->globalFD = archGlob->archivoGlobalFD;
 
 		ListaArchivosProceso* listaArchivoProceso = lista;
 
@@ -168,7 +168,7 @@ void finalizarProgramaCapaFS(int PID)
 		{
 			archivoProceso* archivoProc = (archivoProceso*)list_get(listaProcesoAFinalizar->listaArchivo, j);
 
-			archivoGlobal* archivoGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->globalFD == archivoProc->globalFD; }));
+			archivoGlobal* archivoGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->archivoGlobalFD == archivoProc->globalFD; }));
 
 			archivoGlob->cantAperturas--;
 
@@ -230,7 +230,7 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 	{
 		if(archivoProc->flags.lectura == true)
 		{
-			archivoGlobal* archGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->globalFD == archivoProc->globalFD; }));
+			archivoGlobal* archGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->archivoGlobalFD == archivoProc->globalFD; }));
 
 			void* dato = FS_ObtenerDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo);
 
@@ -263,7 +263,7 @@ uint32_t escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* 
 	{
 		if(archivoProc->flags.escritura == true)
 		{
-			archivoGlobal* archGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->globalFD == archivoProc->globalFD; }));
+			archivoGlobal* archGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->archivoGlobalFD == archivoProc->globalFD; }));
 
 			uint32_t archivoFueEscrito = FS_GuardarDatos(socketConFS, KERNEL, archGlob->pathArchivo, archivoProc->offsetArchivo, sizeArchivo, datosAGrabar);
 
@@ -298,7 +298,7 @@ void cerrarArchivo(uint32_t FD, uint32_t PID)
 
 	if(archivoProcesoACerrar != NULL)
 	{
-		archivoGlobal* archivoGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->globalFD == archivoProcesoACerrar->globalFD; }));
+		archivoGlobal* archivoGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->archivoGlobalFD == archivoProcesoACerrar->globalFD; }));
 
 		list_remove_and_destroy_by_condition(listaProcesoACerrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
@@ -332,7 +332,7 @@ void borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 	{
 		archivoProceso* archivoProcesoABorrar = list_find(listaProcesoABorrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }));
 
-		archivoGlobal* archivoGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->globalFD == archivoProcesoABorrar->globalFD; }));
+		archivoGlobal* archivoGlob = (archivoGlobal*)list_find(ArchivosGlobales, LAMBDA(bool _(void* item) { return ((archivoGlobal*) item)->archivoGlobalFD == archivoProcesoABorrar->globalFD; }));
 
 		list_remove_and_destroy_by_condition(listaProcesoABorrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
