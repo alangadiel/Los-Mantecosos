@@ -199,13 +199,14 @@ void cambiarValorBitmap(int posicion, int valor) {
 
 int encontrarPrimerBloqueLibre() {
 	int i = 0;
-	while (bitmapArray[i] < CANTIDAD_BLOQUES) {
+	while (i < CANTIDAD_BLOQUES) {
 		if (bitmapArray[i] == 0) {
 			return i;
 		}
 
 		i++;
 	}
+
 	return -1;
 }
 
@@ -449,7 +450,7 @@ int obtenerTamanioDeArchivo(char* path) {
 	return tamanio;
 }
 
-void reservarBloquesParaEscribir(ValoresArchivo* valoresNuevos) {
+int reservarBloquesParaEscribir(ValoresArchivo* valoresNuevos) {
 	int cantidadDeBloquesAReservar = calcularCantidadDeBloques(valoresNuevos->Tamanio);// - list_size(valoresViejos->Bloques);
 	/*t_list* bloquesViejos = valoresViejos->Bloques;
 	t_list* bloquesNuevos = list_create();*/
@@ -465,6 +466,12 @@ void reservarBloquesParaEscribir(ValoresArchivo* valoresNuevos) {
 		{
 			list_add(valoresNuevos->Bloques, posicion);
 		}
+		else
+		{
+			free(posicion);
+
+			return -1;
+		}
 	}
 
 	//list_add_all(bloquesTotales, bloquesViejos);
@@ -475,6 +482,7 @@ void reservarBloquesParaEscribir(ValoresArchivo* valoresNuevos) {
 	//valoresNuevos->Tamanio = tamanioNecesitado;
 	modificarValoresDeArchivo(valoresNuevos);
 	//return valoresNuevos;
+	return 0;
 }
 
 
@@ -493,82 +501,94 @@ void guardarDatos(char* path, uint32_t offset, uint32_t size, void* buffer, int 
 				valores->Tamanio = size;
 			}
 
-			reservarBloquesParaEscribir(valores);
-			char* datosAEscribir = string_new();
-			datosAEscribir = string_duplicate(buffer);
-			//memcpy(datosActuales, buffer+offset, nuevoTamanioDeArchivo); //puede ser que deba avanzar x2
+			int ret;
 
-			int sizeParaRestar = size;
-			int desdeEscribir = 0;
-			int lengthEscribir = size;
-			char* nombreF = string_new();
-			char* substr = string_new();
-			int i = 0;
+			ret = reservarBloquesParaEscribir(valores);
 
-			if(size > TAMANIO_BLOQUES - offset)
+			if(ret != -1)
 			{
-				while(sizeParaRestar > 0)
-				{
-					int* bloqueAEscribir = list_get(valores->Bloques, i);
+				char* datosAEscribir = string_new();
+				datosAEscribir = string_duplicate(buffer);
+				//memcpy(datosActuales, buffer+offset, nuevoTamanioDeArchivo); //puede ser que deba avanzar x2
 
-					nombreF = string_duplicate(obtenerPathABloque(*bloqueAEscribir));
+				int sizeParaRestar = size;
+				int desdeEscribir = 0;
+				int lengthEscribir = size;
+				char* nombreF = string_new();
+				char* substr = string_new();
+				int i = 0;
+
+				if(size > TAMANIO_BLOQUES - offset)
+				{
+					while(sizeParaRestar > 0)
+					{
+						int* bloqueAEscribir = list_get(valores->Bloques, i);
+
+						nombreF = string_duplicate(obtenerPathABloque(*bloqueAEscribir));
+
+						FILE* file = fopen(nombreF, "w+");
+
+						fseek(file, offset, SEEK_SET);
+
+						//char* substr = string_new();
+
+						if(lengthEscribir > TAMANIO_BLOQUES)
+						{
+							substr = string_substring(datosAEscribir, desdeEscribir, TAMANIO_BLOQUES);
+
+							sizeParaRestar -= TAMANIO_BLOQUES;
+							desdeEscribir = TAMANIO_BLOQUES - offset;
+							lengthEscribir -= TAMANIO_BLOQUES;
+						}
+						else
+						{
+							substr = string_substring(datosAEscribir, desdeEscribir, lengthEscribir);
+
+							sizeParaRestar -= lengthEscribir;
+						}
+
+						fputs(substr, file);
+
+						fclose(file);
+
+						offset = 0;
+
+						//free(substr);
+
+						i++;
+					}
+				}
+				else
+				{
+					int* bloqueAEscribir = list_get(valores->Bloques, 0);
+
+					nombreF = obtenerPathABloque(*bloqueAEscribir);
 
 					FILE* file = fopen(nombreF, "w+");
 
 					fseek(file, offset, SEEK_SET);
 
-					//char* substr = string_new();
-
-					if(lengthEscribir > TAMANIO_BLOQUES)
-					{
-						substr = string_substring(datosAEscribir, desdeEscribir, TAMANIO_BLOQUES);
-
-						sizeParaRestar -= TAMANIO_BLOQUES;
-						desdeEscribir = TAMANIO_BLOQUES - offset;
-						lengthEscribir -= TAMANIO_BLOQUES;
-					}
-					else
-					{
-						substr = string_substring(datosAEscribir, desdeEscribir, lengthEscribir);
-
-						sizeParaRestar -= lengthEscribir;
-					}
-
-					fputs(substr, file);
+					fputs(datosAEscribir, file);
 
 					fclose(file);
-
-					offset = 0;
-
-					//free(substr);
-
-					i++;
 				}
+
+				if (socketFD != 0)
+				{
+					uint32_t r = 1;
+					EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
+				}
+
+				free(nombreF);
+				free(substr);
+				free(datosAEscribir);
 			}
 			else
 			{
-				int* bloqueAEscribir = list_get(valores->Bloques, 0);
-
-				nombreF = obtenerPathABloque(*bloqueAEscribir);
-
-				FILE* file = fopen(nombreF, "w+");
-
-				fseek(file, offset, SEEK_SET);
-
-				fputs(datosAEscribir, file);
-
-				fclose(file);
-			}
-
-			if (socketFD != 0)
-			{
-				uint32_t r = 1;
+				uint32_t r = 0;
 				EnviarDatos(socketFD, FS, &r, sizeof(uint32_t));
 			}
 
-			free(nombreF);
-			free(substr);
-			free(datosAEscribir);
 		}
 		else
 		{

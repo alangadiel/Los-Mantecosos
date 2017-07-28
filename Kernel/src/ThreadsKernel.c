@@ -181,12 +181,10 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 		}
 		list_remove_by_condition(PaginasPorProceso, esDelPID);
 		list_destroy_and_destroy_elements(pagesProcess,free);
+		PIDporSocketConsola* PIDxSocket = list_find(PIDsPorSocketConsola, LAMBDA(bool _(void* item) { return ((PIDporSocketConsola*)item)->PID == pcbRemovido->PID ;}));
+		EnviarMensaje(PIDxSocket->socketConsola,"KILLEADO",KERNEL);
+
 	}
-	/*else{
-		if(index==INDEX_EJECUTANDO)
-			pthread_mutex_unlock(&mutexFinalizarPrograma);
-			FinalizarPrograma(PID,tipoFinalizacion);
-	}*/
 	pthread_mutex_unlock(&mutexFinalizarPrograma);
 	return pcbRemovido;
 }
@@ -341,7 +339,7 @@ void dispatcher()
 
 void AgregarAListadePidsPorSocket(uint32_t PID, int socket)
 {
-	PIDporSocketConsola* PIDxSocket = malloc(sizeof(uint32_t));
+	PIDporSocketConsola* PIDxSocket = malloc(sizeof(PIDporSocketConsola));
 
 	PIDxSocket->PID = PID;
 	PIDxSocket->socketConsola = socket;

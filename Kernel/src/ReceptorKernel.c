@@ -258,14 +258,40 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 
-						borrarArchivo(FD, PID, socketConFS);
+						int tipoErrorBorrar = 0;
+
+						tipoErrorBorrar = borrarArchivo(FD, PID, socketConFS);
+
+						if(tipoErrorBorrar == 0)
+						{
+							uint32_t r = 1;
+
+							EnviarDatosTipo(socketConectado,KERNEL,&r,sizeof(int32_t),ESDATOS);
+						}
+						else
+						{
+							EnviarDatosTipo(socketConectado,KERNEL,&tipoErrorBorrar,sizeof(int32_t),ESERROR);
+						}
 					break;
 
 					case CERRARARCHIVO:
 						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 
-						cerrarArchivo(FD, PID);
+						int tipoErrorCerrar = 0;
+
+						tipoErrorCerrar = cerrarArchivo(FD, PID);
+
+						if(tipoErrorCerrar == 0)
+						{
+							uint32_t r = 1;
+
+							EnviarDatosTipo(socketConectado,KERNEL,&r,sizeof(int32_t),ESDATOS);
+						}
+						else
+						{
+							EnviarDatosTipo(socketConectado,KERNEL,&tipoErrorCerrar,sizeof(int32_t),ESERROR);
+						}
 					break;
 
 					case MOVERCURSOSARCHIVO:
@@ -273,7 +299,20 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						FD = ((uint32_t*)paquete->Payload)[2];
 						uint32_t posicion = ((uint32_t*)paquete->Payload)[3];
 
-						moverCursor(FD, PID, posicion);
+						int tipoErrorMover = 0;
+
+						tipoErrorMover = moverCursor(FD, PID, posicion);
+
+						if(tipoErrorMover == 0)
+						{
+							uint32_t r = 1;
+
+							EnviarDatosTipo(socketConectado,KERNEL,&r,sizeof(int32_t),ESDATOS);
+						}
+						else
+						{
+							EnviarDatosTipo(socketConectado,KERNEL,&tipoErrorMover,sizeof(int32_t),ESERROR);
+						}
 					break;
 
 					case ESCRIBIRARCHIVO:
@@ -293,15 +332,31 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 
 							PIDporSocketConsola* PIDxSocket = list_find(PIDsPorSocketConsola, LAMBDA(bool _(void* item){	return ((PIDporSocketConsola*)item)->PID == ((uint32_t*)paquete->Payload)[1];}));
 
+							uint32_t r = 1;
+
+							EnviarDatosTipo(socketConectado,KERNEL,&r,sizeof(int32_t),ESDATOS);
+
 							EnviarDatos(PIDxSocket->socketConsola, KERNEL, datos, sizeof(uint32_t) * string_length(mensaje) + 1);
+
 							//printf("Escribiendo en el FD N°1 la informacion siguiente: %s\n",((char*)paquete->Payload+sizeof(uint32_t) * 4));
 							pthread_mutex_unlock(&mutexConsolaFD1);
 						}
 						else
 						{
-							escribirArchivo(FD, PID, tamanioArchivo, ((void*)paquete->Payload+sizeof(uint32_t) * 4));
+							int tipoError = 0;
 
-							printf("El archivo fue escrito con %s \n", ((void*)paquete->Payload+sizeof(uint32_t) * 4));
+							tipoError = escribirArchivo(FD, PID, tamanioArchivo, ((void*)paquete->Payload+sizeof(uint32_t) * 4));
+
+							if(tipoError == 0)
+							{
+								uint32_t r = 1;
+
+								EnviarDatosTipo(socketConectado,KERNEL,&r,sizeof(int32_t),ESDATOS);
+							}
+							else
+							{
+								EnviarDatosTipo(socketConectado,KERNEL,&tipoError,sizeof(int32_t),ESERROR);
+							}
 						}
 					break;
 
@@ -311,27 +366,48 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
 						punteroArchivo = ((uint32_t*)paquete->Payload)[4];
 
-						char* datosLeidos = leerArchivo(FD, PID, tamanioArchivo, punteroArchivo);
+						int tipoErrorLeer = 0;
 
-						printf("Se leyo %s\n", datosLeidos);
-						uint32_t pagAGuardar = punteroArchivo/TamanioPagina;
-						uint32_t offsetAGuardar = punteroArchivo % TamanioPagina;
+						char* datosLeidos = leerArchivo(FD, PID, tamanioArchivo, punteroArchivo, &tipoErrorLeer);
 
-						if(string_length(datosLeidos) < tamanioArchivo)
-						{	/*
-							int i;
+						if(datosLeidos != NULL)
+						{
+							printf("Se leyo %s\n", datosLeidos);
+							uint32_t pagAGuardar = punteroArchivo/TamanioPagina;
+							uint32_t offsetAGuardar = punteroArchivo % TamanioPagina;
 
-							for(i = string_length(datosLeidos); i < (tamanioArchivo); i++)
-							{
-								datosLeidos[i]=' ';
-							}*/
+							if(string_length(datosLeidos) < tamanioArchivo)
+							{	/*
+								int i;
 
-							datosLeidos[string_length(datosLeidos)]='\0';
+								for(i = string_length(datosLeidos); i < (tamanioArchivo); i++)
+								{
+									datosLeidos[i]=' ';
+								}*/
+
+								datosLeidos[string_length(datosLeidos)]='\0';
+							}
+
+							//Guardo los datos leidos en el puntero que me piden
+							IM_GuardarDatos(socketConMemoria,KERNEL,PID,pagAGuardar,offsetAGuardar,tamanioArchivo,datosLeidos);
+
+							uint32_t r = 1;
+
+							EnviarDatosTipo(socketConectado,KERNEL,&r,sizeof(int32_t),ESDATOS);
 						}
+						else
+						{
+							if(tipoErrorLeer == 0)
+							{
+								uint32_t r = 1;
 
-						//Guardo los datos leidos en el puntero que me piden
-						IM_GuardarDatos(socketConMemoria,KERNEL,PID,pagAGuardar,offsetAGuardar,tamanioArchivo,datosLeidos);
-
+								EnviarDatosTipo(socketConectado,KERNEL,&r,sizeof(int32_t),ESDATOS);
+							}
+							else
+							{
+								EnviarDatosTipo(socketConectado,KERNEL,&tipoErrorLeer,sizeof(int32_t),ESERROR);
+							}
+						}
 					break;
 					/*
 					case FINEJECUCIONPROGRAMA:
@@ -359,7 +435,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					if(finalizadoConExito == true)
 					{
 						printf("El programa %d fue finalizado con exito\n", pidAFinalizar);
-						EnviarMensaje(socketConectado,"KILLEADO",KERNEL);
+
 					}
 					else
 					{
