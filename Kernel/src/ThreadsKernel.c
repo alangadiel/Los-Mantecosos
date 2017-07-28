@@ -306,11 +306,11 @@ void dispatcher()
 			pthread_mutex_lock(&mutexCPUsConectadas);
 			DatosCPU* cpuAUsar = (DatosCPU*) list_find(CPUsConectadas, LAMBDA(bool _(void* item) { return ((DatosCPU*)item)->isFree == true;}));
 			pthread_mutex_unlock(&mutexCPUsConectadas);
-			if (strcmp(ALGORITMO, "FIFO") == 0)
+			if (strstr(ALGORITMO, "FIFO") != NULL)
 			{
 				PCBAMandar->cantidadDeRafagasAEjecutar = 0;//sin limite
 			}
-			else if (strcmp(ALGORITMO, "RR") == 0)
+			else if (strstr(ALGORITMO, "RR") != NULL)
 			{
 				PCBAMandar->cantidadDeRafagasAEjecutar = QUANTUM;
 			}

@@ -169,12 +169,12 @@ int main(void) {
 					RecibirPCB(&pcb, paquete.Payload,paquete.header.tamPayload, CPU);
 					estadoActual.pcb = pcb;
 					estadoActual.ejecutando = true;
-					int cantRafagasActualesEjecutadas=0;
 					progTerminado = false;
 					primitivaWait = false;
 					huboError = false;
+					pcb.cantidadDeRafagasEjecutadas = 0;
 					while(!primitivaWait && !huboError && !progTerminado) {
-						if(pcb.cantidadDeRafagasAEjecutar > 0 && cantRafagasActualesEjecutadas >= pcb.cantidadDeRafagasAEjecutar) break;
+						if(pcb.cantidadDeRafagasAEjecutar > 0 && pcb.cantidadDeRafagasEjecutadas >= pcb.cantidadDeRafagasAEjecutar) break;
 						sleepCpu(QuantumSleep);
 						RegIndiceCodigo* registro = list_get(pcb.IndiceDeCodigo,pcb.ProgramCounter);
 						char* instruccion = obtenerLineaAEjecutar(registro);
@@ -187,9 +187,7 @@ int main(void) {
 							pcb.cantidadDeRafagasEjecutadasHistorica++;
 							pcb.cantidadDeRafagasEjecutadas++;
 						}
-						cantRafagasActualesEjecutadas++;
 					}
-					cantRafagasActualesEjecutadas=0;
 					// Avisar al kernel que terminaste de ejecutar la instruccion
 					printf("Fin de ejecucion de rafagas\n");
 					if(primitivaWait) {
