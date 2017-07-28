@@ -221,6 +221,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							free(data);
 						}
 						else{
+							printf("Hubo un error al reservar heap\n");
 							EnviarDatosTipo(socketConectado,KERNEL,&tipoError,sizeof(int32_t),ESERROR);
 
 						}
