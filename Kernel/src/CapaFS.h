@@ -21,7 +21,7 @@ typedef struct {
 typedef struct {
 	char* pathArchivo;
 	uint32_t cantAperturas;
-	uint32_t globalFD;
+	uint32_t archivoGlobalFD;
 } archivoGlobal;
 
 void cerrarArchivo(uint32_t FD, uint32_t PID);

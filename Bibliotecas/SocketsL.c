@@ -271,7 +271,7 @@ int RecibirDatos(void* paquete, int socketFD, uint32_t cantARecibir) {
 	free(datos);
 
 	if (recibido < 0) {
-		perror("Error de Recepcion, no se pudo leer el mensaje\n");
+		printf("Cliente Desconectado\n");
 		close(socketFD); // ¡Hasta luego!
 		//exit(1);
 	} else if (recibido == 0) {

@@ -431,8 +431,6 @@ void primitiva_borrar(t_descriptor_archivo descriptor_archivo){
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
-	//pcb.ProgramCounter++;
-
 }
 void primitiva_cerrar(t_descriptor_archivo descriptor_archivo){
 	int tamDatos = sizeof(uint32_t)*3;
@@ -457,13 +455,9 @@ void primitiva_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_vari
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
 	free(datos);
 	pcb.cantidadSyscallEjecutadas++;
-	//pcb.ProgramCounter++;
-
 }
 void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
-	int32_t tipoError = 0;
-
-	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo) + tamanio;
+	int tamDatos = sizeof(uint32_t)*4 + tamanio;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = ESCRIBIRARCHIVO;
 	((uint32_t*) datos)[1] = pcb.PID;
@@ -471,29 +465,12 @@ void primitiva_escribir(t_descriptor_archivo descriptor_archivo, void* informaci
 	((uint32_t*) datos)[3] = tamanio;
 	memcpy(datos+sizeof(uint32_t)*4,informacion,tamanio);
 	EnviarDatos(socketKernel,CPU,datos,tamDatos);
-
-	/*Paquete* paquete = malloc(sizeof(Paquete));
-
-	while (RecibirPaqueteCliente(socketKernel, CPU, paquete) <= 0);*/
-
 	free(datos);
-
-	/*if(paquete->header.tipoMensaje == ESERROR)
-	{
-		*tipoError = ((int32_t*)paquete->Payload)[0];
-
-		huboError = true;
-		pcb.ExitCode = tipoError;
-	}
-
-	free(paquete);*/
-
 	pcb.cantidadSyscallEjecutadas++;
-	//pcb.ProgramCounter++;
-
 }
+
 void primitiva_leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio){
-	int tamDatos = sizeof(uint32_t)*2 + sizeof(t_valor_variable) + sizeof(t_descriptor_archivo) + sizeof(t_puntero);
+	int tamDatos = sizeof(uint32_t)*5;
 	void* datos = malloc(tamDatos);
 	((uint32_t*) datos)[0] = LEERARCHIVO;
 	((uint32_t*) datos)[1] = pcb.PID;
