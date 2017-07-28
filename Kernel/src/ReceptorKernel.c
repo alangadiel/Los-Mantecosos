@@ -359,7 +359,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					if(finalizadoConExito == true)
 					{
 						printf("El programa %d fue finalizado con exito\n", pidAFinalizar);
-						EnviarMensaje(socketConectado,"KILLEADO",KERNEL);
+
 					}
 					else
 					{
