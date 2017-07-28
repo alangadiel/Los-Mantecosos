@@ -136,11 +136,10 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam
 		//buscar pagina
 		uint32_t frame = FrameLookup(pid, numPag);
 		void*  datosSolicitados = ContenidoMemoria + MARCO_SIZE * frame + offset;
+
+		EnviarDatos(socketFD, MEMORIA, datosSolicitados, tam);
 		pthread_mutex_unlock( &mutexContenidoMemoria );
 		pthread_mutex_unlock( &mutexTablaPagina);
-		EnviarDatos(socketFD, MEMORIA, datosSolicitados, tam);
-		//pthread_mutex_unlock( &mutexContenidoMemoria );
-		//pthread_mutex_unlock( &mutexTablaPagina);
 	} else {
 		pthread_mutex_unlock( &mutexContenidoMemoria );
 		pthread_mutex_unlock( &mutexTablaPagina);
