@@ -12,4 +12,4 @@ GRADO_MULTIPROG=3
 SEM_IDS=[mutexArch,b]
 SEM_INIT=[0,5]
 STACK_SIZE=2
-SHARED_VARS=[!pasadas,!colas]
+SHARED_VARS=[!pasadas, !colas]
