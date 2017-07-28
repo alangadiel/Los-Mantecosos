@@ -137,6 +137,7 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 
 				if(IM_GuardarDatos(socketConMemoria, KERNEL, PID, nuevaPPP->nroPagina, 0, sizeof(HeapMetadata), &metaInicial)==false){
 					*tipoError = EXCEPCIONDEMEMORIA;
+					printf("entro al if feo\n");
 					return -1;
 				}
 

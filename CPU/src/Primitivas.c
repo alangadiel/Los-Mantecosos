@@ -381,11 +381,13 @@ t_puntero primitiva_reservar(t_valor_variable espacio){
 	int32_t tipoError = 0;
 	t_puntero pointer = ReservarBloqueMemoriaDinamica(espacio,&tipoError);
 	if(tipoError<0){
+		printf("Hubo un error al intentar reservar memoria dinamica\n");
 		huboError = true;
 		pcb.ExitCode = tipoError;
 		pointer = 0;
 	}
 	else{
+		printf("Se reservo correctamente memoria dinamica\n");
 		pcb.cantBytesAlocados += espacio + sizeof(bool) + sizeof(uint32_t); //Seria el tamanio a reservar + el tamanio del HeapMetadata que tiene un bool y un uint32_t
 		pcb.cantidadAccionesAlocar++;
 		pcb.cantidadSyscallEjecutadas++;
