@@ -868,7 +868,7 @@ int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete)
 
 void imprimirBitmap()
 {
-	bitmapArray[posicion] = valor;
+	/*bitmapArray[posicion] = valor;
 	int i;
 	FILE* bitmap = fopen(BITMAPFILE, "w+");
 	char* bitmapToWrite = string_new();
@@ -879,14 +879,21 @@ void imprimirBitmap()
 
 	fputs(bitmapToWrite, bitmap);
 	fclose(bitmap);
-	free(bitmapToWrite);
+	free(bitmapToWrite);*/
 	
+	int i = 0;
 	int c;
 	FILE *file;
 	file = fopen(BITMAPFILE, "r");
 	if (file) {
 	    while ((c = getc(file)) != EOF)
+	    {
 		putchar(c);
+	    	bitmapArray[i] = c - '0';
+		
+		i++;
+	    }
+		
 	    fclose(file);
 	}
 	
