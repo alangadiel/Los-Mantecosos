@@ -868,12 +868,34 @@ int RecibirPaqueteFileSystem (int socketFD, char receptor[11], Paquete* paquete)
 
 void imprimirBitmap()
 {
-	int i = 0;
+	bitmapArray[posicion] = valor;
+	int i;
+	FILE* bitmap = fopen(BITMAPFILE, "w+");
+	char* bitmapToWrite = string_new();
+
+	for(i = 0; i < CANTIDAD_BLOQUES; i++) {
+		string_append(&bitmapToWrite, string_itoa(bitmapArray[i]));
+	}
+
+	fputs(bitmapToWrite, bitmap);
+	fclose(bitmap);
+	free(bitmapToWrite);
+	
+	int c;
+	FILE *file;
+	file = fopen(BITMAPFILE, "r");
+	if (file) {
+	    while ((c = getc(file)) != EOF)
+		putchar(c);
+	    fclose(file);
+	}
+	
+	/*int i = 0;
 
 	for(i = 0; i < CANTIDAD_BLOQUES; i++)
 	{
 		printf("%d", bitmapArray[i]);
-	}
+	}*/
 }
 
 void imprimirCantidadDeBloquesDisponibles()
