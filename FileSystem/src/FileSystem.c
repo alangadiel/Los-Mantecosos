@@ -878,7 +878,7 @@ void imprimirBitmap()
 
 void imprimirCantidadDeBloquesDisponibles()
 {
-	int cantBloquesLibres;
+	int cantBloquesLibres = 0;
 	int i = 0;
 
 	for(i = 0; i < CANTIDAD_BLOQUES; i++)
@@ -889,7 +889,7 @@ void imprimirCantidadDeBloquesDisponibles()
 		}
 	}
 
-	printf("Hay %d bloques libres", cantBloquesLibres);
+	printf("Hay %d bloques disponibles", cantBloquesLibres);
 }
 
 void userInterfaceHandler() {
@@ -897,7 +897,7 @@ void userInterfaceHandler() {
 
 	while (true) {
 
-		printf("\nIngrese una orden: \n");
+		printf("\n\nIngrese una orden: \n");
 		scanf("%s", command);
 		if (strcmp(command, "imprimir_bitmap") == 0) {
 			imprimirBitmap();
@@ -906,9 +906,9 @@ void userInterfaceHandler() {
 			scanf("%s", parametro);
 			bool existe = existeDirectorio(parametro);
 			if (existe) {
-				printf("existe el directorio\n");
+				printf("Existe el directorio\n");
 			} else {
-				printf("no existe el directorio\n");
+				printf("No existe el directorio\n");
 			}
 		} else if (strcmp(command, "bloques_disponibles") == 0) {
 			imprimirCantidadDeBloquesDisponibles();

@@ -192,7 +192,7 @@ void userInterfaceHandler(uint32_t* socketFD) {
 		else if (strcmp(command, "mostrar_tabla_de_archivos_global") == 0) {
 			t_list* tablaGlobal = obtenerTablaArchivosGlobales();
 
-			if(tablaGlobal != NULL)
+			if(list_size(tablaGlobal) != 0)
 			{
 				int i;
 
@@ -206,7 +206,7 @@ void userInterfaceHandler(uint32_t* socketFD) {
 			}
 			else
 			{
-				printf("No hay una tabla global de archivos creada");
+				printf("No hay una tabla global de archivos creada\n");
 			}
 		}
 		else {
