@@ -361,6 +361,7 @@ int borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 			}
 			else
 			{
+				tipoError = ACCEDERAARCHVIOQUENOEXISTE;
 				printf("No se pudo borrar el archivo con path %s\n", archivoGlob->pathArchivo);
 			}
 		}
