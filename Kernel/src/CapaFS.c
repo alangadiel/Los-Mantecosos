@@ -349,17 +349,24 @@ int borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 
 		//list_remove_and_destroy_by_condition(listaProcesoABorrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
-		uint32_t fueBorrado = FS_BorrarArchivo(socketConectado, KERNEL, archivoGlob->pathArchivo);
-
-		if(fueBorrado == 1)
+		if(archivoGlob->cantAperturas == 1)
 		{
-			printf("El archivo con path %s, fue borrado\n", archivoGlob->pathArchivo);
+			uint32_t fueBorrado = FS_BorrarArchivo(socketConectado, KERNEL, archivoGlob->pathArchivo);
+			
+			if(fueBorrado == 1)
+			{
+				printf("El archivo con path %s, fue borrado\n", archivoGlob->pathArchivo);
 
-			//list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
+				//list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
+			}
+			else
+			{
+				printf("No se pudo borrar el archivo con path %s\n", archivoGlob->pathArchivo);
+			}
 		}
 		else
 		{
-			printf("No se pudo borrar el archivo con path %s\n", archivoGlob->pathArchivo);
+			tipoError = ACCEDERAARCHVIOQUENOEXISTE;
 		}
 	}
 	else
