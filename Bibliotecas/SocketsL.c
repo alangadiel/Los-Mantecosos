@@ -396,16 +396,19 @@ bool IM_AsignarPaginas(int socketFD, char emisor[11], uint32_t ID_Prog,
 	bool r = true;
 	if (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete)<=0) {
 		r = false;
-		printf("[PID %u] Error al asignar %u paginas en memoria\n",ID_Prog, CantPag);
-	} else
-		printf("[PID %u] %u paginas asignadas en memoria\n",ID_Prog, CantPag);
+	}
 
 	if (paquete.header.tipoMensaje==ESERROR)
 		r = false;
 
 	if (paquete.Payload != NULL)
 		free(paquete.Payload);
-
+	if(r==true){
+		printf("[PID %u] %u paginas asignadas en memoria\n",ID_Prog, CantPag);
+	}
+	else{
+		printf("[PID %u] Error al asignar %u paginas en memoria\n",ID_Prog, CantPag);
+	}
 	return r;
 }
 bool IM_LiberarPagina(int socketFD, char emisor[11], uint32_t ID_Prog, uint32_t NumPag) {//Agregado en el Fe de Erratas, responde 0 si hubo error y 1 si libero la pag.

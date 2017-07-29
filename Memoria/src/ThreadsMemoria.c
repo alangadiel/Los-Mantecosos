@@ -125,9 +125,7 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam
 	//valido los parametros
 
 	pthread_mutex_lock( &mutexTablaPagina);
-	printf("Paso el semaforo mTablaPagina de solicitarBytes\n");
 	pthread_mutex_lock( &mutexContenidoMemoria );
-	printf("Paso el semaforo mutexContenidoMemoria de solicitarBytes\n");
 
 	if(numPag>=0 && cuantasPagTieneVivos(pid)>=numPag && offset+tam <= MARCO_SIZE) {
 
@@ -155,9 +153,7 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 	//Parámetros: PID, #página, offset, tamaño y buffer.
 	uint32_t result=0;
 	pthread_mutex_lock( &mutexTablaPagina);
-	printf("Paso el semaforo mTablaPagina de almacenarBytes\n");
 	pthread_mutex_lock( &mutexContenidoMemoria );
-	printf("Paso el semaforo mutexContenidoMemoria de almacenarBytes\n");
 	if(DATOS[2]>=0 && cuantasPagTieneVivos(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
 
 		//esperar tiempo definido por arch de config
@@ -178,7 +174,6 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 		result = 1;
 		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
 	} else {
-		printf("Entro al else en almacenarBytes\n");
 		pthread_mutex_unlock( &mutexContenidoMemoria );
 		pthread_mutex_unlock( &mutexTablaPagina);
 		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
@@ -206,7 +201,7 @@ void AsignarPaginas(uint32_t pid, uint32_t cantPagParaAsignar, int socketFD) {
 			TablaDePagina[frame].Pag = i;
 			TablaDePagina[frame].disponible=false;
 			cantPagAsignadas++;
-
+			printf("Frame %d asignado para el PID: %d, y la pagina es : %d\n",frame,pid,i);
 
 		}
 		pthread_mutex_unlock( &mutexTablaPagina );

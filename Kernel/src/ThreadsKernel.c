@@ -132,6 +132,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 		printf("\nFinalizando proceso %u \n", pcbRemovido->PID);
 		pcbRemovido->ExitCode = tipoFinalizacion;
 		//Tengo que sacar a ese proceso de la cola de procesos bloqueados en los semaforos
+
 		int z;
 		for(z=0;z< list_size(Semaforos);z++){
 			Semaforo* sem = list_get(Semaforos,z);
@@ -140,14 +141,19 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 					uint32_t* pid=item;
 					return *pid==pcbRemovido->PID;
 				}
-				list_remove_by_condition(sem->listaDeProcesos->elements,buscarProcesoBloqueadoEnSemaforo);
+				pthread_mutex_lock(&mutexSemaforos);
+				list_remove_and_destroy_by_condition(sem->listaDeProcesos->elements,buscarProcesoBloqueadoEnSemaforo,free);
+				pthread_mutex_unlock(&mutexSemaforos);
+
 			}
 		}
 
 		list_add(Finalizados->elements, pcbRemovido);
 		//Analizo si el proceso tiene Memory Leaks o no
 		bool esDelPID(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}
+		pthread_mutex_lock(&mutexPaginasPorProceso);
 		t_list* pagesProcess = list_filter(PaginasPorProceso, esDelPID);
+
 		printf("[PID %u] Cant. paginas del heap : %u\n",pcbRemovido->PID, pagesProcess->elements_count);
 		if(list_size(pagesProcess) > 0)
 		{
@@ -175,14 +181,23 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 		else{
 			printf("El proceso %d nunca llegó a reservar bloques de memoria dinámica, por lo tanto, no hay memory leaks.\n",PID);
 		}
+
 		if(IM_FinalizarPrograma(socketConMemoria, KERNEL, PID) == false)
 		{
 			pcbRemovido->ExitCode = EXCEPCIONDEMEMORIA;
 		}
-		list_remove_by_condition(PaginasPorProceso, esDelPID);
+		PaginaDelProceso *aEliminar;
+		do{
+			aEliminar = list_remove_by_condition(PaginasPorProceso, esDelPID);
+		}while(aEliminar!=NULL);
+
 		list_destroy_and_destroy_elements(pagesProcess,free);
+		pthread_mutex_unlock(&mutexPaginasPorProceso);
+		pthread_mutex_lock(&mutexConsolasConectadas);
 		PIDporSocketConsola* PIDxSocket = list_find(PIDsPorSocketConsola, LAMBDA(bool _(void* item) { return ((PIDporSocketConsola*)item)->PID == pcbRemovido->PID ;}));
+
 		EnviarMensaje(PIDxSocket->socketConsola,"KILLEADO",KERNEL);
+		pthread_mutex_unlock(&mutexConsolasConectadas);
 
 	}
 	pthread_mutex_unlock(&mutexFinalizarPrograma);
