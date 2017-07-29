@@ -54,7 +54,7 @@ char* armarPath(char* path)
 		*path = string_duplicate(string_substring_until(*path, string_length(*path) - 4));
 	}*/
 
-	//free(subsrt);
+	//free(subsrt); 
 }
 
 
@@ -349,25 +349,19 @@ int borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado)
 
 		//list_remove_and_destroy_by_condition(listaProcesoABorrar->listaArchivo, LAMBDA(bool _(void* item) { return ((archivoProceso*) item)->PID == PID && ((archivoProceso*) item)->FD == FD; }), free);
 
-		if(archivoGlob->cantAperturas == 1)
-		{
-			uint32_t fueBorrado = FS_BorrarArchivo(socketConectado, KERNEL, archivoGlob->pathArchivo);
+		
+		uint32_t fueBorrado = FS_BorrarArchivo(socketConectado, KERNEL, archivoGlob->pathArchivo);
 			
-			if(fueBorrado == 1)
-			{
-				printf("El archivo con path %s, fue borrado\n", archivoGlob->pathArchivo);
+		if(fueBorrado == 1)
+		{
+			printf("El archivo con path %s, fue borrado\n", archivoGlob->pathArchivo);
 
-				//list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
-			}
-			else
-			{
-				tipoError = ACCEDERAARCHVIOQUENOEXISTE;
-				printf("No se pudo borrar el archivo con path %s\n", archivoGlob->pathArchivo);
-			}
+			//list_remove_and_destroy_by_condition(ArchivosGlobales, LAMBDA(bool _(void* item) { return strcmp(((archivoGlobal*) item)->pathArchivo, archivoGlob->pathArchivo) == 0; }),free);
 		}
 		else
 		{
 			tipoError = ACCEDERAARCHVIOQUENOEXISTE;
+			printf("No se pudo borrar el archivo con path %s\n", archivoGlob->pathArchivo);
 		}
 	}
 	else
