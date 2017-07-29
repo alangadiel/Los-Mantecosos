@@ -881,7 +881,7 @@ void imprimirBitmap()
 	fclose(bitmap);
 	free(bitmapToWrite);*/
 	
-	int i = 0;
+	/*int i = 0;
 	int c;
 	FILE *file;
 	file = fopen(BITMAPFILE, "r");
@@ -895,14 +895,14 @@ void imprimirBitmap()
 	    }
 		
 	    fclose(file);
-	}
+	}*/
 	
-	/*int i = 0;
+	int i = 0;
 
 	for(i = 0; i < CANTIDAD_BLOQUES; i++)
 	{
 		printf("%d", bitmapArray[i]);
-	}*/
+	}
 }
 
 void imprimirCantidadDeBloquesDisponibles()
