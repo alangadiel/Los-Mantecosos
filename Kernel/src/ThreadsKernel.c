@@ -148,7 +148,7 @@ BloqueControlProceso* FinalizarPrograma(int PID, int tipoFinalizacion)
 		//Analizo si el proceso tiene Memory Leaks o no
 		bool esDelPID(void* item) {return ((PaginaDelProceso*)item)->pid == PID;}
 		t_list* pagesProcess = list_filter(PaginasPorProceso, esDelPID);
-		printf("Cant. paginas del heap : %u\n",pagesProcess->elements_count);
+		printf("[PID %u] Cant. paginas del heap : %u\n",pcbRemovido->PID, pagesProcess->elements_count);
 		if(list_size(pagesProcess) > 0)
 		{
 			int i = 0;
@@ -226,7 +226,7 @@ bool KillProgram(int pidAFinalizar, int tipoFinalizacion)
 
 void PonerElProgramaComoListo(BloqueControlProceso* pcb, Paquete* paquete, int socketFD, double tamanioTotalPaginas)
 {
-	printf("Cant paginas asignadas para el codigo: %d \n",pcb->PaginasDeCodigo);
+	printf("[PID %u] Cant paginas asignadas para el codigo: %d \n",pcb->PID,pcb->PaginasDeCodigo);
 	pthread_mutex_lock(&mutexQueueNuevos);
 	//Saco el programa de la lista de NEW y  agrego el programa a la lista de READY
 	list_remove_by_condition(Nuevos->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == pcb->PID; }));

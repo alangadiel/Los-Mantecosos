@@ -41,9 +41,9 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 			HeapMetadata metaOcupado;
 			metaOcupado.isFree = false;
 			metaOcupado.size = cantAReservar;
-			printf("Cant que quiero alocar: %u\n",metaOcupado.size);
+			printf("[PID %u] Quiere alocar: %u\n",PID, metaOcupado.size);
 			if(IM_GuardarDatos(socketConMemoria, KERNEL, PID, nroPagina, offset, sizeof(HeapMetadata), &metaOcupado)==false){
-				perror("hubo error\n");
+				//perror("hubo error\n");
 				*tipoError = EXCEPCIONDEMEMORIA;
 				return -1;
 			}
@@ -53,18 +53,18 @@ uint32_t ActualizarMetadata(uint32_t PID, uint32_t nroPagina, uint32_t cantARese
 			metaLibre.isFree = true;
 			metaLibre.size = diferencia;
 			if(IM_GuardarDatos(socketConMemoria, KERNEL, PID, nroPagina, offsetMetadataLibre, sizeof(HeapMetadata), &metaLibre)==false){
-				perror("hubo error\n");
+				//perror("hubo error\n");
 				*tipoError = EXCEPCIONDEMEMORIA;
 				return -1;
 			}
 
 			uint32_t punteroADevolver = nroPagina*TamanioPagina+( offset + sizeof(HeapMetadata));
-			printf("En el puntero %u se alocaron %u bytes\n ",punteroADevolver,cantAReservar);
+			printf("[PID %u] En el puntero %u se alocaron %u bytes\n", PID, punteroADevolver,cantAReservar);
 			return punteroADevolver;
 		}
 		else
 		{
-			printf("No se encontro ningun bloque donde reservar memoria dinamica\n");
+			printf("[PID %u] No se encontro ningun bloque donde reservar memoria dinamica\n", PID);
 			*tipoError = NOSEPUDIERONRESERVARRECURSOS;
 			return -1;
 		}
@@ -99,12 +99,12 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 		if(result!=NULL){ 		//Se encontro la pagina con tamaño disponible
 			//Actualizar el tamaño disponible
 			PaginaDelProceso* paginaObtenida = (PaginaDelProceso*)result;
-			printf("pagina obtenida: %u\n",paginaObtenida->nroPagina);
+			printf("[PID %u] pagina obtenida: %u\n",PID, paginaObtenida->nroPagina);
 
 			//Obtengo la pagina en cuestion y actualizo el metadata
 			punteroAlPrimerDisponible = ActualizarMetadata(PID,paginaObtenida->nroPagina,cantAReservar,tipoError);
 			paginaObtenida->espacioDisponible -= cantTotal;
-			printf("Espacio que quedo disponible: %i\n",paginaObtenida->espacioDisponible);
+			printf("[PID %u] Espacio que quedo disponible: %i\n",PID, paginaObtenida->espacioDisponible);
 
 
 		}
@@ -122,7 +122,7 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 			nuevaPPP->pid = PID;
 			nuevaPPP->espacioDisponible=TamanioPagina;
 
-			printf("Pagina nueva: %u\n",nuevaPPP->nroPagina);
+			printf("[PID %u] Pagina nueva: %u\n",PID, nuevaPPP->nroPagina);
 			pthread_mutex_lock(&mutexPaginasPorProceso);
 			list_add(PaginasPorProceso,nuevaPPP);
 			pthread_mutex_unlock(&mutexPaginasPorProceso);
@@ -133,16 +133,16 @@ uint32_t SolicitarHeap(uint32_t PID,uint32_t cantAReservar,int32_t *tipoError){
 				metaInicial.isFree = true;
 				metaInicial.size = TamanioPagina-sizeof(HeapMetadata);
 				nuevaPPP->espacioDisponible -= sizeof(HeapMetadata);
-				printf("espacio que quedo disponible: %i\n",nuevaPPP->espacioDisponible);
+				printf("[PID %u] espacio que quedo disponible: %i\n",PID, nuevaPPP->espacioDisponible);
 
 				if(IM_GuardarDatos(socketConMemoria, KERNEL, PID, nuevaPPP->nroPagina, 0, sizeof(HeapMetadata), &metaInicial)==false){
 					*tipoError = EXCEPCIONDEMEMORIA;
-					printf("entro al if feo\n");
+					printf("[PID %u] Excepcion de Memoria (GuardarDatos en SolicitarHeap fallo)\n", PID);
 					return -1;
 				}
 
 				nuevaPPP->espacioDisponible -= cantTotal;
-				printf("Espacio que quedo disponible: %i\n",nuevaPPP->espacioDisponible);
+				printf("[PID %u] Espacio que quedo disponible: %i\n",PID, nuevaPPP->espacioDisponible);
 
 				punteroAlPrimerDisponible = ActualizarMetadata(PID,nuevaPPP->nroPagina,cantAReservar,tipoError);
 			}
@@ -219,9 +219,9 @@ uint32_t ObtenerOffSetMetadataAnterior(void* datosPagina,uint32_t desplazamiento
 
 void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* tipoError)
 {
-	printf("\nPuntero a liberar %u\n",punteroALiberar);
+	printf("\n[PID %u] Puntero a liberar %u\n",pid, punteroALiberar);
 	uint32_t nropag = punteroALiberar / TamanioPagina;
-	printf("Nro pag: %u\n",nropag);
+	printf("[PID %u] Nro pag: %u\n",pid, nropag);
 	bool buscarPag(void* elem){
 			PaginaDelProceso* pag = elem;
 			return pag->nroPagina==nropag && pag->pid==pid;
@@ -288,7 +288,7 @@ void SolicitudLiberacionDeBloque(uint32_t pid,uint32_t punteroALiberar,int32_t* 
 			}
 		}
 		pagEncontrada->espacioDisponible += heapMetaAActualizar->size;
-		printf("\nEl bloque de memoria dinámica se liberó correctamente\n");
+		printf("\n[PID %u] El bloque de memoria dinámica se liberó correctamente\n", pid);
 
 	}
 	else{

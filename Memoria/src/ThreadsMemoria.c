@@ -162,13 +162,14 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 
 		//escribir en pagina
 		memcpy(pagina + DATOS[3],paquete.Payload+(sizeof(uint32_t)*5), DATOS[4]);
-		pthread_mutex_unlock( &mutexContenidoMemoria );
-		pthread_mutex_unlock( &mutexTablaPagina);
+
 		printf("Datos Almacenados del PID: %u, Pag: %u, Offset: %u\n", DATOS[1], DATOS[2], DATOS[3]);
 		//actualizar cache
 		if (!estaEnCache(DATOS[1], DATOS[2])) {
 			agregarACache(DATOS[1], DATOS[2]);
 		}
+		pthread_mutex_unlock( &mutexContenidoMemoria );
+		pthread_mutex_unlock( &mutexTablaPagina);
 		result = 1;
 		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
 	} else {

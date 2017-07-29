@@ -328,6 +328,7 @@ bool IM_InicializarPrograma(int socketFD, char emisor[11], uint32_t ID_Prog,
 }
 void* IM_LeerDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 		uint32_t PagNum, uint32_t offset, uint32_t cantBytes) { //Devuelve los datos de una pagina, ¡Recordar hacer free(puntero) cuando los terminamos de usar!
+	printf("[PID %u] Leyendo %u bytes en memoria\n",ID_Prog, cantBytes);
 	int tamDatos = sizeof(uint32_t) * 5;
 	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = SOL_BYTES;
@@ -338,21 +339,25 @@ void* IM_LeerDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	//free(datos);
 	Paquete paquete;
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
-	void* r;
-	if(paquete.header.tipoMensaje == ESERROR)
+	void* r = NULL;
+	int recibir = RecibirPaqueteCliente(socketFD, MEMORIA, &paquete);
+	if(paquete.header.tipoMensaje == ESERROR || recibir<=0)
 	{
+		printf("[PID %u] Error al leer %u bytes en memoria\n",ID_Prog, cantBytes);
 		if (paquete.Payload != NULL) {
 			free(paquete.Payload);
 		}
-		r = NULL;
 	}
 	else if(paquete.header.tipoMensaje == ESDATOS)
+	{
+		printf("[PID %u] %u bytes leidos en memoria\n",ID_Prog, cantBytes);
 		r = paquete.Payload;
+	}
 	return r;
 }
 bool IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 		uint32_t PagNum, uint32_t offset, uint32_t cantBytes, void* buffer) {
+	printf("[PID %u] Guardando %u bytes en memoria\n",ID_Prog, cantBytes);
 	int tamDatos = sizeof(uint32_t) * 5 + cantBytes;
 	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = ALM_BYTES;
@@ -363,13 +368,14 @@ bool IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 	memcpy(datos+sizeof(uint32_t) * 5, buffer, cantBytes);
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	//free(datos);
-	printf("antes del recibirpaquete");
+
 	Paquete paquete;
 	bool r = true;
 	if (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete)<=0){
 		r = false;
-	}
-	printf("despues del recibirpaquete");
+		printf("[PID %u] Error al guardar %u bytes en memoria\n",ID_Prog, cantBytes);
+	} else
+		printf("[PID %u] %u bytes guardados en memoria\n",ID_Prog, cantBytes);
 
 	if (paquete.header.tipoMensaje==ESERROR) r = false;
 	if (paquete.Payload != NULL)
@@ -378,6 +384,7 @@ bool IM_GuardarDatos(int socketFD, char emisor[11], uint32_t ID_Prog,
 }
 bool IM_AsignarPaginas(int socketFD, char emisor[11], uint32_t ID_Prog,
 		uint32_t CantPag) { //Devuelve la cant de paginas que pudo asignar
+	printf("[PID %u] Asignando %u paginas en memoria\n",ID_Prog, CantPag);
 	int tamDatos = sizeof(uint32_t) * 3;
 	void* datos = alloca(tamDatos);
 	((uint32_t*) datos)[0] = ASIG_PAG;
@@ -386,11 +393,19 @@ bool IM_AsignarPaginas(int socketFD, char emisor[11], uint32_t ID_Prog,
 	EnviarDatos(socketFD, emisor, datos, tamDatos);
 	//free(datos);
 	Paquete paquete;
-	while (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete) <= 0);
 	bool r = true;
-	if (paquete.header.tipoMensaje==ESERROR) r = false;
+	if (RecibirPaqueteCliente(socketFD, MEMORIA, &paquete)<=0) {
+		r = false;
+		printf("[PID %u] Error al asignar %u paginas en memoria\n",ID_Prog, CantPag);
+	} else
+		printf("[PID %u] %u paginas asignadas en memoria\n",ID_Prog, CantPag);
+
+	if (paquete.header.tipoMensaje==ESERROR)
+		r = false;
+
 	if (paquete.Payload != NULL)
 		free(paquete.Payload);
+
 	return r;
 }
 bool IM_LiberarPagina(int socketFD, char emisor[11], uint32_t ID_Prog, uint32_t NumPag) {//Agregado en el Fe de Erratas, responde 0 si hubo error y 1 si libero la pag.
