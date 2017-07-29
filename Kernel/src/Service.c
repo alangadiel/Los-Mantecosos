@@ -32,6 +32,7 @@ pthread_mutex_t mutexQueueBloqueados = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueueFinalizados = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexFinalizarPrograma = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexQueuesProcesos = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexConsolasConectadas = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexCPUsConectadas = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexSemaforos = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexVariablesCompartidas = PTHREAD_MUTEX_INITIALIZER;
@@ -184,8 +185,16 @@ void obtenerError(int exitCode){
 			printf(" (No hay bloques disponibles)\n");
 		break;
 
+		case DESCONEXIONDECPU:
+			printf(" (Finalizado a través de desconexión de CPU)\n");
+		break;
+
 		case ERRORSINDEFINIR:
 			printf(" (Error sin definición)\n");
 		break;
+		default:
+			printf(" (Error sin definición)\n");
+		break;
+
 	}
 }

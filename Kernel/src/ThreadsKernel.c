@@ -359,5 +359,46 @@ void accion(void* socket)
 		if(paquete.Payload!=NULL)
 			free(paquete.Payload);
 	}
+
+	//Desconexion
+	//Si se desconecta una CPU:
+	pthread_mutex_lock(&mutexCPUsConectadas);
+
+	list_remove_and_destroy_by_condition(CPUsConectadas,
+		LAMBDA(bool _(void* p){ return ((DatosCPU*)p)->socketCPU == socketConectado; }),
+		LAMBDA(void _(void* p)
+		{
+			printf("CPU desconectada\n");
+			DatosCPU* item = p;
+			item->socketCPU =-1;
+			if(!item->isFree)
+				FinalizarPrograma(item->pid, DESCONEXIONDECPU);
+			free(item);
+		}));
+
+	pthread_mutex_unlock(&mutexCPUsConectadas);
+
+	//Si se desconecta una Consola:
+	pthread_mutex_lock(&mutexConsolasConectadas);
+
+	list_iterate(PIDsPorSocketConsola, LAMBDA(void _(void* p)
+	{
+		PIDporSocketConsola* item = p;
+		if(item->socketConsola == socketConectado){
+			item->socketConsola = -1;
+			FinalizarPrograma(item->PID, DESCONEXIONDECONSOLA);
+		}
+
+	}));
+
+	list_remove_and_destroy_by_condition(PIDsPorSocketConsola, LAMBDA(bool _(void* p)
+	{
+		PIDporSocketConsola* item = p;
+		return item->socketConsola == socketConectado;
+
+	}), free);
+
+	pthread_mutex_unlock(&mutexConsolasConectadas);
+
 	close(socketConectado);
 }
