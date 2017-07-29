@@ -9,14 +9,17 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 	uint32_t FD;
 	uint32_t tamanioArchivo;
 	uint32_t punteroArchivo;
+	uint32_t punteroALiberar;
 	char* path;
 	void* result;
 	void* datos;
 	uint32_t abrir =0;
 	int tamDatos;
-
+	char* nombreSemaf;
 	char* nombreSemaforoWait;
 	uint32_t tamanioAReservar;
+	BanderasPermisos* bandera;
+	VariableCompartida* sharedvar;
 
 	switch(paquete->header.tipoMensaje)	{
 	case ESSTRING:
@@ -68,13 +71,24 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 			if(strcmp(paquete->header.emisor, CPU) == 0)
 			{
 				uint32_t tipoOperacion = ((uint32_t*)paquete->Payload)[0];
-				printf("\nTipo operacion : %u\n",tipoOperacion);
-				printf("Pid : %u\n", ((uint32_t*)paquete->Payload)[1]);
+				PID = ((uint32_t*)paquete->Payload)[1];
+				printf("\n[PID %u] Tipo operacion : %u\n", PID, tipoOperacion);
+
+				//Chequeo que el proceso no haya sido finalizado
+				pthread_mutex_lock(&mutexFinalizarPrograma);
+				pthread_mutex_lock(&mutexQueueFinalizados);
+				if (list_any_satisfy(Finalizados->elements, LAMBDA(bool _(void* item) { return ((BloqueControlProceso*)item)->PID == PID; })))
+				{
+					pthread_mutex_unlock(&mutexQueueFinalizados);
+					pthread_mutex_unlock(&mutexFinalizarPrograma);
+					break; //salir del switch
+				}
+				pthread_mutex_unlock(&mutexQueueFinalizados);
+				pthread_mutex_unlock(&mutexFinalizarPrograma);
 
 				switch (tipoOperacion)
 				{
 					case PEDIRSHAREDVAR:
-						PID = ((uint32_t*)paquete->Payload)[1];
 						variableCompartida = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2);
 						printf("Variable compartida solicitada :%s\n",variableCompartida);
 
@@ -85,14 +99,14 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 							char* nombreVarEnCuestion = string_substring_from(var->nombreVariableGlobal,1);
 							return strcmp(nombreVarEnCuestion, variableCompartida) == 0;
 						}
-						VariableCompartida* sharedVar = list_find(VariablesCompartidas,buscarSharedVar);
-						if(sharedVar!=NULL){
+						sharedvar = list_find(VariablesCompartidas,buscarSharedVar);
+						if(sharedvar!=NULL){
 							pthread_mutex_lock(&mutexVariablesCompartidas);
-							printf("Variable compartida encontrada: %s y su valor es: %i \n",sharedVar->nombreVariableGlobal,sharedVar->valorVariableGlobal);
+							printf("Variable compartida encontrada: %s y su valor es: %i \n",sharedvar->nombreVariableGlobal,sharedvar->valorVariableGlobal);
 							//Devuelvo a la cpu el valor de la variable compartida
 							tamDatos = sizeof(int32_t);
 							datos = malloc(tamDatos);
-							((int32_t*) datos)[0] = sharedVar->valorVariableGlobal;
+							((int32_t*) datos)[0] = sharedvar->valorVariableGlobal;
 							pthread_mutex_unlock(&mutexVariablesCompartidas);
 
 							EnviarDatos(socketConectado, KERNEL, datos, tamDatos);
@@ -105,13 +119,12 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case ASIGNARSHAREDVAR:
-						PID = ((uint32_t*)paquete->Payload)[1];
 						valorAAsignar = ((int32_t*)paquete->Payload)[2];
 						variableCompartida =string_duplicate(paquete->Payload + sizeof(uint32_t) * 3);
 						//Busco la variable compartida
 						result = NULL;
-						VariableCompartida* sharedvar = list_find(VariablesCompartidas,buscarSharedVar);
-						if(sharedVar!=NULL){
+						sharedvar = list_find(VariablesCompartidas,buscarSharedVar);
+						if(sharedvar!=NULL){
 							pthread_mutex_lock(&mutexVariablesCompartidas);
 							sharedvar->valorVariableGlobal = valorAAsignar;
 							printf("Se le asigno a %s el valor %u\n", sharedvar->nombreVariableGlobal, sharedvar->valorVariableGlobal);
@@ -127,7 +140,6 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case WAITSEM:
-						PID = ((uint32_t*)paquete->Payload)[1];
 						nombreSemaforoWait = string_duplicate(paquete->Payload + sizeof(uint32_t)*2);
 
 						Semaforo* sem;
@@ -145,8 +157,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case SIGNALSEM:
-						PID = ((uint32_t*)paquete->Payload)[1];
-						char * nombreSemaf = string_duplicate(paquete->Payload + sizeof(uint32_t)*2);
+						nombreSemaf = string_duplicate(paquete->Payload + sizeof(uint32_t)*2);
 						result = NULL;
 						bool despertar = false;
 						uint32_t* pidDesbloqueadoDeLaColaDelSem;
@@ -184,7 +195,7 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 								pthread_mutex_unlock(&mutexSemaforos);
 							}*/
 							semaf->valorSemaforo++;
-							printf("Valor semaforo despues de hacer signal es %i; ejecutado por pid: %u\n",semaf->valorSemaforo,PID);
+							printf("[PID %u] Valor semaforo despues de hacer signal es %i\n", PID, semaf->valorSemaforo);
 							pthread_mutex_unlock(&mutexSemaforos);
 							if(despertar==true){
 								pthread_mutex_lock(&mutexQueueListos);
@@ -205,63 +216,57 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case RESERVARHEAP:
-						PID = ((uint32_t*)paquete->Payload)[1];
 						tamanioAReservar = ((uint32_t*)paquete->Payload)[2];
-						printf("Se solicita reservar en el heap %u bytes para el proceso %u\n",tamanioAReservar,PID);
+						printf("[PID %u] Se solicita reservar en el heap %u bytes.\n", PID, tamanioAReservar);
 						int32_t tipoError=0;
 						uint32_t punteroADevolver = SolicitarHeap(PID, tamanioAReservar,&tipoError);
 						if(tipoError==0){
-							printf("entra al if despues de solicitar heap");
+							//printf("entra al if despues de solicitar heap");
 							tamDatos = sizeof(uint32_t);
 							void *data = malloc(tamDatos);
 							//(uint32_t*) data) = punteroADevolver;
 							memcpy(data,&punteroADevolver,sizeof(tamDatos));
-							printf("Puntero a devolver a la cpu :%u\n",*(uint32_t*)data);
+							printf("[PID %u] Puntero a devolver a la cpu :%u\n", PID, *(uint32_t*)data);
 							EnviarDatos(socketConectado, KERNEL, data, tamDatos);
 							free(data);
 						}
 						else{
+							printf("[PID %u] Hubo un error al reservar heap\n", PID);
 							EnviarDatosTipo(socketConectado,KERNEL,&tipoError,sizeof(int32_t),ESERROR);
 
 						}
 					break;
 
 					case LIBERARHEAP:
-						PID = ((uint32_t*)paquete->Payload)[1];
-						uint32_t punteroALiberar = ((uint32_t*)paquete->Payload)[2];
+						punteroALiberar = ((uint32_t*)paquete->Payload)[2];
 
 						SolicitudLiberacionDeBloque(PID, punteroALiberar,&tipoError);
+
 					break;
 
 					case ABRIRARCHIVO:
-						PID = ((uint32_t*)paquete->Payload)[1];
-
-						BanderasPermisos* bandera = paquete->Payload + sizeof(uint32_t) * 2;
-
+						bandera = paquete->Payload + sizeof(uint32_t) * 2;
 						path = string_duplicate(paquete->Payload + sizeof(uint32_t) * 2 + sizeof(BanderasPermisos)); //no libero path xq esta en una lista
-
 						string_trim(&path);
-
 						abrir = abrirArchivo(path, PID, *bandera, socketConectado, &tipoError);
-
 						if(abrir == 0)
 						{
-							printf("El archivo no pudo ser abierto por falta de permisos de creacion\n");
+							printf("[PID %u] El archivo no pudo ser abierto por falta de permisos de creacion\n", PID);
+						}
+						else if(abrir == 1)
+						{
+							printf("[PID %u] El archivo no pudo ser abierto por falta de bloques disponibles\n", PID);
 						}
 						else
 						{
-							printf("El archivo fue abierto\n");
+							printf("[PID %u] El archivo fue abierto\n", PID);
 						}
 					break;
 
 					case BORRARARCHIVO:
-						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
-
 						int tipoErrorBorrar = 0;
-
 						tipoErrorBorrar = borrarArchivo(FD, PID, socketConFS);
-
 						if(tipoErrorBorrar == 0)
 						{
 							uint32_t r = 1;
@@ -275,13 +280,9 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case CERRARARCHIVO:
-						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
-
 						int tipoErrorCerrar = 0;
-
 						tipoErrorCerrar = cerrarArchivo(FD, PID);
-
 						if(tipoErrorCerrar == 0)
 						{
 							uint32_t r = 1;
@@ -295,14 +296,10 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case MOVERCURSOSARCHIVO:
-						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						uint32_t posicion = ((uint32_t*)paquete->Payload)[3];
-
 						int tipoErrorMover = 0;
-
 						tipoErrorMover = moverCursor(FD, PID, posicion);
-
 						if(tipoErrorMover == 0)
 						{
 							uint32_t r = 1;
@@ -316,15 +313,13 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case ESCRIBIRARCHIVO:
-						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
-
 						//Si el FD es 1, hay que mostrarlo por pantalla
 						if(FD == 1)
 						{
 							char* mensaje = ((char*)paquete->Payload+sizeof(uint32_t) * 4);
-							printf("mensaje a mandar a la consola %s\n",mensaje);
+							printf("[PID %u] mensaje a mandar a la consola %s\n", PID, mensaje);
 							pthread_mutex_lock(&mutexConsolaFD1);
 							void* datos = malloc(sizeof(uint32_t) * (string_length(mensaje) +1));
 							((uint32_t*) datos)[0] = 0;
@@ -361,18 +356,14 @@ void receptorKernel(Paquete* paquete, int socketConectado){
 					break;
 
 					case LEERARCHIVO:
-						PID = ((uint32_t*)paquete->Payload)[1];
 						FD = ((uint32_t*)paquete->Payload)[2];
 						tamanioArchivo = ((uint32_t*)paquete->Payload)[3];
 						punteroArchivo = ((uint32_t*)paquete->Payload)[4];
-
 						int tipoErrorLeer = 0;
-
 						char* datosLeidos = leerArchivo(FD, PID, tamanioArchivo, punteroArchivo, &tipoErrorLeer);
-
 						if(datosLeidos != NULL)
 						{
-							printf("Se leyo %s\n", datosLeidos);
+							printf("[PID %u] Se leyo %s\n", PID, datosLeidos);
 							uint32_t pagAGuardar = punteroArchivo/TamanioPagina;
 							uint32_t offsetAGuardar = punteroArchivo % TamanioPagina;
 

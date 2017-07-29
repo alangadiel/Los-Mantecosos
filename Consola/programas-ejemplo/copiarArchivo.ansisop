@@ -6,7 +6,7 @@ begin
 	abrir f LEC /origen
 	abrir g LEC /destino
 	leer f a 10
-	escribir g a 10
+	escribir g a 3
 	cerrar f
 	cerrar g
 	liberar a

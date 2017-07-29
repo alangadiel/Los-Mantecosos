@@ -24,6 +24,11 @@ typedef struct {
 	uint32_t archivoGlobalFD;
 } archivoGlobal;
 
+typedef struct {
+	t_list* listaArchivo;
+	uint32_t PID;
+} ListaArchivosProceso;
+
 int cerrarArchivo(uint32_t FD, uint32_t PID);
 int escribirArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, void* datosAGrabar);
 uint32_t cargarEnTablasArchivos(char* path, uint32_t PID, BanderasPermisos permisos);
@@ -32,7 +37,7 @@ void* leerArchivo(uint32_t FD, uint32_t PID, uint32_t sizeArchivo, uint32_t punt
 int moverCursor(uint32_t FD, uint32_t PID, uint32_t posicion);
 int borrarArchivo(uint32_t FD, uint32_t PID, int socketConectado);
 void finalizarProgramaCapaFS(int PID);
-t_list* obtenerTablaArchivosDeUnProceso(uint32_t PID);
+ListaArchivosProceso* obtenerTablaArchivosDeUnProceso(uint32_t PID);
 t_list* obtenerTablaArchivosGlobales();
 
 #endif /* CAPAFS_H_ */

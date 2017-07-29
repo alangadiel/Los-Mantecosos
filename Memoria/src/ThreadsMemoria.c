@@ -127,7 +127,7 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam
 	pthread_mutex_lock( &mutexTablaPagina);
 	pthread_mutex_lock( &mutexContenidoMemoria );
 	if(numPag>=0 && cuantasPagTieneVivos(pid)>=numPag && offset+tam <= MARCO_SIZE) {
-		pthread_mutex_unlock( &mutexTablaPagina);
+
 		//si no esta en chache, esperar tiempo definido por arch de config
 		if (!estaEnCache(pid, numPag)) {
 			SleepMemoria(RETARDO_MEMORIA);
@@ -139,10 +139,10 @@ void SolicitarBytes(uint32_t pid, uint32_t numPag, uint32_t offset,	uint32_t tam
 
 		EnviarDatos(socketFD, MEMORIA, datosSolicitados, tam);
 		pthread_mutex_unlock( &mutexContenidoMemoria );
-	} else {
-
 		pthread_mutex_unlock( &mutexTablaPagina);
+	} else {
 		pthread_mutex_unlock( &mutexContenidoMemoria );
+		pthread_mutex_unlock( &mutexTablaPagina);
 		uint32_t r = 0;
 		EnviarDatosTipo(socketFD, MEMORIA, &r, sizeof(uint32_t), ESERROR);
 	}
@@ -154,7 +154,7 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 	pthread_mutex_lock( &mutexTablaPagina);
 	pthread_mutex_lock( &mutexContenidoMemoria );
 	if(DATOS[2]>=0 && cuantasPagTieneVivos(DATOS[1])>=DATOS[2] && DATOS[3]+DATOS[4] < MARCO_SIZE) { //valido los parametros
-		pthread_mutex_unlock( &mutexTablaPagina);
+
 		//esperar tiempo definido por arch de config
 		SleepMemoria(RETARDO_MEMORIA);
 		//buscar pagina
@@ -162,17 +162,19 @@ void AlmacenarBytes(Paquete paquete, int socketFD) {
 
 		//escribir en pagina
 		memcpy(pagina + DATOS[3],paquete.Payload+(sizeof(uint32_t)*5), DATOS[4]);
-		pthread_mutex_unlock( &mutexContenidoMemoria );
+
 		printf("Datos Almacenados del PID: %u, Pag: %u, Offset: %u\n", DATOS[1], DATOS[2], DATOS[3]);
 		//actualizar cache
 		if (!estaEnCache(DATOS[1], DATOS[2])) {
 			agregarACache(DATOS[1], DATOS[2]);
 		}
+		pthread_mutex_unlock( &mutexContenidoMemoria );
+		pthread_mutex_unlock( &mutexTablaPagina);
 		result = 1;
 		EnviarDatos(socketFD, MEMORIA, &result, sizeof(uint32_t));
 	} else {
-		pthread_mutex_unlock( &mutexTablaPagina);
 		pthread_mutex_unlock( &mutexContenidoMemoria );
+		pthread_mutex_unlock( &mutexTablaPagina);
 		EnviarDatosTipo(socketFD, MEMORIA, &result, sizeof(uint32_t), ESERROR);
 	}
 }
