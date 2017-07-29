@@ -926,9 +926,9 @@ int main(void) {
 	archivoMetadata();
 	archivoBitmap();
 	pthread_t userInterface;
-		pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,NULL);
-		pthread_join(userInterface, NULL);
+	pthread_create(&userInterface, NULL, (void*)userInterfaceHandler,NULL);
 	Servidor(IP, PUERTO, FS, accion, RecibirPaqueteFileSystem);
+	pthread_join(userInterface, NULL);
 	LiberarVariables();
 	return 0;
 }
