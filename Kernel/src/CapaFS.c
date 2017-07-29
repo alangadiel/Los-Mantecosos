@@ -54,7 +54,7 @@ char* armarPath(char* path)
 		*path = string_duplicate(string_substring_until(*path, string_length(*path) - 4));
 	}*/
 
-	//free(subsrt);
+	//free(subsrt); 
 }
 
 
